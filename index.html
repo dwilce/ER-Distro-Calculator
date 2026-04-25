@@ -440,9 +440,6 @@ window.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-
-
-        }
 function useFallback() {
   // No-op: data pre-loaded server-side
 }
@@ -550,7 +547,7 @@ function buildSheetTabs() {
     btn.className = "sheet-tab" + (i===0?" active":"");
     btn.textContent = name;
     btn.onclick = function() {
-      document.querySelectorAll("#sheetTabs .sheet-tab").forEach(function(b) { return b.classList.remove("active"; }));
+      var stabs = document.querySelectorAll("#sheetTabs .sheet-tab"); for (var si=0; si<stabs.length; si++) { stabs[si].classList.remove("active"); }
       btn.classList.add("active");
       activeSheet = name;
       renderDistro();
@@ -769,7 +766,8 @@ function clearTarget() {
 // ── REGION ───────────────────────────────────────────────────
 function setRegion(r, btn) {
   region = r;
-  document.querySelectorAll(".region-btn").forEach(function(b) { return b.classList.remove("active"; }));
+  var btns = document.querySelectorAll(".region-btn");
+  for (var i = 0; i < btns.length; i++) { btns[i].classList.remove("active"); }
   btn.classList.add("active");
   filterInventory();
   updateAddPreview();
