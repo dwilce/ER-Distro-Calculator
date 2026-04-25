@@ -498,7 +498,7 @@ function filterInventory() {
   var div = document.getElementById("invList");
   div.innerHTML = "";
   eqSections.forEach(function(sec) {
-    var items = q ? sec.items.filter(function(i) { return i.name.toLowerCase(; }).includes(q)) : sec.items;
+    var items = q ? sec.items.filter(function(i) { return i.name.toLowerCase().includes(q); }) : sec.items;
     if (!items.length) return;
     var hdr = document.createElement("div");
     hdr.className = "inv-section-hdr";
