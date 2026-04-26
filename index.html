@@ -359,8 +359,13 @@ function filterInventory() {
 function buildEqDropdown() {
   var sel = document.getElementById('addEqSel');
   sel.innerHTML = '';
+  // Add a blank first option
+  var blank = document.createElement('option');
+  blank.value = ''; blank.textContent = '-- Select equipment --';
+  sel.appendChild(blank);
   for (var si = 0; si < eqSections.length; si++) {
     var sec = eqSections[si];
+    if (!sec.items.length) continue;
     var og = document.createElement('optgroup');
     og.label = sec.name;
     for (var ii = 0; ii < sec.items.length; ii++) {
@@ -371,6 +376,7 @@ function buildEqDropdown() {
     }
     sel.appendChild(og);
   }
+  sel.onchange = updateAddPreview;
   updateAddPreview();
 }
 
