@@ -243,8 +243,11 @@ window.addEventListener('DOMContentLoaded', function() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.inventory && data.inventory.length > 0) {
+        // Normalize to [name, watts] array format
         INVENTORY = data.inventory.map(function(i) {
-          return i.isHeader ? ['--- ' + i.name + ' ---', 0] : [i.name, i.watts];
+          if (Array.isArray(i)) return i;
+          if (i.isHeader) return ['--- ' + i.name + ' ---', 0];
+          return [i.name, i.watts];
         });
       }
       if (data.ok && data.sheets && data.sheets.length > 0) {
@@ -279,7 +282,11 @@ function init() {
 function buildEqSections() {
   eqMap = {}; eqSections = [];
   for (var i = 0; i < INVENTORY.length; i++) {
-    var name = INVENTORY[i][0], w = INVENTORY[i][1];
+    var entry = INVENTORY[i];
+    // Handle both [name, watts] array and {name, watts} object formats
+    var name = Array.isArray(entry) ? entry[0] : entry.name;
+    var w = Array.isArray(entry) ? entry[1] : entry.watts;
+    if (!name) continue;
     if (name.indexOf('---') === 0) {
       eqSections.push({name: name.replace(/---/g,'').trim(), items:[]});
     } else {
