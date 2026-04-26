@@ -4,335 +4,171 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ER Equipment Calculator</title>
-
 <style>
-/* ── RESET & TOKENS ─────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --navy:    #0d2137;
-  --navy2:   #1a3a57;
-  --navy3:   #1f4e79;
-  --blue:    #2471a3;
-  --blue-lt: #d6e4f0;
-  --ph1:     #7d3c98;
-  --ph1-lt:  #f4ecfd;
-  --ph2:     #c0622a;
-  --ph2-lt:  #fdf0e6;
-  --ph3:     #0e7c7b;
-  --ph3-lt:  #e0f5f5;
-  --ok:      #1a6b3a;
-  --ok-lt:   #d4edda;
-  --over:    #921e2e;
-  --over-lt: #fde0e3;
-  --amber:   #d68910;
-  --amber-lt:#fef9e7;
-  --surface: #f4f6f9;
-  --card:    #ffffff;
-  --border:  #dde3ec;
-  --text:    #1a2535;
-  --muted:   #6b7a92;
-  --faint:   #e8ecf2;
-  font-family: 'Arial Narrow', Arial, sans-serif;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--surface);
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0d2137;--navy2:#1a3a57;--navy3:#1f4e79;--blue:#2471a3;--blue-lt:#d6e4f0;
+  --ph1:#7d3c98;--ph1-lt:#f4ecfd;--ph2:#c0622a;--ph2-lt:#fdf0e6;--ph3:#0e7c7b;--ph3-lt:#e0f5f5;
+  --ok:#1a6b3a;--ok-lt:#d4edda;--over:#921e2e;--over-lt:#fde0e3;
+  --amber:#d68910;--amber-lt:#fef9e7;
+  --surface:#f4f6f9;--card:#fff;--border:#dde3ec;--text:#1a2535;--muted:#6b7a92;--faint:#e8ecf2;
+  font-family:'Arial Narrow',Arial,sans-serif;font-size:14px;color:var(--text);background:var(--surface);
 }
-
-/* ── LAYOUT ──────────────────────────────────────────────────── */
-body { display:grid; grid-template-rows:56px 1fr; height:100vh; overflow:hidden; }
-#topbar {
-  background: var(--navy);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 20px; gap: 16px; z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-#main { display:grid; grid-template-columns:260px 1fr 300px; overflow:hidden; }
-
-/* ── TOPBAR ──────────────────────────────────────────────────── */
-.logo { display:flex; align-items:center; gap:10px; }
-.logo-bolt { width:28px; height:28px; background:#f39c12; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:var(--navy); font-family:'Arial Narrow', Arial, sans-serif; }
-.logo-text { font-family:'Arial Narrow', Arial, sans-serif; font-weight:700; font-size:18px; letter-spacing:1px; color:white; }
-.logo-sub { font-size:10px; color:rgba(255,255,255,0.5); letter-spacing:2px; font-weight:500; text-transform:uppercase; }
-.top-controls { display:flex; align-items:center; gap:12px; }
-.region-toggle { display:flex; background:rgba(255,255,255,0.1); border-radius:6px; overflow:hidden; }
-.region-btn { padding:6px 14px; font-size:12px; font-weight:600; font-family:'Arial Narrow', Arial, sans-serif; letter-spacing:0.5px; color:rgba(255,255,255,0.6); border:none; background:none; cursor:pointer; transition:all 0.15s; }
-.region-btn.active { background:var(--blue); color:white; }
-.sheet-tabs { display:flex; gap:4px; }
-.sheet-tab { padding:6px 12px; font-size:11px; font-weight:600; font-family:'Arial Narrow', Arial, sans-serif; letter-spacing:0.5px; color:rgba(255,255,255,0.55); border:1px solid rgba(255,255,255,0.15); border-radius:4px; cursor:pointer; transition:all 0.15s; }
-.sheet-tab.active { background:var(--blue); color:white; border-color:var(--blue); }
-.labels-btn { padding:6px 12px; font-size:11px; font-weight:600; font-family:'Arial Narrow', Arial, sans-serif; letter-spacing:0.5px; color:white; background:#7b2222; border:1px solid #7b2222; border-radius:4px; cursor:pointer; transition:all 0.15s; }
-.labels-btn:hover { background:#a03030; border-color:#a03030; }
-
-/* ── LEFT PANEL — INVENTORY ──────────────────────────────────── */
-#inv-panel {
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  display: grid; grid-template-rows: auto 1fr;
-  overflow: hidden;
-}
-.panel-hdr {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--faint);
-  background: var(--navy2);
-}
-.panel-hdr h2 { font-family:'Arial Narrow', Arial, sans-serif; font-weight:700; font-size:14px; letter-spacing:0.8px; color:white; text-transform:uppercase; margin-bottom:8px; }
-.search-wrap { position:relative; }
-.search-wrap input {
-  width:100%; padding:7px 10px 7px 30px;
-  border:1px solid rgba(255,255,255,0.2); border-radius:5px;
-  background:rgba(255,255,255,0.12); color:white; font-size:12px;
-  outline:none;
-}
-.search-wrap input::placeholder { color:rgba(255,255,255,0.4); }
-.search-wrap input:focus { border-color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.18); }
-.search-icon { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.5); font-size:13px; pointer-events:none; }
-.inv-list { overflow-y:auto; }
-.inv-section-hdr {
-  padding:6px 14px 4px;
-  font-family:'Arial Narrow', Arial, sans-serif; font-weight:700; font-size:10px;
-  letter-spacing:1.5px; text-transform:uppercase;
-  color:var(--navy3); background:var(--faint);
-  border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1;
-}
-.inv-item {
-  display:flex; align-items:center; padding:7px 14px; gap:8px;
-  border-bottom:1px solid var(--faint); cursor:pointer; transition:background 0.1s;
-}
-.inv-item:hover { background:var(--blue-lt); }
-.inv-item.selected { background:var(--blue-lt); }
-.inv-name { flex:1; font-size:12px; font-weight:500; line-height:1.3; }
-.inv-watts { font-size:11px; color:var(--muted); min-width:36px; text-align:right; }
-.inv-amps { font-size:11px; font-weight:600; color:var(--navy3); min-width:40px; text-align:right; }
-.tbc-badge { font-size:9px; font-weight:700; color:var(--amber); background:var(--amber-lt); padding:1px 5px; border-radius:3px; }
-
-/* ── CENTER — DISTRO SHEET ───────────────────────────────────── */
-#distro-panel { overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
-.sheet-title {
-  display:flex; align-items:center; justify-content:space-between;
-  background:var(--navy); color:white; padding:10px 16px; border-radius:8px;
-}
-.sheet-title h2 { font-family:'Arial Narrow', Arial, sans-serif; font-size:20px; font-weight:700; letter-spacing:0.5px; }
-.sheet-title .limit-badge { font-family:'Arial Narrow', Arial, sans-serif; font-size:12px; font-weight:600; color:rgba(255,255,255,0.6); }
-.region-cell { background:rgba(255,255,255,0.15); color:white; font-size:11px; font-weight:600; padding:4px 10px; border-radius:4px; }
-.phase-row { display:grid; gap:8px; }
-.phase-row.banks-3 { grid-template-columns: repeat(3, 1fr); }
-.phase-row.banks-8 { grid-template-columns: repeat(4, 1fr); }
-.phase-row.banks-12 { grid-template-columns: repeat(6, 1fr); }
-.bank-card { border-radius:8px; overflow:hidden; border:1px solid var(--border); }
-.bank-hdr {
-  padding:6px 10px; font-family:'Arial Narrow', Arial, sans-serif; font-weight:700;
-  font-size:13px; letter-spacing:0.5px; color:white;
-  display:flex; align-items:center; justify-content:space-between;
-}
-.bank-hdr span.ph-tag { font-size:10px; font-weight:600; opacity:0.75; }
-.way-row {
-  display:grid; grid-template-columns:28px 1fr 52px;
-  align-items:center; gap:0; border-bottom:1px solid var(--faint);
-}
-.way-row:last-child { border-bottom:none; }
-.way-label {
-  text-align:center; font-family:'Arial Narrow', Arial, sans-serif; font-weight:700;
-  font-size:12px; color:white; padding:6px 0; align-self:stretch;
-  display:flex; align-items:center; justify-content:center;
-}
-.way-items { padding:4px 8px; }
-.way-item-row {
-  display:flex; align-items:center; gap:4px; padding:1px 0; cursor:pointer;
-}
-.way-item-row:hover .way-eq { text-decoration:underline; }
-.way-eq { font-size:11px; flex:1; color:var(--text); line-height:1.3; }
-.way-qty { font-size:10px; color:var(--muted); min-width:18px; }
-.way-empty { font-size:11px; color:var(--muted); font-style:italic; padding:4px 0; }
-.way-add-btn {
-  font-size:16px; color:var(--muted); padding:2px 6px; cursor:pointer;
-  border:none; background:none; border-radius:3px; transition:all 0.1s; line-height:1;
-}
-.way-add-btn:hover { color:var(--navy3); background:var(--blue-lt); }
-.way-sub { opacity:0.65; padding-left:12px; }
-.way-sub .way-eq { font-size:10px; }
-.way-amps { font-size:11px; font-weight:600; color:var(--navy3); text-align:right; padding-right:8px; white-space:nowrap; }
-
-/* ── GRAND SUMMARY ───────────────────────────────────────────── */
-.grand-summary {
-  border-radius:8px; overflow:hidden; border:1px solid var(--border);
-}
-.gs-title { background:var(--navy); color:white; padding:8px 14px; font-family:'Arial Narrow', Arial, sans-serif; font-weight:700; font-size:14px; letter-spacing:0.8px; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; }
-.gs-limit-row { display:flex; align-items:center; gap:10px; background:var(--amber-lt); padding:8px 14px; border-bottom:1px solid #f0d995; }
-.gs-limit-label { font-size:12px; color:#7a5500; font-weight:500; }
-.gs-limit-input { width:70px; padding:4px 8px; border:1.5px solid #d68910; border-radius:4px; font-size:13px; font-weight:700; color:#7a5500; text-align:center; background:white; }
-.gs-limit-input:focus { outline:none; border-color:#b7770d; }
-.gs-phase { display:grid; grid-template-columns:1fr 80px 90px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--faint); }
-.gs-phase:last-child { border-bottom:none; }
-.gs-ph-label { font-family:'Arial Narrow', Arial, sans-serif; font-weight:700; font-size:14px; letter-spacing:0.5px; }
-.gs-total { font-size:18px; font-weight:700; text-align:right; }
-.gs-status { text-align:center; font-size:11px; font-weight:700; font-family:'Arial Narrow', Arial, sans-serif; letter-spacing:0.5px; padding:4px 8px; border-radius:4px; }
-.status-ok { background:var(--ok-lt); color:var(--ok); }
-.status-over { background:var(--over-lt); color:var(--over); animation:pulse 1s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-.gs-phase.ph1 { border-left:4px solid var(--ph1); }
-.gs-phase.ph2 { border-left:4px solid var(--ph2); }
-.gs-phase.ph3 { border-left:4px solid var(--ph3); }
-.gs-ph1 { color:var(--ph1); }
-.gs-ph2 { color:var(--ph2); }
-.gs-ph3 { color:var(--ph3); }
-
-/* ── RIGHT PANEL — ADD ITEM ──────────────────────────────────── */
-#add-panel {
-  background:var(--card);
-  border-left:1px solid var(--border);
-  display:flex; flex-direction:column; overflow:hidden;
-}
-.add-hdr {
-  background:var(--navy2); padding:12px 14px;
-  border-bottom:1px solid var(--border);
-}
-.add-hdr h2 { font-family:'Arial Narrow', Arial, sans-serif; font-weight:700; font-size:14px; letter-spacing:0.8px; color:white; text-transform:uppercase; }
-.add-target { background:var(--faint); padding:10px 14px; border-bottom:1px solid var(--border); }
-.add-target-label { font-size:10px; font-weight:600; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:4px; }
-.add-target-val { font-family:'Arial Narrow', Arial, sans-serif; font-size:16px; font-weight:700; color:var(--navy3); }
-.add-target-sub { font-size:11px; color:var(--muted); margin-top:1px; }
-.add-form { padding:12px 14px; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
-.form-group label { display:block; font-size:10px; font-weight:600; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:4px; }
-.form-group select, .form-group input[type=number] {
-  width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:5px;
-  font-size:13px; background:white; color:var(--text); outline:none;
-  font-family:'Arial Narrow', Arial, sans-serif;
-}
-.form-group select:focus, .form-group input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(36,113,163,0.15); }
-.amp-preview {
-  display:flex; align-items:center; justify-content:center;
-  background:var(--blue-lt); border-radius:6px; padding:10px; gap:8px;
-}
-.amp-preview .eq-name-sm { font-size:12px; color:var(--navy3); font-weight:500; }
-.amp-preview .amp-val { font-family:'Arial Narrow', Arial, sans-serif; font-size:28px; font-weight:700; color:var(--navy3); }
-.amp-preview .amp-unit { font-size:13px; color:var(--muted); font-weight:500; }
-.slot-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-.slot-btn {
-  padding:7px 4px; border-radius:5px; border:1.5px solid var(--border);
-  background:white; font-size:12px; font-weight:600; cursor:pointer;
-  text-align:center; color:var(--muted); transition:all 0.1s; font-family:'Arial Narrow', Arial, sans-serif; letter-spacing:0.3px;
-}
-.slot-btn:hover { border-color:var(--navy3); color:var(--navy3); }
-.slot-btn.active { background:var(--navy3); color:white; border-color:var(--navy3); }
-.slot-btn.filled { border-color:var(--ph2); color:var(--ph2); }
-.write-btn {
-  width:100%; padding:12px; border:none; border-radius:7px;
-  background:var(--navy3); color:white; font-family:'Arial Narrow', Arial, sans-serif;
-  font-size:16px; font-weight:700; letter-spacing:0.5px; cursor:pointer; transition:all 0.15s;
-  text-transform:uppercase;
-}
-.write-btn:hover { background:var(--blue); }
-.write-btn:active { transform:scale(0.98); }
-.write-btn:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
-.write-success { background:var(--ok-lt); color:var(--ok); padding:8px 12px; border-radius:5px; font-size:12px; font-weight:600; text-align:center; }
-.write-error { background:var(--over-lt); color:var(--over); padding:8px 12px; border-radius:5px; font-size:12px; font-weight:600; text-align:center; }
-.clear-row-btn {
-  width:100%; padding:7px; border:1px solid var(--border); border-radius:5px;
-  background:white; color:var(--muted); font-size:12px; font-weight:500; cursor:pointer;
-  font-family:'Arial Narrow', Arial, sans-serif; letter-spacing:0.3px;
-}
-.clear-row-btn:hover { border-color:var(--over); color:var(--over); }
-
-/* ── LABELS OVERLAY ──────────────────────────────────────────── */
-.labels-overlay {
-  position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100;
-  display:none; align-items:center; justify-content:center;
-}
-.labels-overlay.open { display:flex; }
-.labels-modal {
-  background:white; border-radius:12px; width:880px; max-width:95vw;
-  max-height:90vh; display:flex; flex-direction:column; overflow:hidden;
-}
-.modal-hdr {
-  background:var(--navy); color:white; padding:14px 20px;
-  display:flex; align-items:center; justify-content:space-between;
-}
-.modal-hdr h2 { font-family:'Arial Narrow', Arial, sans-serif; font-size:18px; font-weight:700; letter-spacing:0.5px; }
-.modal-close { background:none; border:none; color:white; font-size:22px; cursor:pointer; padding:0 4px; line-height:1; }
-.modal-body { overflow-y:auto; padding:20px; }
-.labels-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.label-card {
-  border:1px solid #ccc; border-radius:6px; overflow:hidden;
-  font-family:'Arial Narrow', Arial, sans-serif; break-inside:avoid;
-}
-.label-hdr { padding:6px 10px; color:white; font-weight:700; font-size:14px; display:flex; justify-content:space-between; align-items:center; }
-.label-hdr .label-meta { font-size:10px; opacity:0.8; }
-.label-way { display:flex; align-items:baseline; gap:8px; padding:4px 10px; border-bottom:0.5px solid #eee; font-size:11px; }
-.label-way:last-child { border-bottom:none; }
-.label-way-id { font-weight:700; font-size:13px; min-width:24px; }
-.label-way-items { flex:1; }
-.label-way-item { display:inline; }
-.label-way-item + .label-way-item::before { content:" · "; color:#aaa; }
-.label-way-amps { font-weight:700; font-size:12px; color:#333; }
-.label-way-empty { color:#bbb; font-style:italic; }
-.modal-ftr { padding:14px 20px; background:var(--faint); border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
-.print-btn { padding:9px 24px; border:none; border-radius:6px; background:var(--navy3); color:white; font-family:'Arial Narrow', Arial, sans-serif; font-size:14px; font-weight:700; letter-spacing:0.5px; cursor:pointer; }
-.print-btn:hover { background:var(--blue); }
-.sec-btn { padding:9px 16px; border:1px solid var(--border); border-radius:6px; background:white; color:var(--text); font-family:'Arial Narrow', Arial, sans-serif; font-size:14px; font-weight:600; cursor:pointer; }
-
-/* ── SCROLLBAR ───────────────────────────────────────────────── */
-::-webkit-scrollbar { width:5px; height:5px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-
-/* ── PRINT ───────────────────────────────────────────────────── */
-@media print {
-  body { display:block; height:auto; overflow:visible; }
-  #topbar, #inv-panel, #add-panel, #distro-panel { display:none !important; }
-  .labels-overlay { position:static; background:none; display:block !important; }
-  .labels-modal { width:100%; max-height:none; border-radius:0; box-shadow:none; }
-  .modal-ftr, .modal-close { display:none !important; }
-}
+body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
+#topbar{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#main{display:grid;grid-template-columns:260px 1fr 300px;overflow:hidden}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-bolt{width:28px;height:28px;background:#f39c12;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--navy)}
+.logo-text{font-weight:700;font-size:18px;letter-spacing:1px;color:white}
+.logo-sub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:2px}
+.top-controls{display:flex;align-items:center;gap:12px}
+.region-toggle{display:flex;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden}
+.region-btn{padding:6px 14px;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);border:none;background:none;cursor:pointer}
+.region-btn.active{background:var(--blue);color:white}
+.sheet-tabs{display:flex;gap:4px}
+.sheet-tab{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.15);border-radius:4px;cursor:pointer;background:none}
+.sheet-tab.active{background:var(--blue);color:white;border-color:var(--blue)}
+.labels-btn{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#7b2222;border:1px solid #7b2222;border-radius:4px;cursor:pointer}
+#inv-panel{background:var(--card);border-right:1px solid var(--border);display:grid;grid-template-rows:auto 1fr;overflow:hidden}
+.panel-hdr{padding:12px 14px;border-bottom:1px solid var(--faint);background:var(--navy2)}
+.panel-hdr h2{font-weight:700;font-size:14px;letter-spacing:.8px;color:white;text-transform:uppercase;margin-bottom:8px}
+.search-wrap{position:relative}
+.search-wrap input{width:100%;padding:7px 10px 7px 30px;border:1px solid rgba(255,255,255,.2);border-radius:5px;background:rgba(255,255,255,.12);color:white;font-size:12px;outline:none}
+.search-wrap input::placeholder{color:rgba(255,255,255,.4)}
+.search-wrap input:focus{border-color:rgba(255,255,255,.5)}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.5);font-size:13px;pointer-events:none}
+.inv-list{overflow-y:auto}
+.inv-section-hdr{padding:6px 14px 4px;font-weight:700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy3);background:var(--faint);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
+.inv-item{display:flex;align-items:center;padding:7px 14px;gap:8px;border-bottom:1px solid var(--faint);cursor:pointer}
+.inv-item:hover{background:var(--blue-lt)}
+.inv-name{flex:1;font-size:12px;font-weight:500}
+.inv-watts{font-size:11px;color:var(--muted);min-width:36px;text-align:right}
+.inv-amps{font-size:11px;font-weight:600;color:var(--navy3);min-width:40px;text-align:right}
+.tbc-badge{font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-lt);padding:1px 5px;border-radius:3px}
+#distro-panel{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.sheet-title{display:flex;align-items:center;justify-content:space-between;background:var(--navy);color:white;padding:10px 16px;border-radius:8px}
+.sheet-title h2{font-size:20px;font-weight:700}
+.sheet-title .limit-badge{font-size:12px;font-weight:600;color:rgba(255,255,255,.6)}
+.region-cell{background:rgba(255,255,255,.15);color:white;font-size:11px;font-weight:600;padding:4px 10px;border-radius:4px}
+.phase-row{display:grid;gap:8px}
+.banks-3{grid-template-columns:repeat(3,1fr)}
+.banks-8{grid-template-columns:repeat(4,1fr)}
+.banks-12{grid-template-columns:repeat(6,1fr)}
+.bank-card{border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.bank-hdr{padding:6px 10px;font-weight:700;font-size:13px;color:white;display:flex;align-items:center;justify-content:space-between}
+.bank-hdr .ph-tag{font-size:10px;opacity:.75}
+.way-row{display:grid;grid-template-columns:28px 1fr 52px;align-items:center;border-bottom:1px solid var(--faint)}
+.way-row:last-child{border-bottom:none}
+.way-label{text-align:center;font-weight:700;font-size:12px;color:white;padding:6px 0;align-self:stretch;display:flex;align-items:center;justify-content:center}
+.way-items{padding:4px 8px}
+.way-item-row{display:flex;align-items:center;gap:4px;padding:1px 0;cursor:pointer}
+.way-eq{font-size:11px;flex:1;color:var(--text)}
+.way-qty{font-size:10px;color:var(--muted);min-width:18px}
+.way-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 0}
+.way-add-btn{font-size:16px;color:var(--muted);padding:2px 6px;cursor:pointer;border:none;background:none;border-radius:3px}
+.way-add-btn:hover{color:var(--navy3);background:var(--blue-lt)}
+.way-sub{opacity:.65;padding-left:12px}
+.way-amps{font-size:11px;font-weight:600;color:var(--navy3);text-align:right;padding-right:8px;white-space:nowrap}
+.grand-summary{border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.gs-title{background:var(--navy);color:white;padding:8px 14px;font-weight:700;font-size:14px;letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.gs-limit-row{display:flex;align-items:center;gap:10px;background:var(--amber-lt);padding:8px 14px;border-bottom:1px solid #f0d995}
+.gs-limit-label{font-size:12px;color:#7a5500;font-weight:500}
+.gs-limit-input{width:70px;padding:4px 8px;border:1.5px solid #d68910;border-radius:4px;font-size:13px;font-weight:700;color:#7a5500;text-align:center;background:white}
+.gs-phase{display:grid;grid-template-columns:1fr 80px 90px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--faint)}
+.gs-phase:last-child{border-bottom:none}
+.gs-phase.ph1{border-left:4px solid var(--ph1)}
+.gs-phase.ph2{border-left:4px solid var(--ph2)}
+.gs-phase.ph3{border-left:4px solid var(--ph3)}
+.gs-ph-label{font-weight:700;font-size:14px}
+.gs-ph1{color:var(--ph1)}.gs-ph2{color:var(--ph2)}.gs-ph3{color:var(--ph3)}
+.gs-total{font-size:18px;font-weight:700;text-align:right}
+.gs-status{text-align:center;font-size:11px;font-weight:700;padding:4px 8px;border-radius:4px}
+.status-ok{background:var(--ok-lt);color:var(--ok)}
+.status-over{background:var(--over-lt);color:var(--over);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+#add-panel{background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.add-hdr{background:var(--navy2);padding:12px 14px;border-bottom:1px solid var(--border)}
+.add-hdr h2{font-weight:700;font-size:14px;letter-spacing:.8px;color:white;text-transform:uppercase}
+.add-target{background:var(--faint);padding:10px 14px;border-bottom:1px solid var(--border)}
+.add-target-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.add-target-val{font-size:16px;font-weight:700;color:var(--navy3)}
+.add-target-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.add-form{padding:12px 14px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.form-group label{display:block;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.form-group select,.form-group input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:5px;font-size:13px;background:white;color:var(--text);outline:none;font-family:inherit}
+.amp-preview{display:flex;align-items:center;justify-content:center;background:var(--blue-lt);border-radius:6px;padding:10px;gap:8px}
+.amp-val{font-size:28px;font-weight:700;color:var(--navy3)}
+.amp-unit{font-size:13px;color:var(--muted)}
+.slot-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.slot-btn{padding:7px 4px;border-radius:5px;border:1.5px solid var(--border);background:white;font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:var(--muted)}
+.slot-btn.active{background:var(--navy3);color:white;border-color:var(--navy3)}
+.slot-btn.filled{border-color:var(--ph2);color:var(--ph2)}
+.write-btn{width:100%;padding:12px;border:none;border-radius:7px;background:var(--navy3);color:white;font-size:16px;font-weight:700;cursor:pointer;text-transform:uppercase}
+.write-btn:hover{background:var(--blue)}
+.write-btn:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
+.write-success{background:var(--ok-lt);color:var(--ok);padding:8px 12px;border-radius:5px;font-size:12px;font-weight:600;text-align:center}
+.clear-row-btn{width:100%;padding:7px;border:1px solid var(--border);border-radius:5px;background:white;color:var(--muted);font-size:12px;cursor:pointer}
+.clear-row-btn:hover{border-color:var(--over);color:var(--over)}
+.labels-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center}
+.labels-overlay.open{display:flex}
+.labels-modal{background:white;border-radius:12px;width:880px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hdr{background:var(--navy);color:white;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-hdr h2{font-size:18px;font-weight:700}
+.modal-close{background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:0 4px}
+.modal-body{overflow-y:auto;padding:20px}
+.labels-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.label-card{border:1px solid #ccc;border-radius:6px;overflow:hidden}
+.label-hdr{padding:6px 10px;color:white;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.label-meta{font-size:10px;opacity:.8}
+.label-way{display:flex;align-items:baseline;gap:8px;padding:4px 10px;border-bottom:.5px solid #eee;font-size:11px}
+.label-way:last-child{border-bottom:none}
+.label-way-id{font-weight:700;font-size:13px;min-width:24px}
+.label-way-empty{color:#bbb;font-style:italic}
+.modal-ftr{padding:14px 20px;background:var(--faint);border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.print-btn{padding:9px 24px;border:none;border-radius:6px;background:var(--navy3);color:white;font-weight:700;cursor:pointer}
+.sec-btn{padding:9px 16px;border:1px solid var(--border);border-radius:6px;background:white;color:var(--text);font-weight:600;cursor:pointer}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
 </head>
 <body>
-
-<!-- TOP BAR -->
 <header id="topbar">
   <div class="logo">
-    <div class="logo-bolt">⚡</div>
+    <div class="logo-bolt">&#9889;</div>
     <div>
       <div class="logo-text">ER EQUIPMENT CALCULATOR</div>
-      <div class="logo-sub">Power Distro Load Sheet</div>
+      <div class="logo-sub" id="logoSub">POWER DISTRO LOAD SHEET</div>
     </div>
   </div>
   <div class="top-controls">
     <div class="region-toggle">
-      <button class="region-btn active" onclick="setRegion('US',this)">US 208V</button>
-      <button class="region-btn" onclick="setRegion('ROW',this)">ROW 230V</button>
+      <button class="region-btn active" id="btnUS" onclick="setRegion('US')">US 208V</button>
+      <button class="region-btn" id="btnROW" onclick="setRegion('ROW')">ROW 230V</button>
     </div>
     <div class="sheet-tabs" id="sheetTabs"></div>
-    <button class="labels-btn" onclick="openLabels()">🖨 Labels</button>
+    <button class="labels-btn" onclick="openLabels()">&#128424; Labels</button>
   </div>
 </header>
 
 <main id="main">
-
-  <!-- LEFT: INVENTORY -->
   <aside id="inv-panel">
     <div class="panel-hdr">
       <h2>Inventory</h2>
       <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="searchInp" placeholder="Search equipment…" oninput="filterInventory()">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="searchInp" placeholder="Search equipment..." oninput="filterInventory()">
       </div>
     </div>
     <div class="inv-list" id="invList"></div>
   </aside>
-
-  <!-- CENTER: DISTRO SHEET -->
-  <section id="distro-panel" id="distroPanel"></section>
-
-  <!-- RIGHT: ADD ITEM PANEL -->
+  <section id="distro-panel"></section>
   <aside id="add-panel">
     <div class="add-hdr"><h2>Add Equipment</h2></div>
-
     <div class="add-target" id="addTarget">
       <div class="add-target-label">Target output</div>
-      <div class="add-target-val" id="targetVal">Select an output →</div>
+      <div class="add-target-val" id="targetVal">Select an output &#8594;</div>
       <div class="add-target-sub" id="targetSub">Click any + button on the distro sheet</div>
     </div>
-
     <div class="add-form">
       <div class="form-group">
         <label>Equipment</label>
@@ -342,8 +178,8 @@ body { display:grid; grid-template-rows:56px 1fr; height:100vh; overflow:hidden;
         <label>Quantity</label>
         <input type="number" id="addQty" value="1" min="1" max="99" oninput="updateAddPreview()">
       </div>
-      <div class="amp-preview" id="ampPreview">
-        <span class="amp-val" id="previewAmpVal">—</span>
+      <div class="amp-preview">
+        <span class="amp-val" id="previewAmpVal">&#8212;</span>
         <span class="amp-unit">A</span>
       </div>
       <div class="form-group">
@@ -362,40 +198,33 @@ body { display:grid; grid-template-rows:56px 1fr; height:100vh; overflow:hidden;
   </aside>
 </main>
 
-<!-- LABELS OVERLAY -->
 <div class="labels-overlay" id="labelsOverlay">
   <div class="labels-modal">
     <div class="modal-hdr">
       <h2 id="labelTitle">Labels</h2>
-      <button class="modal-close" onclick="closeLabels()">✕</button>
+      <button class="modal-close" onclick="closeLabels()">&#10005;</button>
     </div>
-    <div class="modal-body">
-      <div class="labels-grid" id="labelsGrid"></div>
-    </div>
+    <div class="modal-body"><div class="labels-grid" id="labelsGrid"></div></div>
     <div class="modal-ftr">
       <button class="sec-btn" onclick="closeLabels()">Close</button>
-      <button class="print-btn" onclick="window.print()">🖨 Print Labels</button>
+      <button class="print-btn" onclick="window.print()">&#128424; Print Labels</button>
     </div>
   </div>
 </div>
 
 <script>
-// ── DATA — injected server-side by Apps Script ───────────────
-// When served via Apps Script doGet(), INVENTORY and SHEETS are
-// pre-populated from the Inventory sheet before the page loads.
-// No fetch() needed — data arrives with the page.
-var INVENTORY = []; // populated from fetch or fallback
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLOESPjkJsi9GFUgxV2a0qCTPHt3sgcJmLApN3o7rZkN1E2wy9fs4SnUH2mTFcxREt/exec';
+
+var INVENTORY = [];
 var SHEETS = {
-  "18-Way (32A)":  { ways:6, banks:["A","B","C"], limit:32, altLimit:0 },
-  "48-Way (63A)":  { ways:6, banks:["A","B","C","D","E","F","G","H"], limit:63, altLimit:125 },
-  "72-Way (400A)": { ways:6, banks:["A","B","C","D","E","F","G","H","I","J","K","L"], limit:400, altLimit:0 },
+  '18-Way (32A)':  {ways:6, banks:['A','B','C'],                                        limit:32,  altLimit:0},
+  '48-Way (63A)':  {ways:6, banks:['A','B','C','D','E','F','G','H'],                    limit:63,  altLimit:125},
+  '72-Way (400A)': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'],    limit:400, altLimit:0}
 };
-
-var PH_DK = ["","#7d3c98","#c0622a","#0e7c7b"];
-var PH_LT = ["","#f4ecfd","#fdf0e6","#e0f5f5"];
-
-var region = "US";
-var activeSheet = "18-Way (32A)";
+var PH_DK = ['','#7d3c98','#c0622a','#0e7c7b'];
+var PH_LT = ['','#f4ecfd','#fdf0e6','#e0f5f5'];
+var region = 'US';
+var activeSheet = '18-Way (32A)';
 var selectedTarget = null;
 var selectedSlot = 0;
 var eqSections = [];
@@ -403,18 +232,14 @@ var eqMap = {};
 var distroData = {};
 var limits = {};
 
-function volts() { return region === "US" ? 208 : 230; }
+function volts() { return region === 'US' ? 208 : 230; }
 function toAmps(w) { return w > 1 ? Math.round(w / volts() * 100) / 100 : null; }
-function phaseOf(wayNum) { return ((wayNum-1)%3)+1; }
-function phaseOfBank(bankIdx) { return (bankIdx%3)+1; }
+function phaseOf(w) { return ((w-1)%3)+1; }
+function phaseOfBank(bi) { return (bi%3)+1; }
 
-// ── STARTUP ───────────────────────────────────────────────────
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzLOESPjkJsi9GFUgxV2a0qCTPHt3sgcJmLApN3o7rZkN1E2wy9fs4SnUH2mTFcxREt/exec";
-
-
+// ── STARTUP ──────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
-  var url = 'https://script.google.com/macros/s/AKfycbzLOESPjkJsi9GFUgxV2a0qCTPHt3sgcJmLApN3o7rZkN1E2wy9fs4SnUH2mTFcxREt/exec';
-  fetch(url)
+  fetch(APPS_SCRIPT_URL)
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.inventory && data.inventory.length > 0) {
@@ -424,399 +249,380 @@ window.addEventListener('DOMContentLoaded', function() {
       }
       if (data.ok && data.sheets && data.sheets.length > 0) {
         SHEETS = {};
-        data.sheets.forEach(function(s) {
-          SHEETS[s.name] = { ways:s.ways, banks:s.banks, limit:s.limit, altLimit:s.altLimit };
-        });
+        for (var si = 0; si < data.sheets.length; si++) {
+          var s = data.sheets[si];
+          SHEETS[s.name] = {ways:s.ways, banks:s.banks, limit:s.limit, altLimit:s.altLimit};
+        }
       }
-      var sub = document.querySelector('.logo-sub');
       var t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      if (sub) { sub.textContent = 'LIVE  ·  ' + t; sub.style.color = '#52c875'; }
-      initApp();
+      document.getElementById('logoSub').textContent = 'LIVE  \u00b7  ' + t;
+      document.getElementById('logoSub').style.color = '#52c875';
+      init();
     })
     .catch(function() {
-      var sub = document.querySelector('.logo-sub');
-      if (sub) { sub.textContent = 'OFFLINE  ·  Built-in inventory'; sub.style.color = '#f39c12'; }
-      initApp();
+      document.getElementById('logoSub').textContent = 'OFFLINE  \u00b7  Built-in inventory';
+      document.getElementById('logoSub').style.color = '#f39c12';
+      init();
     });
 });
 
-function useFallback() {
-  // No-op: data pre-loaded server-side
+function init() {
+  buildEqSections();
+  initDistroData();
+  renderInventory(INVENTORY);
+  buildEqDropdown();
+  buildSheetTabs();
+  renderDistro();
 }
 
-function initApp() {
-  try {
-    buildEqSections();
-    buildInventoryPanel();
-    buildEqDropdown();
-    buildSheetTabs();
-    renderDistro();
-    // Show success indicator
-    var sub = document.querySelector('.logo-sub');
-    if (sub) sub.textContent = 'LIVE  ·  ' + INVENTORY.length + ' items loaded';
-  } catch(e) {
-    var sub = document.querySelector('.logo-sub');
-    if (sub) { sub.textContent = 'ERROR: ' + e.message; sub.style.color = '#ff4444'; }
-    // Also show in centre panel
-    var dp = document.getElementById('distro-panel');
-    if (dp) dp.innerHTML = '<div style="padding:20px;color:red;font-family:sans-serif"><b>JS Error:</b><br>' + e.message + '<br><br><pre>' + e.stack + '</pre></div>';
+// ── DATA ─────────────────────────────────────────────────────
+function buildEqSections() {
+  eqMap = {}; eqSections = [];
+  for (var i = 0; i < INVENTORY.length; i++) {
+    var name = INVENTORY[i][0], w = INVENTORY[i][1];
+    if (name.indexOf('---') === 0) {
+      eqSections.push({name: name.replace(/---/g,'').trim(), items:[]});
+    } else {
+      eqMap[name] = w;
+      if (eqSections.length) eqSections[eqSections.length-1].items.push({name:name, watts:w});
+    }
   }
 }
 
-function buildEqSections() {
-  eqMap = {}; eqSections = [];
-  INVENTORY.forEach(function(item_nw) { var n=item_nw[0], w=item_nw[1]; if (!n.startsWith("---")) eqMap[n] = w; });
-  // Rebuild distroData for any new sheets
-  Object.keys(SHEETS).forEach(function(sName) {
+function initDistroData() {
+  for (var sName in SHEETS) {
     if (!distroData[sName]) {
       distroData[sName] = {};
       limits[sName] = SHEETS[sName].limit;
-      SHEETS[sName].banks.forEach(function(bankLetter, bi) {
+      var banks = SHEETS[sName].banks;
+      var ways = SHEETS[sName].ways;
+      for (var bi = 0; bi < banks.length; bi++) {
         distroData[sName][bi] = {};
-        for (var w=1; w<=SHEETS[sName].ways; w++)
+        for (var w = 1; w <= ways; w++) {
           distroData[sName][bi][w] = {0:null,1:null,2:null,3:null};
-      });
+        }
+      }
     }
-  });
-  var cur = null;
-  INVENTORY.forEach(function(item_nw2) { var n=item_nw2[0], w=item_nw2[1];
-    if (n.startsWith("---")) {
-      cur = { name: n.replace(/---/g,"").trim(), items: [] };
-      eqSections.push(cur);
-    } else if (cur) {
-      cur.items.push({ name:n, watts:w });
-    }
-  });
+  }
 }
 
-function buildInventoryPanel() {
-  filterInventory();
+// ── INVENTORY ─────────────────────────────────────────────────
+function renderInventory(items) {
+  var div = document.getElementById('invList');
+  div.innerHTML = '';
+  var lastSec = '';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var name = item[0], watts = item[1];
+    if (name.indexOf('---') === 0) {
+      lastSec = name.replace(/---/g,'').trim();
+      var hdr = document.createElement('div');
+      hdr.className = 'inv-section-hdr';
+      hdr.textContent = lastSec;
+      div.appendChild(hdr);
+      continue;
+    }
+    var a = toAmps(watts);
+    var tbc = watts === 1, bat = watts === 0;
+    var el = document.createElement('div');
+    el.className = 'inv-item';
+    var nameDiv = document.createElement('div'); nameDiv.className = 'inv-name'; nameDiv.textContent = name;
+    var wDiv = document.createElement('div');
+    wDiv.className = tbc ? 'tbc-badge' : 'inv-watts';
+    wDiv.textContent = tbc ? 'TBC' : bat ? 'CO\u2082' : watts + 'W';
+    var aDiv = document.createElement('div'); aDiv.className = 'inv-amps'; aDiv.textContent = a ? a + 'A' : '\u2014';
+    el.appendChild(nameDiv); el.appendChild(wDiv); el.appendChild(aDiv);
+    el.onclick = (function(n) { return function() {
+      document.getElementById('addEqSel').value = n;
+      updateAddPreview();
+    }; })(name);
+    div.appendChild(el);
+  }
 }
 
 function filterInventory() {
-  var q = document.getElementById("searchInp").value.toLowerCase();
-  var div = document.getElementById("invList");
-  div.innerHTML = "";
-  eqSections.forEach(function(sec) {
-    var items = q ? sec.items.filter(function(i) { return i.name.toLowerCase().includes(q); }) : sec.items;
-    if (!items.length) return;
-    var hdr = document.createElement("div");
-    hdr.className = "inv-section-hdr";
-    hdr.textContent = sec.name;
-    div.appendChild(hdr);
-    items.forEach(function(item) {
-      var a = toAmps(item.watts);
-      var el = document.createElement("div");
-      el.className = "inv-item";
-      var tbc = item.watts === 1;
-      var bat = item.watts === 0;
-      el.innerHTML = '<div class="inv-name">' + item.name + '</div>' +
-        (tbc ? '<span class="tbc-badge">TBC</span>' : '<div class="inv-watts">' + (bat ? 'CO₂' : item.watts + 'W') + '</div>') +
-        '<div class="inv-amps">' + (a ? a + 'A' : '—') + '</div>';
-      el.onclick = function() {
-        document.getElementById("addEqSel").value = item.name;
-        updateAddPreview();
-        document.getElementById("add-panel").scrollIntoView({behavior:"smooth"});
-      };
-      div.appendChild(el);
-    });
-  });
+  var q = document.getElementById('searchInp').value.toLowerCase();
+  if (!q) { renderInventory(INVENTORY); return; }
+  var filtered = [];
+  var curHdr = null;
+  for (var i = 0; i < INVENTORY.length; i++) {
+    var name = INVENTORY[i][0];
+    if (name.indexOf('---') === 0) { curHdr = INVENTORY[i]; continue; }
+    if (name.toLowerCase().indexOf(q) >= 0) {
+      if (curHdr && (filtered.length === 0 || filtered[filtered.length-1][0] !== curHdr[0])) filtered.push(curHdr);
+      filtered.push(INVENTORY[i]);
+    }
+  }
+  renderInventory(filtered);
 }
 
 function buildEqDropdown() {
-  var sel = document.getElementById("addEqSel");
-  sel.innerHTML = "";
-  eqSections.forEach(function(sec) {
-    var og = document.createElement("optgroup");
+  var sel = document.getElementById('addEqSel');
+  sel.innerHTML = '';
+  for (var si = 0; si < eqSections.length; si++) {
+    var sec = eqSections[si];
+    var og = document.createElement('optgroup');
     og.label = sec.name;
-    sec.items.forEach(function(it) {
-      var opt = document.createElement("option");
-      opt.value = it.name; opt.textContent = it.name;
+    for (var ii = 0; ii < sec.items.length; ii++) {
+      var opt = document.createElement('option');
+      opt.value = sec.items[ii].name;
+      opt.textContent = sec.items[ii].name;
       og.appendChild(opt);
-    });
+    }
     sel.appendChild(og);
-  });
+  }
   updateAddPreview();
 }
 
+// ── SHEET TABS ───────────────────────────────────────────────
 function buildSheetTabs() {
-  var div = document.getElementById("sheetTabs");
-  div.innerHTML = "";
-  Object.keys(SHEETS).forEach(function(name, i) {
-    var btn = document.createElement("button");
-    btn.className = "sheet-tab" + (i===0?" active":"");
-    btn.textContent = name;
-    btn.onclick = function() {
-      var stabs = document.querySelectorAll("#sheetTabs .sheet-tab"); for (var si=0; si<stabs.length; si++) { stabs[si].classList.remove("active"); }
-      btn.classList.add("active");
-      activeSheet = name;
+  var div = document.getElementById('sheetTabs');
+  div.innerHTML = '';
+  var names = Object.keys(SHEETS);
+  for (var i = 0; i < names.length; i++) {
+    var btn = document.createElement('button');
+    btn.className = 'sheet-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = names[i];
+    btn.onclick = (function(n) { return function() {
+      var tabs = document.querySelectorAll('#sheetTabs .sheet-tab');
+      for (var ti = 0; ti < tabs.length; ti++) tabs[ti].classList.remove('active');
+      this.classList.add('active');
+      activeSheet = n;
       renderDistro();
-    };
+    }; })(names[i]);
     div.appendChild(btn);
-  });
+  }
 }
 
-// ── DISTRO RENDER ─────────────────────────────────────────────
+// ── REGION ───────────────────────────────────────────────────
+function setRegion(r) {
+  region = r;
+  document.getElementById('btnUS').classList.toggle('active', r === 'US');
+  document.getElementById('btnROW').classList.toggle('active', r === 'ROW');
+  filterInventory();
+  updateAddPreview();
+  renderDistro();
+}
+
+// ── DISTRO RENDER ────────────────────────────────────────────
 function renderDistro() {
-  var panel = document.getElementById("distro-panel");
-  panel.innerHTML = "";
+  var panel = document.getElementById('distro-panel');
+  panel.innerHTML = '';
   var cfg = SHEETS[activeSheet];
-  var { banks, ways, limit, altLimit } = cfg;
+  if (!cfg) return;
+  var banks = cfg.banks, ways = cfg.ways, limit = cfg.limit, altLimit = cfg.altLimit;
   var nBanks = banks.length;
-  var lim = limits[activeSheet];
+  var lim = limits[activeSheet] || limit;
 
   // Title
-  var titleEl = document.createElement("div");
-  titleEl.className = "sheet-title";
-  titleEl.innerHTML = '<div><h2>'+activeSheet+'</h2><div class="limit-badge">Phase limit: '+lim+'A</div></div>' + '<div class="region-cell">'+(region === "US" ? "US 208V" : "ROW 230V")+'</div>';
+  var titleEl = document.createElement('div');
+  titleEl.className = 'sheet-title';
+  titleEl.innerHTML = '<div><h2>' + activeSheet + '</h2><div class="limit-badge">Phase limit: ' + lim + 'A</div></div>' +
+    '<div class="region-cell">' + (region === 'US' ? 'US 208V' : 'ROW 230V') + '</div>';
   panel.appendChild(titleEl);
 
-  // Bank grid — banks in rows of 3 for 48-way, 6 for 72-way
-  var bankColClass = nBanks <= 3 ? "banks-3" : nBanks <= 8 ? "banks-8" : "banks-12";
-  var phaseRow = document.createElement("div");
-  phaseRow.className = "phase-row " + bankColClass;
+  var bankColClass = nBanks <= 3 ? 'banks-3' : nBanks <= 8 ? 'banks-8' : 'banks-12';
+  var phaseRow = document.createElement('div');
+  phaseRow.className = 'phase-row ' + bankColClass;
   panel.appendChild(phaseRow);
 
-  banks.forEach(function(bankLetter, bi) {
+  for (var bi = 0; bi < nBanks; bi++) {
+    var bankLetter = banks[bi];
     var ph = phaseOfBank(bi);
-    var bankCard = document.createElement("div");
-    bankCard.className = "bank-card";
-
-    var hdr = document.createElement("div");
-    hdr.className = "bank-hdr";
+    var bankCard = document.createElement('div');
+    bankCard.className = 'bank-card';
+    var hdr = document.createElement('div');
+    hdr.className = 'bank-hdr';
     hdr.style.background = PH_DK[ph];
-    hdr.innerHTML = "<span>Bank "+bankLetter+"</span><span class=\"ph-tag\">Ph"+ph+"</span>";
+    hdr.innerHTML = '<span>Bank ' + bankLetter + '</span><span class="ph-tag">Ph' + ph + '</span>';
     bankCard.appendChild(hdr);
 
     for (var w = 1; w <= ways; w++) {
       var wph = phaseOf(w);
-      var wayEl = document.createElement("div");
-      wayEl.className = "way-row";
+      var wayEl = document.createElement('div');
+      wayEl.className = 'way-row';
       wayEl.style.background = PH_LT[wph];
 
-      var lbl = document.createElement("div");
-      lbl.className = "way-label";
+      var lbl = document.createElement('div');
+      lbl.className = 'way-label';
       lbl.style.background = PH_DK[wph];
       lbl.textContent = bankLetter + w;
       wayEl.appendChild(lbl);
 
-      var itemsDiv = document.createElement("div");
-      itemsDiv.className = "way-items";
-
-      // Render slots 0-3
+      var itemsDiv = document.createElement('div');
+      itemsDiv.className = 'way-items';
       var slots = distroData[activeSheet][bi][w];
       var hasAny = false;
-      [0,1,2,3].forEach(function(sr) {
+      for (var sr = 0; sr < 4; sr++) {
         if (slots[sr]) {
           hasAny = true;
-          var row = document.createElement("div");
-          row.className = "way-item-row" + (sr > 0 ? " way-sub" : "");
+          var row = document.createElement('div');
+          row.className = 'way-item-row' + (sr > 0 ? ' way-sub' : '');
           var a = toAmps(slots[sr].watts);
-      var aTxt = a ? (slots[sr].qty > 1 ? (a*slots[sr].qty).toFixed(2)+'A' : a+'A') : "—";
-      row.innerHTML = '<span class="way-qty">' + (slots[sr].qty > 1 ? 'x' + slots[sr].qty : '') + '</span>' +
-        '<span class="way-eq">' + slots[sr].eq + '</span>' +
-        '<span class="way-amps" style="color:' + PH_DK[wph] + '">' + aTxt + '</span>';
+          var aTxt = a ? (slots[sr].qty > 1 ? (a * slots[sr].qty).toFixed(2) + 'A' : a + 'A') : '\u2014';
+          var qtyEl = document.createElement('span'); qtyEl.className = 'way-qty'; qtyEl.textContent = slots[sr].qty > 1 ? 'x' + slots[sr].qty : '';
+          var eqEl = document.createElement('span'); eqEl.className = 'way-eq'; eqEl.textContent = slots[sr].eq;
+          var amEl = document.createElement('span'); amEl.className = 'way-amps'; amEl.style.color = PH_DK[wph]; amEl.textContent = aTxt;
+          row.appendChild(qtyEl); row.appendChild(eqEl); row.appendChild(amEl);
+          row.onclick = (function(b, ww, s) { return function() { selectTarget(b, ww, s); }; })(bi, w, sr);
           itemsDiv.appendChild(row);
         }
-      });
+      }
       if (!hasAny) {
-        var empty = document.createElement("div");
-        empty.className = "way-empty";
-        empty.textContent = "—";
+        var empty = document.createElement('div');
+        empty.className = 'way-empty';
+        empty.textContent = '\u2014';
         itemsDiv.appendChild(empty);
       }
       wayEl.appendChild(itemsDiv);
 
-      var addBtn = document.createElement("button");
-      addBtn.className = "way-add-btn";
-      addBtn.textContent = "+";
-      addBtn.title = "Add to " + bankLetter + w;
+      var addBtn = document.createElement('button');
+      addBtn.className = 'way-add-btn';
+      addBtn.textContent = '+';
       addBtn.onclick = (function(b, ww) { return function() { selectTarget(b, ww, 0); }; })(bi, w);
       wayEl.appendChild(addBtn);
-
       bankCard.appendChild(wayEl);
     }
     phaseRow.appendChild(bankCard);
-  });
+  }
 
   // Grand Summary
-  var gs = document.createElement("div");
-  gs.className = "grand-summary";
-  var lims = limits[activeSheet];
-
-  var limRow = "";
+  var gs = document.createElement('div');
+  gs.className = 'grand-summary';
+  var lims = limits[activeSheet] || limit;
+  var limRowHtml = '';
   if (altLimit > 0) {
-    limRow = '<div class="gs-limit-row">' +
-      '<div class="gs-limit-label">Phase limit (edit to switch ' + limit + 'A / ' + altLimit + 'A):</div>' +
-      '<div class="gs-limit-input-wrap"><input class="gs-limit-input" type="number" value="' + lims + '" id="gsLimitInp" onchange="limits[\"' + activeSheet + '\"]=+this.value;renderDistro()"> A</div>' +
-    '</div>';
-  var phRows = [1,2,3].map(function(p) {
-    var wayNums = [];
-    for (var w = 1; w <= ways; w++) if (phaseOf(w)===p) wayNums.push(w);
-    var total = calcPhaseTotal(function(bi) {
-      // sum ways of this phase across all banks
-      return banks.reduce(function(acc, _, bi2) {
-        return acc + wayNums.reduce(function(a2, w) {
-          var slots = distroData[activeSheet][bi2][w];
-          return a2 + [0,1,2,3].reduce(function(a3, sr) {
-            if (!slots[sr]) return a3;
-            var a = toAmps(slots[sr].watts);
-            return a3 + (a ? a * slots[sr].qty : 0);
-          }, 0);
-        }, 0);
-      }, 0);
-    });
+    limRowHtml = '<div class="gs-limit-row"><div class="gs-limit-label">Phase limit (edit to switch ' + limit + 'A / ' + altLimit + 'A):</div>' +
+      '<input class="gs-limit-input" type="number" value="' + lims + '" onchange="limits[\'' + activeSheet + '\']=+this.value;renderDistro()"></div>';
+  }
+  var phHtml = '';
+  for (var p = 1; p <= 3; p++) {
+    var wayNums = [], total = 0;
+    for (var ww = 1; ww <= ways; ww++) { if (phaseOf(ww) === p) wayNums.push(ww); }
+    for (var b2 = 0; b2 < nBanks; b2++) {
+      for (var wi = 0; wi < wayNums.length; wi++) {
+        var sl = distroData[activeSheet][b2][wayNums[wi]];
+        for (var sr2 = 0; sr2 < 4; sr2++) {
+          if (sl[sr2]) { var am = toAmps(sl[sr2].watts); if (am) total += am * sl[sr2].qty; }
+        }
+      }
+    }
     var over = total >= lims;
-    return '<div class="gs-phase ph'+p+'">' +
-      '<div class="gs-ph-label gs-ph'+p+'">Phase '+p+'<br><small style="font-size:10px;font-weight:400;color:var(--muted)">Ways '+wayNums.join(',')+'</small></div>' +
-      '<div class="gs-total gs-ph'+p+'">'+total.toFixed(2)+'A</div>' +
-      '<div class="gs-status '+(over?'status-over':'status-ok')+'">'+( over?'⚠ OVER':'✓ OK')+'</div>' +
-    '</div>';
-  }).join("");
-
-  gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:0.6">' + activeSheet + '</span></div>' +
-    limRow + phRows;
+    phHtml += '<div class="gs-phase ph' + p + '">' +
+      '<div class="gs-ph-label gs-ph' + p + '">Phase ' + p + '<br><small style="font-size:10px;font-weight:400;color:var(--muted)">Ways ' + wayNums.join(',') + '</small></div>' +
+      '<div class="gs-total gs-ph' + p + '">' + total.toFixed(2) + 'A</div>' +
+      '<div class="gs-status ' + (over ? 'status-over' : 'status-ok') + '">' + (over ? '\u26a0 OVER' : '\u2713 OK') + '</div></div>';
+  }
+  gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:.6">' + activeSheet + '</span></div>' + limRowHtml + phHtml;
   panel.appendChild(gs);
 }
 
-function calcPhaseTotal(fn) {
-  return fn();
-}
-
-function getPhaseTotalVal(p) {
-  var cfg = SHEETS[activeSheet];
-  var { banks, ways } = cfg;
-  var wayNums = [];
-  for (var w = 1; w <= ways; w++) if (phaseOf(w)===p) wayNums.push(w);
-  return banks.reduce(function(acc, _, bi) {
-    return acc + wayNums.reduce(function(a2, w) {
-      var slots = distroData[activeSheet][bi][w];
-      return a2 + [0,1,2,3].reduce(function(a3, sr) {
-        if (!slots[sr]) return a3;
-        var a = toAmps(slots[sr].watts);
-        return a3 + (a ? a * slots[sr].qty : 0);
-      }, 0);
-    }, 0);
-  }, 0);
-}
-
-// ── TARGET SELECTION ──────────────────────────────────────────
+// ── TARGET SELECTION ─────────────────────────────────────────
 function selectTarget(bi, wayNum, subRow) {
   var cfg = SHEETS[activeSheet];
   var bankLetter = cfg.banks[bi];
-  selectedTarget = { bi, wayNum, subRow };
-
-  document.getElementById("targetVal").textContent = activeSheet + " — " + bankLetter + wayNum;
-  var ph = phaseOf(wayNum);
-      document.getElementById("targetSub").textContent = "Phase " + ph + " · " + (subRow===0?'Master row':'Sub '+subRow);
-  document.getElementById("writeBtn").disabled = false;
-
-  // Update slot buttons to show which are filled
-  var slots = distroData[activeSheet][bi][wayNum];
-  document.querySelectorAll(".slot-btn").forEach(function(btn, idx) {
-    btn.classList.remove("active","filled");
-    if (idx === subRow) btn.classList.add("active");
-    else if (slots[idx]) btn.classList.add("filled");
-  });
+  selectedTarget = {bi:bi, wayNum:wayNum, subRow:subRow};
+  document.getElementById('targetVal').textContent = activeSheet + ' \u2014 ' + bankLetter + wayNum;
+  document.getElementById('targetSub').textContent = 'Phase ' + phaseOf(wayNum) + ' \u00b7 ' + (subRow === 0 ? 'Master row' : 'Sub-slot ' + subRow);
+  document.getElementById('writeBtn').disabled = false;
+  var btns = document.getElementById('slotGrid').children;
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active','filled');
+    var slots = distroData[activeSheet][bi][wayNum];
+    if (i === subRow) btns[i].classList.add('active');
+    else if (slots[i]) btns[i].classList.add('filled');
+  }
   selectedSlot = subRow;
   updateAddPreview();
 }
 
 function selSlot(idx, btn) {
   selectedSlot = idx;
-  selectedTarget && (selectedTarget.subRow = idx);
-  var sbtns=document.querySelectorAll(".slot-btn"); for(var si2=0;si2<sbtns.length;si2++){sbtns[si2].classList.toggle("active",si2===idx);}
+  if (selectedTarget) selectedTarget.subRow = idx;
+  var btns = document.getElementById('slotGrid').children;
+  for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', i === idx);
 }
 
-// ── ADD PREVIEW ───────────────────────────────────────────────
+// ── ADD PREVIEW ──────────────────────────────────────────────
 function updateAddPreview() {
-  var name = document.getElementById("addEqSel").value;
-  var qty = parseInt(document.getElementById("addQty").value) || 1;
+  var name = document.getElementById('addEqSel').value;
+  var qty = parseInt(document.getElementById('addQty').value) || 1;
   var w = eqMap[name];
-  var a = w > 1 ? toAmps(w) : null;
-  var total = a ? (a * qty).toFixed(2) : null;
-  document.getElementById("previewAmpVal").textContent = total || "—";
+  var a = (w && w > 1) ? toAmps(w) : null;
+  document.getElementById('previewAmpVal').textContent = a ? (a * qty).toFixed(2) : '\u2014';
 }
 
-// ── WRITE ─────────────────────────────────────────────────────
+// ── WRITE ────────────────────────────────────────────────────
 function writeToSheet() {
   if (!selectedTarget) return;
-  var name = document.getElementById("addEqSel").value;
-  var qty = parseInt(document.getElementById("addQty").value) || 1;
-  var { bi, wayNum, subRow } = selectedTarget;
+  var name = document.getElementById('addEqSel').value;
+  var qty = parseInt(document.getElementById('addQty').value) || 1;
+  var bi = selectedTarget.bi, wayNum = selectedTarget.wayNum, subRow = selectedTarget.subRow;
   var w = eqMap[name];
-
-  distroData[activeSheet][bi][wayNum][subRow] = { eq: name, watts: w, qty };
-
-  document.getElementById("writeStatus").innerHTML =
-    '<div class="write-success">✓ Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' — ' + (subRow===0?'Master':'Sub '+subRow) + '</div>';
-
+  distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty};
+  document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';
   renderDistro();
 }
 
 function clearTarget() {
   if (!selectedTarget) return;
-  var { bi, wayNum, subRow } = selectedTarget;
-  distroData[activeSheet][bi][wayNum][subRow] = null;
-  document.getElementById("writeStatus").innerHTML =
-    '<div class="write-success">Cleared</div>';
-  renderDistro();
-}
-
-// ── REGION ───────────────────────────────────────────────────
-function setRegion(r, btn) {
-  region = r;
-  var btns = document.querySelectorAll(".region-btn");
-  for (var i = 0; i < btns.length; i++) { btns[i].classList.remove("active"); }
-  btn.classList.add("active");
-  filterInventory();
-  updateAddPreview();
+  distroData[activeSheet][selectedTarget.bi][selectedTarget.wayNum][selectedTarget.subRow] = null;
+  document.getElementById('writeStatus').innerHTML = '<div class="write-success">Cleared</div>';
   renderDistro();
 }
 
 // ── LABELS ───────────────────────────────────────────────────
 function openLabels() {
   var cfg = SHEETS[activeSheet];
-  var { banks, ways } = cfg;
-  var grid = document.getElementById("labelsGrid");
-  grid.innerHTML = "";
-      document.getElementById("labelTitle").textContent = "Labels — " + activeSheet + " (" + (region === "US" ? "208V" : "230V") + ")";
-
-  banks.forEach(function(bankLetter, bi) {
+  var banks = cfg.banks, ways = cfg.ways;
+  var grid = document.getElementById('labelsGrid');
+  grid.innerHTML = '';
+  document.getElementById('labelTitle').textContent = 'Labels \u2014 ' + activeSheet + ' (' + (region === 'US' ? '208V' : '230V') + ')';
+  for (var bi = 0; bi < banks.length; bi++) {
+    var bankLetter = banks[bi];
     var ph = phaseOfBank(bi);
-    var card = document.createElement("div");
-    card.className = "label-card";
-    var hdrDiv = document.createElement("div");
-    hdrDiv.className = "label-hdr";
+    var card = document.createElement('div');
+    card.className = 'label-card';
+    var hdrDiv = document.createElement('div');
+    hdrDiv.className = 'label-hdr';
     hdrDiv.style.background = PH_DK[ph];
+    hdrDiv.innerHTML = '<span>Bank ' + bankLetter + ' \u2014 ' + activeSheet + '</span><span class="label-meta">Ph' + ph + ' \u00b7 ' + (region === 'US' ? '208V' : '230V') + '</span>';
     card.appendChild(hdrDiv);
-
-    hdrDiv.innerHTML = '<span>Bank ' + bankLetter + ' — ' + activeSheet + '</span><span class="label-meta">Ph' + lbl.ph + ' · ' + (region === "US" ? "208V" : "230V") + '</span>';
+    for (var w = 1; w <= ways; w++) {
       var wph = phaseOf(w);
       var slots = distroData[activeSheet][bi][w];
-      var wayDiv = document.createElement("div");
-      wayDiv.className = "label-way";
-      wayDiv.style.borderLeftColor = PH_DK[wph];
-      var items = [0,1,2,3].map(function(sr) { return slots[sr]; }).filter(Boolean);
+      var wayDiv = document.createElement('div');
+      wayDiv.className = 'label-way';
+      var items = [];
+      for (var sr = 0; sr < 4; sr++) { if (slots[sr]) items.push(slots[sr]); }
+      var idSpan = document.createElement('span');
+      idSpan.className = 'label-way-id';
+      idSpan.textContent = bankLetter + w;
+      wayDiv.appendChild(idSpan);
       if (items.length) {
-        var itemHtml = items.map(function(it) {
-          var a = toAmps(it.watts);
-          var aTxt = a ? ' <b class="label-way-amps">' + (a*it.qty).toFixed(2) + 'A</b>' : "";
-          return '<span class="label-way-item">' + (it.qty>1?it.qty+'×':'') + it.eq + aTxt + '</span>';
-        }).join("");
-        wayDiv.innerHTML = '<span class="label-way-id">' + bankLetter + w + '</span><span class="label-way-items">' + itemHtml + '</span>';
+        var itemsSpan = document.createElement('span');
+        var parts = [];
+        for (var ii = 0; ii < items.length; ii++) {
+          var a = toAmps(items[ii].watts);
+          parts.push((items[ii].qty > 1 ? items[ii].qty + '\u00d7' : '') + items[ii].eq + (a ? ' ' + (a * items[ii].qty).toFixed(2) + 'A' : ''));
+        }
+        itemsSpan.textContent = parts.join(' \u00b7 ');
+        wayDiv.appendChild(itemsSpan);
       } else {
-        wayDiv.innerHTML = '<span class="label-way-id">' + bankLetter + w + '</span><span class="label-way-empty">—</span>';
+        var emptySpan = document.createElement('span');
+        emptySpan.className = 'label-way-empty';
+        emptySpan.textContent = '\u2014';
+        wayDiv.appendChild(emptySpan);
       }
       card.appendChild(wayDiv);
     }
     grid.appendChild(card);
-  });
-
-  document.getElementById("labelsOverlay").classList.add("open");
+  }
+  document.getElementById('labelsOverlay').classList.add('open');
 }
+
 function closeLabels() {
-  document.getElementById("labelsOverlay").classList.remove("open");
+  document.getElementById('labelsOverlay').classList.remove('open');
 }
 </script>
 </body>
