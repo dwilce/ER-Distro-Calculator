@@ -198,7 +198,7 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       <button class="write-btn" id="writeBtn" onclick="writeToSheet()" disabled>Write to Sheet</button>
       <button class="clear-row-btn" onclick="clearTarget()">Clear selected slot</button>
       <div id="unitFields"></div>
-      <button class="report-btn" onclick="openReport()">&#128438; Print Equipment Report</button>
+      <button class="report-btn" onclick="openReport()">&#128438; Equipment Report</button>
     </div>
   </aside>
 </main>
@@ -782,6 +782,8 @@ function openReport() {
     'tbody td{padding:5px 8px;border-bottom:.5px solid #e0e0e0;vertical-align:middle}' +
     'tbody tr:hover{background:#eef3fb}' +
     '.footer{margin-top:16px;padding-top:8px;border-top:1px solid #dde3ec;font-size:7.5pt;color:#999;display:flex;justify-content:space-between}' +
+    '.no-print{position:fixed;bottom:20px;right:20px;display:flex;gap:8px;z-index:99}' +
+    '@media print{.no-print{display:none}}' +
     '@media print{body{font-size:8.5pt}.header{margin-bottom:10px}thead{display:table-header-group}}' +
     '</style></head><body>' +
     '<div class="header">' +
@@ -797,13 +799,16 @@ function openReport() {
     '<th>DISTRO</th><th>OUTPUT</th><th>EQUIPMENT</th><th>AMPS</th><th>UNIT ID</th><th>PLACEMENT</th><th>ADDRESS</th>' +
     '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
     '<div class="footer"><span>ER Equipment Calculator &mdash; Auto-generated report</span><span>Page 1</span></div>' +
+    '<div class="modal-ftr no-print">' +
+    '<button onclick="window.close()" style="padding:9px 20px;border:1px solid #dde3ec;border-radius:6px;background:white;font-size:13px;font-weight:600;cursor:pointer">&#10005; Close</button>' +
+    '<button onclick="window.print()" style="padding:9px 24px;border:none;border-radius:6px;background:#1f4e79;color:white;font-size:13px;font-weight:700;cursor:pointer">&#128438; Print</button>' +
+    '</div>' +
     '</body></html>';
 
   var win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
   win.focus();
-  setTimeout(function() { win.print(); }, 500);
 }
 
 function closeLabels() {
