@@ -728,6 +728,9 @@ function closeUnitFields() {
   document.getElementById('targetVal').textContent = 'Select an output \u2192';
   document.getElementById('targetSub').textContent = 'Click any + button on the distro sheet';
   document.getElementById('writeBtn').disabled = true;
+  document.getElementById('addQty').value = 1;
+  document.getElementById('addEqSel').selectedIndex = 0;
+  document.getElementById('previewAmpVal').textContent = '\u2014';
   selectedTarget = null;
   selectedSlot = 0;
   var btns = document.getElementById('slotGrid').children;
