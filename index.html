@@ -694,7 +694,7 @@ function openLabels() {
         for (var ii = 0; ii < items.length; ii++) {
           var a = toAmps(items[ii].watts);
           var units = items[ii].units || [];
-          var amps = a ? ' <span class="amps">' + (a * items[ii].qty).toFixed(2) + 'A</span>' : '';
+          var amps = ''; // amps not shown on labels
           var uid = (units[0] && units[0].id) ? ' <span class="uid">[' + units[0].id + ']</span>' : '';
           if (items[ii].qty > 1 && units.length > 1) {
             var uids = '';
@@ -714,7 +714,7 @@ function openLabels() {
       '<div class="lbl-hdr" style="background:' + bgColor + '">' +
         '<span class="lbl-bank">BANK ' + bankLetter + '</span>' +
         '<span class="lbl-distro">' + activeSheet + '</span>' +
-        '<span class="lbl-region">Ph' + ph + ' \u00b7 ' + regionStr + '</span>' +
+        '<span class="lbl-region">' + regionStr + '</span>' +
       '</div>' +
       '<table class="way-table"><tbody>' + wayRowsHtml + '</tbody></table>' +
     '</div>';
