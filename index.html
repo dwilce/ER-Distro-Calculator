@@ -109,6 +109,9 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .write-success{background:var(--ok-lt);color:var(--ok);padding:8px 12px;border-radius:5px;font-size:12px;font-weight:600;text-align:center}
 .clear-row-btn{width:100%;padding:7px;border:1px solid var(--border);border-radius:5px;background:white;color:var(--muted);font-size:12px;cursor:pointer}
 .clear-row-btn:hover{border-color:var(--over);color:var(--over)}
+.report-btn{width:100%;padding:8px;border:none;border-radius:5px;background:#375623;color:white;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}
+.report-btn:hover{background:#2d4a1c}
+#unitFields{margin-top:4px}
 .labels-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center}
 .labels-overlay.open{display:flex}
 .labels-modal{background:white;border-radius:12px;width:880px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
@@ -194,6 +197,8 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       <div id="writeStatus"></div>
       <button class="write-btn" id="writeBtn" onclick="writeToSheet()" disabled>Write to Sheet</button>
       <button class="clear-row-btn" onclick="clearTarget()">Clear selected slot</button>
+      <div id="unitFields"></div>
+      <button class="report-btn" onclick="openReport()">&#128438; Print Equipment Report</button>
     </div>
   </aside>
 </main>
@@ -243,15 +248,11 @@ window.addEventListener('DOMContentLoaded', function() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.inventory && data.inventory.length > 0) {
-        // Normalize to [name, watts] array format
         INVENTORY = data.inventory.map(function(i) {
           if (Array.isArray(i)) return i;
           if (i.isHeader) return ['--- ' + i.name + ' ---', 0];
           return [i.name, i.watts];
         });
-        console.log('Inventory loaded:', INVENTORY.length, 'items, first 3:', JSON.stringify(INVENTORY.slice(0,3)));
-      } else {
-        console.log('No inventory in response:', JSON.stringify(data).slice(0,200));
       }
       if (data.ok && data.sheets && data.sheets.length > 0) {
         SHEETS = {};
@@ -298,7 +299,30 @@ function buildEqSections() {
       eqSections[eqSections.length-1].items.push({name:name, watts:w});
     }
   }
-  console.log('Sections built:', eqSections.length, 'sections, first section items:', eqSections.length ? eqSections[0].items.length : 0);
+  // Fallback: if headers missing from API, split by known item names
+  if (eqSections.length <= 1 && eqSections.length > 0 && eqSections[0].items.length > 20) {
+    var all = eqSections[0].items;
+    var knownSecs = [
+      ['FANS',['Jem AF-1 MKII Fan','Jem AF2','AF3 (Antari)','Look Fan DMX','Profan II','Profan III','RE2 (Reel EFX)','RE5 (Reel EFX)','Stage Fan XL','Windy-ER','FX Blower']],
+      ['LIFTING / MOTION',['SL18 Showlift','Lifting Column','Winch 10 (& Cable)','Winch 25','Winch 50 Double']],
+      ['CONFETTI / SFX',['Confetti Gun','Confetti Pistol','Club Blower','Swirl Fans','Stadium Blaster','Stadium Blower','Super Blaster','Super Blaster XL','Stadium Shots','Stage Shot II','Powershot I & II','Silent Storm','Big Shot Double Barrel','MultiDropper']],
+      ['LASERS',['AT-20','AT-30','AT-60','AT-60X','Lynx','BB3','BB3 FB4','BB4','BB5','Kinekt','Kinekt-AS','Kinekt Micro','Beam-ER','Lasearray','Laserblade','Laserblade v2','Phaenon X Pro 3000','RE120','Cyclone','Aether','Storm']],
+      ['ATMOSPHERICS',['Club Cannon Micro CO2 Jet','Club Cannon Pro Jet','Club Cannon Quad Jet','CO2 Guns','CO2 Pistol','CO2 Launcher','CO2 Jet MK I & II','CO2 Power Jet','Psyco2jet','Eco2jet','Smoke Jet','Sonicboom Jet','Creeper Mini','Creeper','Cryo Fog HP (US & UK)','Cryo Gate','Power Tiny','Tiny CX','Unique Hazer','Viper 2.6','Cobra 3.1','Viper NT','Orka','Viper Deluxe','Glaciator','ZR45 XL','MDG Ice Fog Q','MDG CryoFog Stage Floor Pocket','Tshirtgun: Micro Mini T Shirt Gun','Mist1200 Terralec','Ultratec Floor Pocket']],
+      ['FLAMES',['Flameblazer','U Flamer Volcano','Flameblazer 5-Way','Stage Flame','Flamaniac','5 Master','Showven Circle Flamer II','Firestorm','Flameb-ER','HellFire Pump Station','Vulcan','Explo x2 Wave Flame']],
+      ['CONTROL',['FOH Control Rack']]
+    ];
+    var nameToSec = {};
+    for (var si = 0; si < knownSecs.length; si++) {
+      for (var ni = 0; ni < knownSecs[si][1].length; ni++) nameToSec[knownSecs[si][1][ni]] = knownSecs[si][0];
+    }
+    eqSections = [];
+    var secIdx = {};
+    for (var ai = 0; ai < all.length; ai++) {
+      var sName = nameToSec[all[ai].name] || 'OTHER';
+      if (!secIdx[sName]) { secIdx[sName] = eqSections.length; eqSections.push({name:sName, items:[]}); }
+      eqSections[secIdx[sName]].items.push(all[ai]);
+    }
+  }
 }
 
 function initDistroData() {
@@ -577,14 +601,69 @@ function writeToSheet() {
   var qty = parseInt(document.getElementById('addQty').value) || 1;
   var bi = selectedTarget.bi, wayNum = selectedTarget.wayNum, subRow = selectedTarget.subRow;
   var w = eqMap[name];
-  distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty};
+  distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty, units:[]};
+  // Build unit detail rows
+  renderUnitFields(bi, wayNum, subRow);
   document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';
   renderDistro();
+}
+
+function renderUnitFields(bi, wayNum, subRow) {
+  var slot = distroData[activeSheet][bi][wayNum][subRow];
+  var container = document.getElementById('unitFields');
+  container.innerHTML = '';
+  if (!slot) return;
+  var qty = slot.qty || 1;
+  if (!slot.units) slot.units = [];
+  // Ensure units array has right length
+  while (slot.units.length < qty) slot.units.push({id:'', placement:'', address:''});
+  slot.units.length = qty;
+
+  var heading = document.createElement('div');
+  heading.style.cssText = 'font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px';
+  heading.textContent = 'Unit Details (' + qty + ' unit' + (qty>1?'s':'') + ')';
+  container.appendChild(heading);
+
+  for (var i = 0; i < qty; i++) {
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--faint);border-radius:6px;padding:8px;margin-bottom:6px;border:1px solid var(--border)';
+    var lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--navy3);margin-bottom:6px';
+    lbl.textContent = 'Unit ' + (i+1) + (qty>1 ? ' of ' + qty : '');
+    card.appendChild(lbl);
+    card.appendChild(makeUnitInput('Unit ID', bi, wayNum, subRow, i, 'id'));
+    card.appendChild(makeUnitInput('Placement', bi, wayNum, subRow, i, 'placement'));
+    card.appendChild(makeUnitInput('Address', bi, wayNum, subRow, i, 'address'));
+    container.appendChild(card);
+  }
+}
+
+function makeUnitInput(label, bi, wayNum, subRow, unitIdx, field) {
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:5px';
+  var lbl = document.createElement('label');
+  lbl.style.cssText = 'display:block;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px';
+  lbl.textContent = label;
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.style.cssText = 'width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:inherit;outline:none';
+  var slot = distroData[activeSheet][bi][wayNum][subRow];
+  inp.value = slot && slot.units && slot.units[unitIdx] ? slot.units[unitIdx][field] : '';
+  inp.oninput = (function(b, wn, sr, ui, f) {
+    return function() {
+      var s = distroData[activeSheet][b][wn][sr];
+      if (s && s.units && s.units[ui]) s.units[ui][f] = this.value;
+    };
+  })(bi, wayNum, subRow, unitIdx, field);
+  wrap.appendChild(lbl);
+  wrap.appendChild(inp);
+  return wrap;
 }
 
 function clearTarget() {
   if (!selectedTarget) return;
   distroData[activeSheet][selectedTarget.bi][selectedTarget.wayNum][selectedTarget.subRow] = null;
+  document.getElementById('unitFields').innerHTML = '';
   document.getElementById('writeStatus').innerHTML = '<div class="write-success">Cleared</div>';
   renderDistro();
 }
@@ -637,6 +716,94 @@ function openLabels() {
     grid.appendChild(card);
   }
   document.getElementById('labelsOverlay').classList.add('open');
+}
+
+// ── REPORT ───────────────────────────────────────────────────
+function openReport() {
+  var rows = [];
+  for (var sName in SHEETS) {
+    var cfg = SHEETS[sName];
+    var banks = cfg.banks, ways = cfg.ways;
+    for (var bi = 0; bi < banks.length; bi++) {
+      var bankLetter = banks[bi];
+      for (var w = 1; w <= ways; w++) {
+        for (var sr = 0; sr < 4; sr++) {
+          var slot = distroData[sName][bi][w][sr];
+          if (!slot) continue;
+          var units = slot.units || [{id:'',placement:'',address:''}];
+          for (var ui = 0; ui < units.length; ui++) {
+            var a = toAmps(slot.watts);
+            rows.push({
+              distro: sName,
+              bank: bankLetter + w + (sr > 0 ? '.' + sr : ''),
+              phase: phaseOf(w),
+              eq: slot.eq,
+              amps: a ? (a * slot.qty).toFixed(2) + 'A' : '\u2014',
+              unitId: units[ui].id || '\u2014',
+              placement: units[ui].placement || '\u2014',
+              address: units[ui].address || '\u2014'
+            });
+          }
+        }
+      }
+    }
+  }
+
+  var now = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+  var rowsHtml = rows.length ? rows.map(function(r, i) {
+    var phColors = ['','#7d3c98','#c0622a','#0e7c7b'];
+    return '<tr style="background:' + (i%2===0?'#fff':'#f8f9fa') + '">' +
+      '<td>' + r.distro + '</td>' +
+      '<td><span style="display:inline-block;background:' + phColors[r.phase] + ';color:white;padding:1px 6px;border-radius:3px;font-weight:700;font-size:10px">' + r.bank + '</span></td>' +
+      '<td style="font-weight:600">' + r.eq + '</td>' +
+      '<td style="text-align:center">' + r.amps + '</td>' +
+      '<td style="font-weight:600;color:#1f4e79">' + r.unitId + '</td>' +
+      '<td>' + r.placement + '</td>' +
+      '<td>' + r.address + '</td>' +
+      '</tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">No equipment assigned yet</td></tr>';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<title>ER Equipment Report</title>' +
+    '<style>' +
+    '@page{size:A4 portrait;margin:15mm}' +
+    '*{box-sizing:border-box;margin:0;padding:0}' +
+    'body{font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a}' +
+    '.header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #1f4e79}' +
+    '.header h1{font-size:16pt;font-weight:700;color:#1f4e79;letter-spacing:.5px}' +
+    '.header .sub{font-size:8pt;color:#666;margin-top:2px}' +
+    '.header .meta{text-align:right;font-size:8pt;color:#666}' +
+    '.summary{display:flex;gap:12px;margin-bottom:12px}' +
+    '.sum-box{border:1px solid #dde3ec;border-radius:4px;padding:6px 12px;background:#f4f6f9;font-size:8pt}' +
+    '.sum-box strong{display:block;font-size:11pt;color:#1f4e79}' +
+    'table{width:100%;border-collapse:collapse;font-size:8.5pt}' +
+    'thead tr{background:#1f4e79;color:white}' +
+    'thead th{padding:6px 8px;text-align:left;font-weight:700;font-size:8pt;letter-spacing:.3px}' +
+    'tbody td{padding:5px 8px;border-bottom:.5px solid #e0e0e0;vertical-align:middle}' +
+    'tbody tr:hover{background:#eef3fb}' +
+    '.footer{margin-top:16px;padding-top:8px;border-top:1px solid #dde3ec;font-size:7.5pt;color:#999;display:flex;justify-content:space-between}' +
+    '@media print{body{font-size:8.5pt}.header{margin-bottom:10px}thead{display:table-header-group}}' +
+    '</style></head><body>' +
+    '<div class="header">' +
+      '<div><h1>ER PRODUCTIONS</h1><div class="sub">Power Distro Equipment Report &nbsp;&bull;&nbsp; ' + (region === 'US' ? 'US 208V' : 'ROW 230V') + '</div></div>' +
+      '<div class="meta">Printed: ' + now + '<br>Total items: ' + rows.length + '</div>' +
+    '</div>' +
+    '<div class="summary">' +
+      '<div class="sum-box"><strong>' + rows.length + '</strong>Total Items</div>' +
+      '<div class="sum-box"><strong>' + Object.keys(SHEETS).filter(function(s){ return Object.keys(distroData[s]||{}).some(function(b){ return Object.keys(distroData[s][b]||{}).some(function(w){ return [0,1,2,3].some(function(sr){ return distroData[s][b][w][sr]; }); }); }); }).length + '</strong>Distros Used</div>' +
+      '<div class="sum-box"><strong>' + region + '</strong>Region</div>' +
+    '</div>' +
+    '<table><thead><tr>' +
+    '<th>DISTRO</th><th>OUTPUT</th><th>EQUIPMENT</th><th>AMPS</th><th>UNIT ID</th><th>PLACEMENT</th><th>ADDRESS</th>' +
+    '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+    '<div class="footer"><span>ER Equipment Calculator &mdash; Auto-generated report</span><span>Page 1</span></div>' +
+    '</body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 500);
 }
 
 function closeLabels() {
