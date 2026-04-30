@@ -109,8 +109,10 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .write-success{background:var(--ok-lt);color:var(--ok);padding:8px 12px;border-radius:5px;font-size:12px;font-weight:600;text-align:center}
 .clear-row-btn{width:100%;padding:7px;border:1px solid var(--border);border-radius:5px;background:white;color:var(--muted);font-size:12px;cursor:pointer}
 .clear-row-btn:hover{border-color:var(--over);color:var(--over)}
-.report-btn{width:100%;padding:8px;border:none;border-radius:5px;background:#375623;color:white;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}
-.report-btn:hover{background:#2d4a1c}
+.close-fields-btn{width:100%;padding:8px;border:1px solid var(--border);border-radius:5px;background:var(--faint);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px}
+.close-fields-btn:hover{border-color:var(--navy3);color:var(--navy3)}
+.report-btn-top{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#375623;border:1px solid #375623;border-radius:4px;cursor:pointer}
+.report-btn-top:hover{background:#2d4a1c}
 #unitFields{margin-top:4px}
 .labels-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center}
 .labels-overlay.open{display:flex}
@@ -150,6 +152,7 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
     </div>
     <div class="sheet-tabs" id="sheetTabs"></div>
     <button class="labels-btn" onclick="openLabels()">&#128424; Labels</button>
+    <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
   </div>
 </header>
 
@@ -198,7 +201,7 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       <button class="write-btn" id="writeBtn" onclick="writeToSheet()" disabled>Write to Sheet</button>
       <button class="clear-row-btn" onclick="clearTarget()">Clear selected slot</button>
       <div id="unitFields"></div>
-      <button class="report-btn" onclick="openReport()">&#128438; Equipment Report</button>
+      <button class="close-fields-btn" onclick="closeUnitFields()">&#10005; Done — select next output</button>
     </div>
   </aside>
 </main>
@@ -719,6 +722,21 @@ function openLabels() {
 }
 
 // ── REPORT ───────────────────────────────────────────────────
+function closeUnitFields() {
+  document.getElementById('unitFields').innerHTML = '';
+  document.getElementById('writeStatus').innerHTML = '';
+  document.getElementById('targetVal').textContent = 'Select an output \u2192';
+  document.getElementById('targetSub').textContent = 'Click any + button on the distro sheet';
+  document.getElementById('writeBtn').disabled = true;
+  selectedTarget = null;
+  selectedSlot = 0;
+  var btns = document.getElementById('slotGrid').children;
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active','filled');
+    if (i === 0) btns[i].classList.add('active');
+  }
+}
+
 function openReport() {
   var rows = [];
   for (var sName in SHEETS) {
