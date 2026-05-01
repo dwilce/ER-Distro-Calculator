@@ -475,7 +475,8 @@ function renderDistro() {
   // Title
   var titleEl = document.createElement('div');
   titleEl.className = 'sheet-title';
-  titleEl.innerHTML = '<div><h2>' + activeSheet + '</h2><div class="limit-badge">Phase limit: ' + lim + 'A</div></div>' +
+  var activeLim = limits[activeSheet] || limit;
+  titleEl.innerHTML = '<div><h2>' + activeSheet + '</h2><div class="limit-badge">Phase limit: ' + activeLim + 'A</div></div>' +
     '<div class="region-cell">' + (region === 'US' ? 'US 208V' : 'ROW 230V') + '</div>';
   panel.appendChild(titleEl);
 
@@ -811,7 +812,7 @@ function openReport() {
               bank: bankLetter + w + (sr > 0 ? '.' + sr : ''),
               phase: phaseOf(w),
               eq: slot.eq,
-              amps: a ? (a * slot.qty).toFixed(2) + 'A' : '\u2014',
+              amps: a ? a.toFixed(2) + 'A' : '\u2014',
               unitId: units[ui].id || '\u2014',
               placement: units[ui].placement || '\u2014',
               address: units[ui].address || '\u2014'
