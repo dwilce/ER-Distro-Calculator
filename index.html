@@ -28,6 +28,8 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .sheet-tabs{display:flex;gap:4px}
 .sheet-tab{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.15);border-radius:4px;cursor:pointer;background:none}
 .sheet-tab.active{background:var(--blue);color:white;border-color:var(--blue)}
+.help-btn{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer}
+.help-btn:hover{background:rgba(255,255,255,.22);color:white}
 .labels-btn{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#7b2222;border:1px solid #7b2222;border-radius:4px;cursor:pointer}
 #inv-panel{background:var(--card);border-right:1px solid var(--border);display:grid;grid-template-rows:auto 1fr;overflow:hidden}
 .panel-hdr{padding:12px 14px;border-bottom:1px solid var(--faint);background:var(--navy2)}
@@ -122,6 +124,23 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .report-btn-top:hover{background:#2d4a1c}
 #unitFields{margin-top:4px}
 .labels-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center}
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
+.help-overlay.open{display:flex}
+.help-modal{background:white;border-radius:12px;width:700px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;margin-bottom:40px}
+.help-hdr{background:var(--navy);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.help-hdr h2{font-size:16px;font-weight:700}
+.help-body{overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:0}
+.help-section{padding:14px 0;border-bottom:1px solid var(--faint)}
+.help-section:last-child{border-bottom:none}
+.help-section h3{font-size:13px;font-weight:700;color:var(--navy3);margin-bottom:8px}
+.help-section p{font-size:12px;color:var(--text);line-height:1.6;margin-bottom:6px}
+.help-section ol,.help-section ul{font-size:12px;color:var(--text);line-height:1.7;padding-left:18px;margin-bottom:6px}
+.help-section code{background:var(--faint);padding:1px 5px;border-radius:3px;font-size:11px;font-family:monospace}
+.help-badge{display:inline-block;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-right:4px}
+.help-badge.ok{background:var(--ok-lt);color:var(--ok)}
+.help-badge.warn{background:#fef3cd;color:#b45f06}
+.help-badge.over{background:var(--over-lt);color:var(--over)}
+.help-ftr{padding:14px 20px;background:var(--faint);border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0}
 .labels-overlay.open{display:flex}
 .labels-modal{background:white;border-radius:12px;width:880px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
 .modal-hdr{background:var(--navy);color:white;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
@@ -158,10 +177,10 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       <button class="region-btn" id="btnROW" onclick="setRegion('ROW')">ROW 230V</button>
     </div>
     <div class="sheet-tabs" id="sheetTabs"></div>
+    <button class="help-btn" onclick="openHelp()">&#63; Help</button>
     <button class="labels-btn" onclick="openLabels()">&#128424; Labels</button>
     <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
     <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
-    <button class="save-btn" onclick="shareViaURL()">&#128279; Share</button>
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
     <input type="file" id="fileInput" accept=".erdistro,.json" style="display:none" onchange="handleFileLoad(event)">
   </div>
@@ -705,6 +724,14 @@ function clearTarget() {
 }
 
 // ── LABELS ───────────────────────────────────────────────────
+function openHelp() {
+  document.getElementById('helpOverlay').classList.add('open');
+}
+
+function closeHelp() {
+  document.getElementById('helpOverlay').classList.remove('open');
+}
+
 function openLabels() {
   var cfg = SHEETS[activeSheet];
   var banks = cfg.banks, ways = cfg.ways;
@@ -775,7 +802,83 @@ function openLabels() {
     + '<div class="no-print">'
     + '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>'
     + '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#1f4e79;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>'
-    + '</div></body></html>';
+    + '</div>
+<div class="help-overlay" id="helpOverlay" onclick="closeHelp()">
+  <div class="help-modal" onclick="event.stopPropagation()">
+    <div class="help-hdr">
+      <h2>&#63; How to Use the ER Equipment Calculator</h2>
+      <button class="modal-close" onclick="closeHelp()">&#10005;</button>
+    </div>
+    <div class="help-body">
+
+      <div class="help-section">
+        <h3>&#9889; Getting Started</h3>
+        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) in the top bar — this sets all amp calculations automatically. Then choose your distro type using the tabs: <strong>18-Way</strong>, <strong>48-Way</strong>, or <strong>72-Way</strong>.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128266; Assigning Equipment</h3>
+        <ol>
+          <li>Click the <strong>+</strong> button next to any output (e.g. A1, B3) on the distro sheet</li>
+          <li>The <strong>Add Equipment</strong> panel on the right will show that output as the target</li>
+          <li>Select your equipment from the dropdown and set the quantity</li>
+          <li>Choose a <strong>Sub-slot</strong> if you need multiple items on one output (Master + up to 3 subs)</li>
+          <li>Click <strong>Add Device &amp; Enter Information</strong></li>
+          <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
+          <li>Click <strong>Update &amp; Clear</strong> to move to the next output</li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128202; Grand Summary</h3>
+        <p>The Grand Summary at the bottom of the distro sheet shows the total load per phase:</p>
+        <ul>
+          <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
+          <li><span class="help-badge warn">&#9888; 84%</span> — Between 80–99% — approaching limit</li>
+          <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
+        </ul>
+        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle to switch between phase limits.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128424; Printing Labels</h3>
+        <p>Click <strong>Labels</strong> in the top bar to open the label print view. Labels are formatted for <strong>Avery 5163</strong> — a standard US Letter sheet with 10 labels (2 columns &times; 5 rows), each label 4&quot; &times; 2&quot;.</p>
+        <p><strong>To print:</strong></p>
+        <ol>
+          <li>Click <strong>Labels</strong> — a new tab opens with your bank labels</li>
+          <li>Click <strong>Print Labels</strong></li>
+          <li>In the print dialog, set paper to <strong>Letter (8.5&quot; &times; 11&quot;)</strong></li>
+          <li>Set margins to <strong>None</strong></li>
+          <li>Make sure <strong>Background graphics</strong> is enabled so colours print</li>
+        </ol>
+        <p>Each label shows the bank name, distro name, region, and a row for every output with equipment and unit ID.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128438; Equipment Report</h3>
+        <p>Click <strong>Report</strong> in the top bar to generate a printable A4 report listing every piece of equipment across all distro sheets, including amps, unit ID, placement, and address. Print it or close the tab to return to the calculator.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128190; Saving &amp; Loading</h3>
+        <p><strong>&#128190; Save</strong> — Downloads your current show as a <code>.erdistro</code> file. This captures all equipment assignments, unit details, region, and limit settings. You can email this file or store it for later.</p>
+        <p><strong>&#128194; Load</strong> — Opens a file picker. Select a previously saved <code>.erdistro</code> file to restore your show exactly as it was.</p>
+        <p>Save files work across sessions and devices — anyone with the file and access to this calculator can open it.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128269; Inventory</h3>
+        <p>The left panel shows all available equipment with watts and amps per unit. Use the search box to quickly find items. Click any item to pre-select it in the equipment dropdown.</p>
+        <p>To add new equipment to the inventory, use the <strong>&#9889; ER Calculator</strong> menu in the Google Sheet (<strong>Extensions &rarr; Apps Script</strong> is not required — the menu appears automatically when you open the sheet).</p>
+      </div>
+
+    </div>
+    <div class="help-ftr">
+      <button class="print-btn" onclick="closeHelp()">Close</button>
+    </div>
+  </div>
+</div>
+</body></html>';
   var win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
