@@ -116,6 +116,8 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .clear-row-btn:hover{border-color:var(--over);color:var(--over)}
 .close-fields-btn{width:100%;padding:8px;border:1px solid var(--border);border-radius:5px;background:var(--faint);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px}
 .close-fields-btn:hover{border-color:var(--navy3);color:var(--navy3)}
+.save-btn{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.75);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;cursor:pointer}
+.save-btn:hover{background:rgba(255,255,255,.2);color:white}
 .report-btn-top{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#375623;border:1px solid #375623;border-radius:4px;cursor:pointer}
 .report-btn-top:hover{background:#2d4a1c}
 #unitFields{margin-top:4px}
@@ -157,7 +159,11 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
     </div>
     <div class="sheet-tabs" id="sheetTabs"></div>
     <button class="labels-btn" onclick="openLabels()">&#128424; Labels</button>
+    <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
+    <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
+    <button class="save-btn" onclick="shareViaURL()">&#128279; Share</button>
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
+    <input type="file" id="fileInput" accept=".erdistro,.json" style="display:none" onchange="handleFileLoad(event)">
   </div>
 </header>
 
@@ -287,7 +293,9 @@ function init() {
   renderInventory(INVENTORY);
   buildEqDropdown();
   buildSheetTabs();
-  renderDistro();
+  if (!loadFromURL()) {
+    renderDistro();
+  }
 }
 
 // ── DATA ─────────────────────────────────────────────────────
@@ -790,6 +798,113 @@ function closeUnitFields() {
   for (var i = 0; i < btns.length; i++) {
     btns[i].classList.remove('active','filled');
     if (i === 0) btns[i].classList.add('active');
+  }
+}
+
+// ── SAVE / LOAD / SHARE ──────────────────────────────────────
+function getShowState() {
+  return {
+    version: 1,
+    activeSheet: activeSheet,
+    region: region,
+    limits: limits,
+    distroData: distroData,
+    savedAt: new Date().toISOString()
+  };
+}
+
+function applyShowState(state) {
+  if (!state || state.version !== 1) {
+    alert('Invalid or incompatible save file.');
+    return false;
+  }
+  activeSheet = state.activeSheet || activeSheet;
+  region = state.region || region;
+  limits = state.limits || limits;
+  distroData = state.distroData || distroData;
+  // Sync region buttons
+  document.getElementById('btnUS').classList.toggle('active', region === 'US');
+  document.getElementById('btnROW').classList.toggle('active', region === 'ROW');
+  // Sync sheet tabs
+  var tabs = document.querySelectorAll('#sheetTabs .sheet-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].textContent === activeSheet);
+  }
+  renderDistro();
+  return true;
+}
+
+// Option 1a: Save as file
+function saveToFile() {
+  var name = prompt('Save as:', 'my-show');
+  if (!name) return;
+  var state = JSON.stringify(getShowState(), null, 2);
+  var blob = new Blob([state], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name.replace(/[^a-z0-9-_]/gi, '-') + '.erdistro';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Option 1b: Load from file
+function loadFromFile() {
+  document.getElementById('fileInput').click();
+}
+
+function handleFileLoad(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var state = JSON.parse(e.target.result);
+      if (applyShowState(state)) {
+        document.getElementById('logoSub').textContent = 'LOADED  \u00b7  ' + file.name;
+        document.getElementById('logoSub').style.color = '#52c875';
+      }
+    } catch(err) {
+      alert('Could not read file: ' + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// Option 3: Share via URL
+function shareViaURL() {
+  var state = getShowState();
+  var json = JSON.stringify(state);
+  // Compress using base64
+  var encoded = btoa(encodeURIComponent(json));
+  var url = window.location.href.split('?')[0] + '?show=' + encoded;
+  // Try clipboard first
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() {
+      alert('Share link copied to clipboard!\n\nAnyone opening this link will see your current distro setup.');
+    }).catch(function() { showShareFallback(url); });
+  } else {
+    showShareFallback(url);
+  }
+}
+
+function showShareFallback(url) {
+  var box = prompt('Copy this link to share your show:', url);
+}
+
+// Load from URL on startup if ?show= present
+function loadFromURL() {
+  var params = new URLSearchParams(window.location.search);
+  var encoded = params.get('show');
+  if (!encoded) return false;
+  try {
+    var json = decodeURIComponent(atob(encoded));
+    var state = JSON.parse(json);
+    return applyShowState(state);
+  } catch(e) {
+    console.warn('Could not load from URL:', e);
+    return false;
   }
 }
 
