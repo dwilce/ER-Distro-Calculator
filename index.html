@@ -30,7 +30,15 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .sheet-tab.active{background:var(--blue);color:white;border-color:var(--blue)}
 .help-btn{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer}
 .help-btn:hover{background:rgba(255,255,255,.22);color:white}
+.labels-drop-wrap{position:relative}
 .labels-btn{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#7b2222;border:1px solid #7b2222;border-radius:4px;cursor:pointer}
+.labels-btn:hover{background:#9b3232}
+.labels-drop{display:none;position:absolute;top:calc(100% + 4px);right:0;background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:200;min-width:280px;overflow:hidden}
+.labels-drop.open{display:block}
+.labels-drop button{display:block;width:100%;padding:10px 14px;text-align:left;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);border-bottom:1px solid var(--faint)}
+.labels-drop button:last-child{border-bottom:none}
+.labels-drop button:hover{background:var(--blue-lt)}
+.labels-drop small{font-weight:400;color:var(--muted)}
 #inv-panel{background:var(--card);border-right:1px solid var(--border);display:grid;grid-template-rows:auto 1fr;overflow:hidden}
 .panel-hdr{padding:12px 14px;border-bottom:1px solid var(--faint);background:var(--navy2)}
 .panel-hdr h2{font-weight:700;font-size:14px;letter-spacing:.8px;color:white;text-transform:uppercase;margin-bottom:8px}
@@ -178,7 +186,13 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
     </div>
     <div class="sheet-tabs" id="sheetTabs"></div>
     <button class="help-btn" onclick="openHelp()">&#63; Help</button>
-    <button class="labels-btn" onclick="openLabels()">&#128424; Labels</button>
+    <div class="labels-drop-wrap">
+      <button class="labels-btn" onclick="toggleLabelMenu()">&#128424; Labels &#9660;</button>
+      <div class="labels-drop" id="labelDrop">
+        <button onclick="openLabels('5163');closeLabelMenu()">Avery 5163 &nbsp;<small>US Letter &bull; 2&times;5 &bull; 4&quot;&times;2&quot;</small></button>
+        <button onclick="openLabels('L7173');closeLabelMenu()">Avery L7173 &nbsp;<small>A4 &bull; 2&times;5 &bull; 99.1&times;57mm</small></button>
+      </div>
+    </div>
     <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
     <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
@@ -732,7 +746,8 @@ function closeHelp() {
   document.getElementById('helpOverlay').classList.remove('open');
 }
 
-function openLabels() {
+function openLabels(labelSize) {
+  if (!labelSize) labelSize = '5163';
   var cfg = SHEETS[activeSheet];
   var banks = cfg.banks, ways = cfg.ways;
   var regionStr = region === 'US' ? '208V' : '230V';
@@ -752,16 +767,14 @@ function openLabels() {
       if (items.length) {
         var parts = [];
         for (var ii = 0; ii < items.length; ii++) {
-          var a = toAmps(items[ii].watts);
           var units = items[ii].units || [];
-          var amps = ''; // amps not shown on labels
           var uid = (units[0] && units[0].id) ? ' <span class="uid">[' + units[0].id + ']</span>' : '';
           if (items[ii].qty > 1 && units.length > 1) {
             var uids = '';
             for (var ui = 0; ui < units.length; ui++) { if (units[ui].id) uids += '<span class="uid">[' + units[ui].id + ']</span>'; }
-            parts.push('<span class="eq">' + items[ii].qty + '\u00d7' + items[ii].eq + '</span>' + uids + amps);
+            parts.push('<span class="eq">' + items[ii].qty + '\u00d7' + items[ii].eq + '</span>' + uids);
           } else {
-            parts.push('<span class="eq">' + (items[ii].qty > 1 ? items[ii].qty + '\u00d7' : '') + items[ii].eq + '</span>' + uid + amps);
+            parts.push('<span class="eq">' + (items[ii].qty > 1 ? items[ii].qty + '\u00d7' : '') + items[ii].eq + '</span>' + uid);
           }
         }
         contentHtml = parts.join(' <span class="dot">\u00b7</span> ');
@@ -770,39 +783,59 @@ function openLabels() {
       }
       wayRowsHtml += '<tr><td class="way-num" style="color:' + phColors[wph] + '">' + bankLetter + w + '</td><td class="way-content">' + contentHtml + '</td></tr>';
     }
-    labelsHtml += '<div class="label">' +
-      '<div class="lbl-hdr" style="background:' + bgColor + '">' +
-        '<span class="lbl-bank">BANK ' + bankLetter + '</span>' +
-        '<span class="lbl-distro">' + activeSheet + '</span>' +
-        '<span class="lbl-region">' + regionStr + '</span>' +
-      '</div>' +
-      '<table class="way-table"><tbody>' + wayRowsHtml + '</tbody></table>' +
-    '</div>';
+    labelsHtml += '<div class="label"><div class="lbl-hdr" style="background:' + bgColor + '">'
+      + '<span class="lbl-bank">BANK ' + bankLetter + '</span>'
+      + '<span class="lbl-distro">' + activeSheet + '</span>'
+      + '<span class="lbl-region">' + regionStr + '</span>'
+      + '</div><table class="way-table"><tbody>' + wayRowsHtml + '</tbody></table></div>';
   }
+
+  // Paper/grid settings per label size
+  var pageSize, gridCols, gridRows, labelW, labelH, marginTop, marginSide, colGap, rowGap, fontSize, wayFontSize;
+  if (labelSize === 'L7173') {
+    // Avery L7173: A4, 2x5, 99.1mm x 57mm each
+    // Margins: top 21.2mm, left 5.95mm, gap 0mm
+    pageSize = '210mm 297mm';
+    gridCols = '99.1mm 99.1mm'; gridRows = 'repeat(5,57mm)';
+    labelW = '99.1mm'; labelH = '57mm';
+    marginTop = '21.2mm'; marginSide = '5.95mm'; colGap = '0mm'; rowGap = '0mm';
+    fontSize = '8.5pt'; wayFontSize = '7.5pt';
+  } else {
+    // Avery 5163: Letter, 2x5, 4in x 2in each
+    pageSize = '8.5in 11in';
+    gridCols = '4in 4in'; gridRows = 'repeat(5,2in)';
+    labelW = '4in'; labelH = '2in';
+    marginTop = '0.5in'; marginSide = '0.15625in'; colGap = '0.1875in'; rowGap = '0';
+    fontSize = '8.5pt'; wayFontSize = '7.5pt';
+  }
+
   var css = '* { box-sizing:border-box; margin:0; padding:0; }'
     + 'body { font-family:Arial,sans-serif; background:white; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
-    + '@page { size:8.5in 11in; margin:0; }'
-    + '.page { padding:0.5in 0.15625in 0 0.15625in; }'
-    + '.label-grid { display:grid; grid-template-columns:4in 4in; grid-template-rows:repeat(5,2in); column-gap:0.1875in; row-gap:0; }'
-    + '.label { width:4in; height:2in; overflow:hidden; border:0.5px solid #ccc; display:flex; flex-direction:column; box-sizing:border-box; }'
-    + '.lbl-hdr { display:flex; justify-content:space-between; align-items:center; padding:3pt 6pt; color:white; flex-shrink:0; }'
-    + '.lbl-bank { font-size:13pt; font-weight:900; }'
-    + '.lbl-distro { font-size:8pt; font-weight:700; opacity:0.9; }'
-    + '.lbl-region { font-size:7.5pt; opacity:0.8; }'
-    + '.way-table { width:100%; border-collapse:collapse; flex:1; font-size:7.5pt; }'
-    + '.way-num { width:22pt; font-weight:800; font-size:8pt; padding:1.5pt 4pt; vertical-align:middle; white-space:nowrap; border-bottom:0.3px solid #eee; }'
-    + '.way-content { padding:1.5pt 4pt; vertical-align:middle; border-bottom:0.3px solid #eee; line-height:1.3; }'
+    + '@page { size:' + pageSize + '; margin:0; }'
+    + '.page { padding:' + marginTop + ' ' + marginSide + ' 0 ' + marginSide + '; }'
+    + '.label-grid { display:grid; grid-template-columns:' + gridCols + '; grid-template-rows:' + gridRows + '; column-gap:' + colGap + '; row-gap:' + rowGap + '; }'
+    + '.label { overflow:hidden; border:0.5px solid #ccc; display:flex; flex-direction:column; box-sizing:border-box; }'
+    + '.lbl-hdr { display:flex; justify-content:space-between; align-items:center; padding:4pt 6pt; color:white; flex-shrink:0; }'
+    + '.lbl-bank { font-size:' + (labelSize === 'L7173' ? '16pt' : '13pt') + '; font-weight:900; }'
+    + '.lbl-distro { font-size:' + fontSize + '; font-weight:700; opacity:0.9; }'
+    + '.lbl-region { font-size:' + fontSize + '; opacity:0.8; }'
+    + '.way-table { width:100%; border-collapse:collapse; flex:1; font-size:' + wayFontSize + '; }'
+    + '.way-num { width:' + (labelSize === 'L7173' ? '28pt' : '22pt') + '; font-weight:800; font-size:' + fontSize + '; padding:2pt 4pt; vertical-align:middle; white-space:nowrap; border-bottom:0.3px solid #eee; }'
+    + '.way-content { padding:2pt 4pt; vertical-align:middle; border-bottom:0.3px solid #eee; line-height:1.4; }'
     + 'tr:last-child td { border-bottom:none; }'
-    + '.eq { font-weight:600; } .uid { color:#1f4e79; font-weight:700; font-size:7pt; }'
-    + '.amps { color:#555; font-weight:700; } .dot { color:#bbb; } .empty { color:#bbb; font-style:italic; }'
+    + '.eq { font-weight:600; } .uid { color:#1f4e79; font-weight:700; }'
+    + '.dot { color:#bbb; } .empty { color:#bbb; font-style:italic; }'
     + '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }'
     + '@media print { .no-print { display:none; } }';
-  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels \u2014 Avery 5163</title><style>' + css + '</style></head><body>'
+
+  var sizeName = labelSize === 'L7173' ? 'Avery L7173 (A4)' : 'Avery 5163 (Letter)';
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels \u2014 ' + sizeName + '</title><style>' + css + '</style></head><body>'
     + '<div class="page"><div class="label-grid">' + labelsHtml + '</div></div>'
     + '<div class="no-print">'
     + '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>'
     + '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#1f4e79;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>'
     + '</div></body></html>';
+
   var win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
@@ -1027,6 +1060,20 @@ function openReport() {
   win.focus();
 }
 
+function toggleLabelMenu() {
+  var d = document.getElementById('labelDrop');
+  d.classList.toggle('open');
+}
+
+function closeLabelMenu() {
+  document.getElementById('labelDrop').classList.remove('open');
+}
+
+// Close label menu if clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.labels-drop-wrap')) closeLabelMenu();
+});
+
 function closeLabels() {
   document.getElementById('labelsOverlay').classList.remove('open');
 }
@@ -1070,16 +1117,13 @@ function closeLabels() {
 
       <div class="help-section">
         <h3>&#128424; Printing Labels</h3>
-        <p>Click <strong>Labels</strong> in the top bar to open the label print view. Labels are formatted for <strong>Avery 5163</strong> — a standard US Letter sheet with 10 labels (2 columns &times; 5 rows), each label 4&quot; &times; 2&quot;.</p>
-        <p><strong>To print:</strong></p>
-        <ol>
-          <li>Click <strong>Labels</strong> — a new tab opens with your bank labels</li>
-          <li>Click <strong>Print Labels</strong></li>
-          <li>In the print dialog, set paper to <strong>Letter (8.5&quot; &times; 11&quot;)</strong></li>
-          <li>Set margins to <strong>None</strong></li>
-          <li>Make sure <strong>Background graphics</strong> is enabled so colours print</li>
-        </ol>
-        <p>Each label shows the bank name, distro name, region, and a row for every output with equipment and unit ID.</p>
+        <p>Click <strong>Labels &#9660;</strong> in the top bar to choose your label size, then select from the dropdown:</p>
+        <ul>
+          <li><strong>Avery 5163</strong> — US Letter, 10 labels per sheet (2&times;5), each 4&quot;&times;2&quot;. Set paper to <strong>Letter</strong>, margins to <strong>None</strong>.</li>
+          <li><strong>Avery L7173</strong> — A4, 10 labels per sheet (2&times;5), each 99.1&times;57mm. Set paper to <strong>A4</strong>, margins to <strong>None</strong>.</li>
+        </ul>
+        <p>A new tab opens with your bank labels. Click <strong>Print Labels</strong>, enable <strong>Background graphics</strong> in the print dialog so phase colours print correctly.</p>
+        <p>Each label shows the bank name, distro, region, and a row per output with equipment name and unit ID.</p>
       </div>
 
       <div class="help-section">
