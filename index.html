@@ -637,13 +637,37 @@ function selectTarget(bi, wayNum, subRow) {
   document.getElementById('targetSub').textContent = 'Phase ' + phaseOf(wayNum) + ' \u00b7 ' + (subRow === 0 ? 'Master row' : 'Sub-slot ' + subRow);
   document.getElementById('writeBtn').disabled = false;
   var btns = document.getElementById('slotGrid').children;
+  var slots = distroData[activeSheet][bi][wayNum];
   for (var i = 0; i < btns.length; i++) {
     btns[i].classList.remove('active','filled');
-    var slots = distroData[activeSheet][bi][wayNum];
     if (i === subRow) btns[i].classList.add('active');
     else if (slots[i]) btns[i].classList.add('filled');
   }
   selectedSlot = subRow;
+
+  // If slot is populated, load existing data into the form for editing
+  var slot = slots[subRow];
+  if (slot) {
+    // Set equipment dropdown
+    var sel = document.getElementById('addEqSel');
+    for (var oi = 0; oi < sel.options.length; oi++) {
+      if (sel.options[oi].value === slot.eq) { sel.selectedIndex = oi; break; }
+    }
+    // Set quantity
+    document.getElementById('addQty').value = slot.qty || 1;
+    // Show unit fields with existing data
+    renderUnitFields(bi, wayNum, subRow);
+    // Update write button label to indicate editing
+    document.getElementById('writeBtn').textContent = 'Update Device Information';
+    document.getElementById('writeStatus').innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center">Editing existing slot \u2014 click Update to save changes</div>';
+  } else {
+    // Empty slot — reset form
+    document.getElementById('addEqSel').selectedIndex = 0;
+    document.getElementById('addQty').value = 1;
+    document.getElementById('unitFields').innerHTML = '';
+    document.getElementById('writeStatus').innerHTML = '';
+    document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
+  }
   updateAddPreview();
 }
 
@@ -674,6 +698,7 @@ function writeToSheet() {
   // Build unit detail rows
   renderUnitFields(bi, wayNum, subRow);
   document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';
+  document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
   renderDistro();
 }
 
@@ -848,6 +873,7 @@ function closeUnitFields() {
   document.getElementById('writeStatus').innerHTML = '';
   document.getElementById('targetVal').textContent = 'Select an output \u2192';
   document.getElementById('targetSub').textContent = 'Click any + button on the distro sheet';
+  document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
   document.getElementById('writeBtn').disabled = true;
   document.getElementById('addQty').value = 1;
   document.getElementById('addEqSel').selectedIndex = 0;
