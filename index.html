@@ -1103,6 +1103,7 @@ function openEquipmentLabels() {
             labelItems.push({
               eq: slot.eq,
               unitId: units[ui].id || '',
+              placement: units[ui].placement || '',
               address: units[ui].address || ''
             });
           }
@@ -1123,6 +1124,7 @@ function openEquipmentLabels() {
     labelsHtml += '<div class="eq-label">' +
       '<div class="eq-label-name">' + item.eq + '</div>' +
       (item.unitId ? '<div class="eq-label-row"><span class="eq-label-key">ID</span><span class="eq-label-val">' + item.unitId + '</span></div>' : '') +
+      (item.placement ? '<div class="eq-label-row"><span class="eq-label-key">POS</span><span class="eq-label-val">' + item.placement + '</span></div>' : '') +
       (item.address ? '<div class="eq-label-row"><span class="eq-label-key">ADDR</span><span class="eq-label-val">' + item.address + '</span></div>' : '') +
     '</div>';
   }
