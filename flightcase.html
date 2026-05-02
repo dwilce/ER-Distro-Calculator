@@ -428,23 +428,29 @@ function printLabels() {
     '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#0d2137;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>' +
     '<scr' + 'ipt>' +
     'window.addEventListener("load",function(){' +
-    '  function fitText(box, span, targetFraction) {' +
-    '    if (!span) return;' +
-    '    var maxW = box.clientWidth * (targetFraction || 1) - 16;' +
-    '    var maxH = box.clientHeight * (targetFraction || 1) - 10;' +
-    '    var size = 8;' +
-    '    span.style.fontSize = size + "pt";' +
-    '    while (size < 200 && span.scrollWidth <= maxW && span.scrollHeight <= maxH) {' +
-    '      size += 1; span.style.fontSize = size + "pt";' +
+    '  function fitText(box, span, fraction) {' +
+    '    if (!span || !box.clientWidth) return;' +
+    '    var maxW = box.clientWidth - 20;' +
+    '    var maxH = box.clientHeight * (fraction || 0.95) - 10;' +
+    '    var lo = 8, hi = 200, size = 8;' +
+    '    span.style.fontSize = lo + "pt";' +
+    '    while (lo <= hi) {' +
+    '      var mid = Math.floor((lo + hi) / 2);' +
+    '      span.style.fontSize = mid + "pt";' +
+    '      if (span.scrollWidth <= maxW && span.scrollHeight <= maxH) {' +
+    '        size = mid; lo = mid + 1;' +
+    '      } else { hi = mid - 1; }' +
     '    }' +
-    '    span.style.fontSize = (size - 2) + "pt";' +
+    '    span.style.fontSize = Math.max(8, size - 1) + "pt";' +
     '  }' +
-    '  document.querySelectorAll(".tour-name").forEach(function(box){' +
-    '    fitText(box, box.querySelector("span"), 0.95);' +
-    '  });' +
-    '  document.querySelectorAll(".desc-value").forEach(function(box){' +
-    '    fitText(box, box.querySelector("span"), 0.66);' +
-    '  });' +
+    '  setTimeout(function(){' +
+    '    document.querySelectorAll(".tour-name").forEach(function(box){' +
+    '      fitText(box, box.querySelector("span"), 0.95);' +
+    '    });' +
+    '    document.querySelectorAll(".desc-value").forEach(function(box){' +
+    '      fitText(box, box.querySelector("span"), 0.66);' +
+    '    });' +
+    '  }, 150);' +
     '});' +
     '<\/scr' + 'ipt>' +
     '</body></html>';
