@@ -724,22 +724,32 @@ function autoFcCount() {
   }
 }
 
-function pushToFlightCases(eqName, qty, caseCount) {
+function pushToFlightCases(eqName, qty, caseCount, bi, wayNum, subRow) {
   try {
     var existing = JSON.parse(localStorage.getItem('er_fc_rows') || '[]');
     var nextNum = existing.length + 1;
+    // Get unit details from distroData if available
+    var slot = (bi !== undefined) ? distroData[activeSheet][bi][wayNum][subRow] : null;
+    var units = slot && slot.units ? slot.units : [];
+
     for (var i = 0; i < caseCount; i++) {
       var padded = (nextNum + i) < 10 ? '0' + (nextNum + i) : '' + (nextNum + i);
+      var unit = units[i] || {};
+      var unitId = unit.id || '';
+      var placement = unit.placement || '';
+      // Description: "Equipment Name - Unit ID" or just "Equipment Name"
+      var desc = unitId ? eqName + ' - ' + unitId : eqName;
+      if (caseCount > 1 && !unitId) desc += ' (unit ' + (i + 1) + ' of ' + caseCount + ')';
       existing.push({
         box: padded,
-        location: '',
-        description: eqName + (qty > 1 ? ' (unit ' + (i + 1) + ' of ' + qty + ')' : ''),
+        location: placement,
+        description: desc,
         colour: '#0d2137'
       });
     }
     localStorage.setItem('er_fc_rows', JSON.stringify(existing));
     localStorage.setItem('er_fc_total', existing.length);
-    // Pass logo if uploaded
+    // Pass watermark logo if uploaded
     if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
   } catch(e) { console.warn('Could not push to flight cases:', e); }
 }
@@ -757,7 +767,7 @@ function writeToSheet() {
   var fcCb = document.getElementById('addToFlightCase');
   if (fcCb && fcCb.checked) {
     var caseCount = parseInt(document.getElementById('fcCaseNum').value) || qty;
-    pushToFlightCases(name, qty, caseCount);
+    pushToFlightCases(name, qty, caseCount, bi, wayNum, subRow);
     document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written + ' + caseCount + ' case label' + (caseCount > 1 ? 's' : '') + ' added to Flight Case page</div>';
   } else {
     document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';

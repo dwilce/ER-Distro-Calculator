@@ -105,8 +105,9 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <input type="file" id="companyLogoInput" accept="image/*" style="display:none" onchange="handleCompanyLogo(event)">
       <span class="logo-status loaded" id="companyLogoStatus">✔ ER Productions (permanent)</span>
     </div>
-
-  </div>
+    <div class="logo-upload-wrap">
+      <span class="logo-status" id="wmStatus">&#128444; Watermark: none</span>
+    </div>
 
   <table id="caseTable">
     <thead>
@@ -305,7 +306,11 @@ function loadFromStorage() {
     var tb = localStorage.getItem('er_fc_total');
     if (tb) document.getElementById('totalBoxes').value = tb;
     var l = localStorage.getItem('er_fc_logo');
-    if (l) { logoDataURL = l; }
+    if (l) {
+      logoDataURL = l;
+      var wmEl = document.getElementById('wmStatus');
+      if (wmEl) { wmEl.textContent = '\u2714 Watermark: loaded from main app'; wmEl.className = 'logo-status loaded'; }
+    }
     var cl = localStorage.getItem('er_fc_company');
     if (cl) {
       companyLogoURL = cl;
@@ -332,7 +337,9 @@ function printLabels() {
   for (var i = 0; i < validRows.length; i++) {
     var r = validRows[i];
     var hdrColor = r.colour || '#0d2137';
-    var wmHtml = logoDataURL ? '<img src="' + logoDataURL + '" class="watermark">' : '';
+    // Always read latest watermark from localStorage in case it was set by index.html
+    var currentLogo = logoDataURL || localStorage.getItem('er_fc_logo');
+    var wmHtml = currentLogo ? '<img src="' + currentLogo + '" class="watermark">' : '';
 
     // Top left: company logo (always shown if uploaded)
     var companyHtml = companyLogoURL
