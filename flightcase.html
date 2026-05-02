@@ -362,7 +362,7 @@ function printLabels() {
           // MIDDLE THIRD: Description
           '<div class="mid-zone">' +
             '<div class="zone-label">DESCRIPTION</div>' +
-            '<div class="zone-value desc-value">' + (r.description || '&mdash;') + '</div>' +
+            '<div class="zone-value desc-value"><span id="desc' + i + '">' + (r.description || '&mdash;') + '</span></div>' +
           '</div>' +
 
           // BOTTOM THIRD: Location | Box Number
@@ -408,7 +408,8 @@ function printLabels() {
     '.mid-zone { height:33.33%; flex-shrink:0; border-bottom:3px solid #111; display:flex; flex-direction:column; padding:6pt 14pt 6pt; position:relative; z-index:1; box-sizing:border-box; }' +
     '.zone-label { font-size:7pt; font-weight:900; color:#555; text-transform:uppercase; letter-spacing:2px; flex-shrink:0; }' +
     '.zone-value { flex:1; display:flex; align-items:center; justify-content:center; font-size:34pt; font-weight:900; color:#111; line-height:1.05; text-align:center; width:100%; overflow:hidden; }' +
-    '.desc-value { font-size:26pt; word-break:break-word; }' +
+    '.desc-value { font-size:26pt; word-break:break-word; white-space:normal; }' +
+    '.desc-value span { font-weight:900; line-height:1.05; display:block; word-break:break-word; white-space:normal; text-align:center; }' +
 
     // Bot zone
     '.bot-zone { height:33.33%; flex-shrink:0; display:flex; position:relative; z-index:1; }' +
@@ -427,17 +428,22 @@ function printLabels() {
     '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#0d2137;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>' +
     '<scr' + 'ipt>' +
     'window.addEventListener("load",function(){' +
-    '  document.querySelectorAll(".tour-name").forEach(function(box){' +
-    '    var span = box.querySelector("span");' +
+    '  function fitText(box, span, targetFraction) {' +
     '    if (!span) return;' +
-    '    var maxW = box.clientWidth - 20;' +
-    '    var maxH = box.clientHeight - 10;' +
+    '    var maxW = box.clientWidth * (targetFraction || 1) - 16;' +
+    '    var maxH = box.clientHeight * (targetFraction || 1) - 10;' +
     '    var size = 8;' +
     '    span.style.fontSize = size + "pt";' +
     '    while (size < 200 && span.scrollWidth <= maxW && span.scrollHeight <= maxH) {' +
     '      size += 1; span.style.fontSize = size + "pt";' +
     '    }' +
     '    span.style.fontSize = (size - 2) + "pt";' +
+    '  }' +
+    '  document.querySelectorAll(".tour-name").forEach(function(box){' +
+    '    fitText(box, box.querySelector("span"), 0.95);' +
+    '  });' +
+    '  document.querySelectorAll(".desc-value").forEach(function(box){' +
+    '    fitText(box, box.querySelector("span"), 0.66);' +
     '  });' +
     '});' +
     '<\/scr' + 'ipt>' +
