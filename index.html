@@ -131,6 +131,9 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .report-btn-top{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#375623;border:1px solid #375623;border-radius:4px;cursor:pointer}
 .report-btn-top:hover{background:#2d4a1c}
 #unitFields{margin-top:4px}
+.fc-checkbox-wrap{background:var(--faint);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:4px}
+.fc-checkbox-label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy3)}
+.fc-checkbox-label input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--navy3)}
 .labels-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center}
 .help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
 .help-overlay.open{display:flex}
@@ -230,7 +233,7 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       </div>
       <div class="form-group">
         <label>Quantity</label>
-        <input type="number" id="addQty" value="1" min="1" max="99" oninput="updateAddPreview()">
+        <input type="number" id="addQty" value="1" min="1" max="99" oninput="updateAddPreview();autoFcCount()">
       </div>
       <div class="amp-preview">
         <span class="amp-val" id="previewAmpVal">&#8212;</span>
@@ -247,6 +250,16 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       </div>
       <div id="writeStatus"></div>
       <button class="write-btn" id="writeBtn" onclick="writeToSheet()" disabled>Add Device &amp; Enter Information</button>
+      <div class="fc-checkbox-wrap">
+        <label class="fc-checkbox-label">
+          <input type="checkbox" id="addToFlightCase" onchange="toggleFcCount()">
+          <span>Add to Flight Case Labels</span>
+        </label>
+        <div id="fcCaseCount" style="display:none;margin-top:6px">
+          <label style="font-size:11px;font-weight:600;color:var(--muted)">Cases to create:</label>
+          <input type="number" id="fcCaseNum" min="1" max="99" value="1" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;margin-left:6px">
+        </div>
+      </div>
       <button class="clear-row-btn" onclick="clearTarget()">Clear selected slot</button>
       <div id="unitFields"></div>
       <button class="close-fields-btn" onclick="closeUnitFields()">Update &amp; Clear</button>
@@ -693,6 +706,44 @@ function updateAddPreview() {
 }
 
 // ── WRITE ────────────────────────────────────────────────────
+// ── FLIGHT CASE INTEGRATION ──────────────────────────────────
+var flightCaseRows = []; // shared with flightcase.html via localStorage
+
+function toggleFcCount() {
+  var cb = document.getElementById('addToFlightCase');
+  var countDiv = document.getElementById('fcCaseCount');
+  countDiv.style.display = cb.checked ? 'block' : 'none';
+  if (cb.checked) autoFcCount();
+}
+
+function autoFcCount() {
+  var cb = document.getElementById('addToFlightCase');
+  if (cb && cb.checked) {
+    var qty = parseInt(document.getElementById('addQty').value) || 1;
+    document.getElementById('fcCaseNum').value = qty;
+  }
+}
+
+function pushToFlightCases(eqName, qty, caseCount) {
+  try {
+    var existing = JSON.parse(localStorage.getItem('er_fc_rows') || '[]');
+    var nextNum = existing.length + 1;
+    for (var i = 0; i < caseCount; i++) {
+      var padded = (nextNum + i) < 10 ? '0' + (nextNum + i) : '' + (nextNum + i);
+      existing.push({
+        box: padded,
+        location: '',
+        description: eqName + (qty > 1 ? ' (unit ' + (i + 1) + ' of ' + qty + ')' : ''),
+        colour: '#0d2137'
+      });
+    }
+    localStorage.setItem('er_fc_rows', JSON.stringify(existing));
+    localStorage.setItem('er_fc_total', existing.length);
+    // Pass logo if uploaded
+    if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
+  } catch(e) { console.warn('Could not push to flight cases:', e); }
+}
+
 function writeToSheet() {
   if (!selectedTarget) return;
   var name = document.getElementById('addEqSel').value;
@@ -700,9 +751,18 @@ function writeToSheet() {
   var bi = selectedTarget.bi, wayNum = selectedTarget.wayNum, subRow = selectedTarget.subRow;
   var w = eqMap[name];
   distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty, units:[]};
-  // Build unit detail rows
   renderUnitFields(bi, wayNum, subRow);
-  document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';
+
+  // Push to flight case labels if checkbox ticked
+  var fcCb = document.getElementById('addToFlightCase');
+  if (fcCb && fcCb.checked) {
+    var caseCount = parseInt(document.getElementById('fcCaseNum').value) || qty;
+    pushToFlightCases(name, qty, caseCount);
+    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written + ' + caseCount + ' case label' + (caseCount > 1 ? 's' : '') + ' added to Flight Case page</div>';
+  } else {
+    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';
+  }
+
   document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
   renderDistro();
 }

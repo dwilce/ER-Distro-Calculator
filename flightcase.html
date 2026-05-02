@@ -81,7 +81,6 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
   </a>
   <div class="top-controls">
     <button class="top-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
-    <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
     <button class="top-btn" onclick="addRow()">&#43; Add Row</button>
     <button class="top-btn" onclick="clearAll()">&#128465; Clear All</button>
     <button class="top-btn danger" onclick="printLabels()">&#128424; Print Labels</button>
@@ -106,10 +105,7 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <input type="file" id="companyLogoInput" accept="image/*" style="display:none" onchange="handleCompanyLogo(event)">
       <span class="logo-status" id="companyLogoStatus">No company logo</span>
     </div>
-    <div class="logo-upload-wrap">
-      <button class="top-btn" onclick="document.getElementById('logoInput').click()">&#128444; Watermark</button>
-      <span class="logo-status" id="logoStatus">No watermark</span>
-    </div>
+
   </div>
 
   <table id="caseTable">
@@ -206,8 +202,6 @@ function clearAll() {
   rows = [];
   logoDataURL = null;
   companyLogoURL = null;
-  document.getElementById('logoStatus').textContent = 'No watermark';
-  document.getElementById('logoStatus').className = 'logo-status';
   document.getElementById('companyLogoStatus').textContent = 'No company logo';
   document.getElementById('companyLogoStatus').className = 'logo-status';
   try { localStorage.removeItem('er_fc_logo'); localStorage.removeItem('er_fc_company'); } catch(e) {}
@@ -309,11 +303,7 @@ function loadFromStorage() {
     var tb = localStorage.getItem('er_fc_total');
     if (tb) document.getElementById('totalBoxes').value = tb;
     var l = localStorage.getItem('er_fc_logo');
-    if (l) {
-      logoDataURL = l;
-      document.getElementById('logoStatus').textContent = '\u2714 Loaded';
-      document.getElementById('logoStatus').className = 'logo-status loaded';
-    }
+    if (l) { logoDataURL = l; }
     var cl = localStorage.getItem('er_fc_company');
     if (cl) {
       companyLogoURL = cl;
