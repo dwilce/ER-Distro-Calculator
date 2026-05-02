@@ -37,7 +37,7 @@ h1{font-size:22px;font-weight:700;color:var(--navy3);margin-bottom:4px}
 .logo-upload-wrap{display:flex;align-items:center;gap:6px}
 .logo-status{font-size:11px;color:var(--muted)}
 .logo-status.loaded{color:#1a6b3a;font-weight:600}
-table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:visible;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 thead tr{background:var(--navy);color:white}
 thead th{padding:11px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 thead th.num-col{width:50px;text-align:center}
@@ -57,7 +57,7 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
 .swatch-wrap{position:relative;display:inline-block}
 .swatch-btn{width:32px;height:28px;border-radius:4px;border:2px solid #ccc;cursor:pointer;display:block}
 .swatch-btn:hover{border-color:#333}
-.swatch-panel{display:none;position:absolute;top:32px;left:50%;transform:translateX(-50%);background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:6px;z-index:500;width:112px}
+.swatch-panel{display:none;position:fixed;background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.25);padding:6px;z-index:9999;width:112px}
 .swatch-panel.open{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .swatch-opt{width:22px;height:22px;border-radius:3px;border:1px solid rgba(0,0,0,.2);cursor:pointer}
 .swatch-opt:hover{transform:scale(1.2);border-color:#333}
@@ -173,7 +173,9 @@ function handleLogoUpload(e) {
 
 // ── ROWS ─────────────────────────────────────────────────────
 function addRow() {
-  rows.push({box:'', location:'', description:'', colour:'#0d2137'});
+  var nextNum = rows.length + 1;
+  var padded = nextNum < 10 ? '0' + nextNum : '' + nextNum;
+  rows.push({box: padded, location:'', description:'', colour:'#0d2137'});
   renderTable();
   updateTotalBoxes();
   saveToStorage();
@@ -181,6 +183,14 @@ function addRow() {
 
 function deleteRow(idx) {
   rows.splice(idx, 1);
+  // Re-number box fields that match the old auto-increment pattern
+  for (var i = 0; i < rows.length; i++) {
+    var expected = (i + 2 < 10 ? '0' : '') + (i + 2);
+    var next = (i + 1 < 10 ? '0' : '') + (i + 1);
+    if (rows[i].box === expected || rows[i].box === '' + (i + 2)) {
+      rows[i].box = next;
+    }
+  }
   renderTable();
   updateTotalBoxes();
   saveToStorage();
@@ -211,10 +221,10 @@ function updateRow(idx, field, val) {
 }
 
 var COLOURS = [
-  '#0d2137','#1f4e79','#2471a3','#155a8a',
-  '#7b2222','#c0392b','#922b21','#6e2f1a',
-  '#145a32','#1e8449','#117a65','#0e6655',
-  '#4a235a','#6c3483','#333333','#000000'
+  '#c0392b','#e67e22','#f1c40f','#27ae60',
+  '#1abc9c','#2980b9','#8e44ad','#2c3e50',
+  '#e91e63','#ff5722','#8bc34a','#00bcd4',
+  '#3f51b5','#9c27b0','#ffffff','#000000'
 ];
 
 function swatchHtml(idx, selected) {
@@ -229,9 +239,14 @@ function toggleSwatch(idx, e) {
   e.stopPropagation();
   var panel = document.getElementById('sp' + idx);
   var isOpen = panel.classList.contains('open');
-  // Close all panels
   document.querySelectorAll('.swatch-panel').forEach(function(p) { p.classList.remove('open'); });
-  if (!isOpen) panel.classList.add('open');
+  if (!isOpen) {
+    var btn = e.currentTarget;
+    var rect = btn.getBoundingClientRect();
+    panel.style.top = (rect.bottom + 4) + 'px';
+    panel.style.left = (rect.left - 40) + 'px';
+    panel.classList.add('open');
+  }
 }
 
 function pickColour(idx, colour, e) {
