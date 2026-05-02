@@ -189,6 +189,9 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
     </div>
     <div class="sheet-tabs" id="sheetTabs"></div>
     <button class="help-btn" onclick="openHelp()">&#63; Help</button>
+    <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
+    <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
+    <input type="file" id="fileInput" accept=".erdistro,.json" style="display:none" onchange="handleFileLoad(event)">
     <div class="labels-drop-wrap">
       <button class="labels-btn" onclick="toggleLabelMenu()">&#128424; Labels &#9660;</button>
       <div class="labels-drop" id="labelDrop">
@@ -197,13 +200,10 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
         <button onclick="openEquipmentLabels();closeLabelMenu()">Avery 6737 &nbsp;<small>A4 &bull; 3&times;13 &bull; 38.1&times;21.2mm &bull; Equipment labels</small></button>
       </div>
     </div>
+    <button class="save-btn" onclick="window.open('flightcase.html','_blank')">&#128230; Case Labels</button>
     <button class="save-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
     <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
-    <button class="save-btn" onclick="window.open('flightcase.html','_blank')">&#128230; Case Labels</button>
-    <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
-    <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
-    <input type="file" id="fileInput" accept=".erdistro,.json" style="display:none" onchange="handleFileLoad(event)">
   </div>
 </header>
 
@@ -248,8 +248,6 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
           <button class="slot-btn" onclick="selSlot(3,this)">Sub 3</button>
         </div>
       </div>
-      <div id="writeStatus"></div>
-      <button class="write-btn" id="writeBtn" onclick="writeToSheet()" disabled>Add Device &amp; Enter Information</button>
       <div class="fc-checkbox-wrap">
         <label class="fc-checkbox-label">
           <input type="checkbox" id="addToFlightCase" onchange="toggleFcCount()">
@@ -260,6 +258,8 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
           <input type="number" id="fcCaseNum" min="1" max="99" value="1" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;margin-left:6px">
         </div>
       </div>
+      <div id="writeStatus"></div>
+      <button class="write-btn" id="writeBtn" onclick="writeToSheet()" disabled>Add Device &amp; Enter Information</button>
       <button class="clear-row-btn" onclick="clearTarget()">Clear selected slot</button>
       <div id="unitFields"></div>
       <button class="close-fields-btn" onclick="closeUnitFields()">Update &amp; Clear</button>
@@ -1306,77 +1306,70 @@ function closeLabels() {
 
       <div class="help-section">
         <h3>&#9889; Getting Started</h3>
-        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) in the top bar — this sets all amp calculations automatically. Then choose your distro type using the tabs: <strong>18-Way</strong>, <strong>48-Way</strong>, or <strong>72-Way</strong>.</p>
+        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — this updates all amp calculations automatically. Then choose your distro type using the tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A)</strong>, or <strong>72-Way (400A)</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128266; Assigning Equipment</h3>
         <ol>
           <li>Click the <strong>+</strong> button next to any output (e.g. A1, B3) on the distro sheet</li>
-          <li>The <strong>Add Equipment</strong> panel on the right will show that output as the target</li>
-          <li>Select your equipment from the dropdown and set the quantity</li>
-          <li>Choose a <strong>Sub-slot</strong> if you need multiple items on one output (Master + up to 3 subs)</li>
+          <li>The <strong>Add Equipment</strong> panel on the right shows that output as the target</li>
+          <li>Tick <strong>Add to Flight Case Labels</strong> if you want case labels created automatically</li>
+          <li>Select equipment from the dropdown and set the quantity</li>
+          <li>Choose a <strong>Sub-slot</strong> for multiple items on one output (Master + up to 3 subs)</li>
           <li>Click <strong>Add Device &amp; Enter Information</strong></li>
           <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
-          <li>Click <strong>Update &amp; Clear</strong> to move to the next output</li>
+          <li>Click <strong>Update &amp; Clear</strong> to reset and move to the next output</li>
         </ol>
+        <p>Click any <strong>populated output</strong> on the distro sheet to edit its assignment and unit details.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128202; Grand Summary</h3>
-        <p>The Grand Summary at the bottom of the distro sheet shows the total load per phase:</p>
+        <p>The Grand Summary shows total load per phase at the bottom of the distro sheet:</p>
         <ul>
           <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
           <li><span class="help-badge warn">&#9888; 84%</span> — Between 80–99% — approaching limit</li>
           <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
         </ul>
-        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle to switch between phase limits.</p>
+        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle button to switch phase limits.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128424; Printing Labels</h3>
-        <p>Click <strong>Labels &#9660;</strong> in the top bar to choose your label type from the dropdown:</p>
+        <p>Click <strong>Labels &#9660;</strong> to choose from the dropdown:</p>
         <ul>
-          <li><strong>Avery 5163</strong> — Distro bank labels. US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. Shows all outputs per bank with equipment and unit ID.</li>
-          <li><strong>Avery L7173</strong> — Distro bank labels. A4, 10 per sheet (2&times;5), 99.1&times;57mm. Same content as 5163 but A4 size.</li>
-          <li><strong>Avery 6737</strong> — Equipment labels. A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One small label per unit showing equipment name, unit ID, placement and address.</li>
+          <li><strong>Avery 5163</strong> — Distro bank labels. US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;.</li>
+          <li><strong>Avery L7173</strong> — Distro bank labels. A4, 10 per sheet (2&times;5), 99.1&times;57mm.</li>
+          <li><strong>Avery 6737</strong> — Equipment labels. A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One label per unit showing name, unit ID, placement and address.</li>
         </ul>
-        <p><strong>Print settings:</strong> set paper to match the label sheet (Letter or A4), margins to <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Upload a logo using <strong>&#128444; Logo</strong> — it appears as a watermark on all label types. Print with margins <strong>None</strong> and background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128230; Flight Case Labels</h3>
-        <p>Click <strong>&#128230; Case Labels</strong> in the top bar to open the Flight Case Labels page — a separate page for creating large Avery 5126 shipping labels (8.5&quot;&times;5.5&quot;, 2 per sheet, US Letter).</p>
-        <p><strong>Label layout (three sections):</strong></p>
-        <ul>
-          <li><strong>Top third</strong> — Tour/show name in a colour-coded band. Set a different colour per label using the colour picker in each row.</li>
-          <li><strong>Middle third</strong> — Description, full width.</li>
-          <li><strong>Bottom third</strong> — Location (left) and Box Number with total count below (right).</li>
-        </ul>
-        <p>Set <strong>Tour Name</strong> and <strong>Total Boxes</strong> in the toolbar — these appear on every label. Upload a logo with the <strong>&#128444; Logo</strong> button and it appears as a watermark across the full label.</p>
-        <p><strong>Clear All</strong> removes all rows and the uploaded logo. Data persists in your browser between sessions automatically.</p>
-        <p><strong>Print settings:</strong> paper <strong>Letter</strong>, margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Click <strong>Case Labels</strong> in the top bar to open the Flight Case Labels page — creates Avery 5126 labels (177&times;127mm, 2 per A4 sheet).</p>
+        <p><strong>Label layout:</strong> Top third = tour name (colour-coded per row), Middle = description, Bottom = location (left) and box number with total (right). The ER Productions logo appears permanently in the top-left corner.</p>
+        <p><strong>Auto-populate from distro:</strong> Tick <strong>Add to Flight Case Labels</strong> in the Add Equipment panel before clicking Add Device — flight case rows are created automatically using the equipment name, unit ID and placement you entered.</p>
+        <p>Box numbers auto-increment as you add rows. Tour name and total boxes appear on every label. Print with A4, margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128438; Equipment Report</h3>
-        <p>Click <strong>Report</strong> in the top bar to generate a printable A4 report listing every piece of equipment across all distro sheets, including amps, unit ID, placement, and address. Print it or close the tab to return to the calculator.</p>
+        <p>Click <strong>Report</strong> to generate a printable A4 table of all assigned equipment across every distro sheet, showing distro, output, equipment name, amps per unit, unit ID, placement, and address.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your current show as a <code>.erdistro</code> file. This captures all equipment assignments, unit details, region, and limit settings. You can email this file or store it for later.</p>
-        <p><strong>&#128194; Load</strong> — Opens a file picker. Select a previously saved <code>.erdistro</code> file to restore your show exactly as it was.</p>
-        <p>Save files work across sessions and devices — anyone with the file and access to this calculator can open it.</p>
+        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file including all assignments, unit details, region, limits, and logo. Shareable and reloadable on any device.</p>
+        <p><strong>&#128194; Load</strong> — Restores a previously saved <code>.erdistro</code> file exactly as it was.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128269; Inventory</h3>
-        <p>The left panel shows all available equipment with watts and amps per unit. Use the search box to quickly find items. Click any item to pre-select it in the equipment dropdown.</p>
-        <p>To add new equipment to the inventory, use the <strong>&#9889; ER Calculator</strong> menu in the Google Sheet (<strong>Extensions &rarr; Apps Script</strong> is not required — the menu appears automatically when you open the sheet).</p>
+        <p>The left panel shows all equipment with watts and amps. Search to filter, or click any item to pre-select it in the dropdown. To add new equipment, use the <strong>&#9889; ER Calculator</strong> menu at the top of the Google Sheet.</p>
       </div>
 
-    </div>
     <div class="help-ftr">
       <button class="print-btn" onclick="closeHelp()">Close</button>
     </div>
