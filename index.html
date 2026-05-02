@@ -739,7 +739,6 @@ function pushToFlightCases(eqName, qty, caseCount, bi, wayNum, subRow) {
       var placement = unit.placement || '';
       // Description: "Equipment Name - Unit ID" or just "Equipment Name"
       var desc = unitId ? eqName + ' - ' + unitId : eqName;
-      if (caseCount > 1 && !unitId) desc += ' (unit ' + (i + 1) + ' of ' + caseCount + ')';
       existing.push({
         box: padded,
         location: placement,
@@ -987,6 +986,9 @@ function closeUnitFields() {
   document.getElementById('addQty').value = 1;
   document.getElementById('addEqSel').selectedIndex = 0;
   document.getElementById('previewAmpVal').textContent = '\u2014';
+  document.getElementById('addToFlightCase').checked = false;
+  document.getElementById('fcCaseCount').style.display = 'none';
+  document.getElementById('fcCaseNum').value = 1;
   selectedTarget = null;
   selectedSlot = 0;
   var btns = document.getElementById('slotGrid').children;
