@@ -102,7 +102,13 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <input type="number" class="tour-input" id="totalBoxes" placeholder="e.g. 24" min="1" style="width:80px" oninput="saveToStorage()">
     </div>
     <div class="logo-upload-wrap">
-      <span class="logo-status" id="logoStatus">No logo uploaded</span>
+      <button class="top-btn" onclick="document.getElementById('companyLogoInput').click()">&#127970; Company Logo</button>
+      <input type="file" id="companyLogoInput" accept="image/*" style="display:none" onchange="handleCompanyLogo(event)">
+      <span class="logo-status" id="companyLogoStatus">No company logo</span>
+    </div>
+    <div class="logo-upload-wrap">
+      <button class="top-btn" onclick="document.getElementById('logoInput').click()">&#128444; Watermark</button>
+      <span class="logo-status" id="logoStatus">No watermark</span>
     </div>
   </div>
 
@@ -124,6 +130,7 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
 
 <script>
 var logoDataURL = null;
+var companyLogoURL = null;
 var rows = [];
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -131,10 +138,25 @@ window.addEventListener('DOMContentLoaded', function() {
   loadFromStorage();
   if (!rows.length) { addRow(); addRow(); addRow(); }
   renderTable();
+  updateTotalBoxes();
 });
 
 // ── LOGO ─────────────────────────────────────────────────────
 function triggerLogoUpload() { document.getElementById('logoInput').click(); }
+function handleCompanyLogo(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    companyLogoURL = ev.target.result;
+    document.getElementById('companyLogoStatus').textContent = '✔ ' + file.name;
+    document.getElementById('companyLogoStatus').className = 'logo-status loaded';
+    saveToStorage();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
 function handleLogoUpload(e) {
   var file = e.target.files[0];
   if (!file) return;
@@ -153,12 +175,19 @@ function handleLogoUpload(e) {
 function addRow() {
   rows.push({box:'', location:'', description:'', colour:'#0d2137'});
   renderTable();
+  updateTotalBoxes();
   saveToStorage();
 }
 
 function deleteRow(idx) {
   rows.splice(idx, 1);
   renderTable();
+  updateTotalBoxes();
+  saveToStorage();
+}
+
+function updateTotalBoxes() {
+  document.getElementById('totalBoxes').value = rows.length;
   saveToStorage();
 }
 
@@ -166,9 +195,12 @@ function clearAll() {
   if (!confirm('Clear all rows and remove uploaded logo?')) return;
   rows = [];
   logoDataURL = null;
-  document.getElementById('logoStatus').textContent = 'No logo uploaded';
+  companyLogoURL = null;
+  document.getElementById('logoStatus').textContent = 'No watermark';
   document.getElementById('logoStatus').className = 'logo-status';
-  try { localStorage.removeItem('er_fc_logo'); } catch(e) {}
+  document.getElementById('companyLogoStatus').textContent = 'No company logo';
+  document.getElementById('companyLogoStatus').className = 'logo-status';
+  try { localStorage.removeItem('er_fc_logo'); localStorage.removeItem('er_fc_company'); } catch(e) {}
   addRow();
   saveToStorage();
 }
@@ -249,6 +281,7 @@ function saveToStorage() {
     localStorage.setItem('er_fc_tour', document.getElementById('tourName').value);
     localStorage.setItem('er_fc_total', document.getElementById('totalBoxes').value);
     if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
+    if (companyLogoURL) localStorage.setItem('er_fc_company', companyLogoURL);
   } catch(e) {}
 }
 
@@ -263,8 +296,14 @@ function loadFromStorage() {
     var l = localStorage.getItem('er_fc_logo');
     if (l) {
       logoDataURL = l;
-      document.getElementById('logoStatus').textContent = '\u2714 Logo loaded';
+      document.getElementById('logoStatus').textContent = '\u2714 Loaded';
       document.getElementById('logoStatus').className = 'logo-status loaded';
+    }
+    var cl = localStorage.getItem('er_fc_company');
+    if (cl) {
+      companyLogoURL = cl;
+      document.getElementById('companyLogoStatus').textContent = '\u2714 Loaded';
+      document.getElementById('companyLogoStatus').className = 'logo-status loaded';
     }
   } catch(e) {}
 }
@@ -288,25 +327,30 @@ function printLabels() {
     var hdrColor = r.colour || '#0d2137';
     var wmHtml = logoDataURL ? '<img src="' + logoDataURL + '" class="watermark">' : '';
 
+    // Top left: company logo (always shown if uploaded)
+    var companyHtml = companyLogoURL
+      ? '<div class="top-logo-wrap"><img src="' + companyLogoURL + '" class="top-logo"></div>'
+      : '<div class="top-logo-wrap top-logo-empty"></div>';
+
     labelsHtml +=
       '<div class="label">' +
         '<div class="lbl-body">' +
           wmHtml +
 
-          // TOP THIRD: Logo left 1/3, Tour name right 2/3
-          '<div class="zone top-zone" style="background:' + hdrColor + '">' +
-            (logoDataURL ? '<div class="top-logo-wrap"><img src="' + logoDataURL + '" class="top-logo"></div>' : '') +
-            '<div class="tour-name' + (logoDataURL ? '' : ' tour-name-full') + '">' + tourName + '</div>' +
+          // TOP THIRD: company logo left 1/3, tour name right 2/3
+          '<div class="top-zone" style="background:' + hdrColor + '">' +
+            companyHtml +
+            '<div class="tour-name">' + tourName + '</div>' +
           '</div>' +
 
-          // MIDDLE THIRD: Description full width
-          '<div class="zone mid-zone">' +
+          // MIDDLE THIRD: Description
+          '<div class="mid-zone">' +
             '<div class="zone-label">DESCRIPTION</div>' +
             '<div class="zone-value desc-value">' + (r.description || '&mdash;') + '</div>' +
           '</div>' +
 
-          // BOTTOM THIRD: Location left | Box Number right
-          '<div class="zone bot-zone">' +
+          // BOTTOM THIRD: Location | Box Number
+          '<div class="bot-zone">' +
             '<div class="bot-cell" style="border-right:3px solid #111">' +
               '<div class="zone-label">LOCATION</div>' +
               '<div class="zone-value">' + (r.location || '&mdash;') + '</div>' +
@@ -329,32 +373,27 @@ function printLabels() {
     '.label { width:8.5in; height:5.5in; page-break-inside:avoid; border-bottom:2px dashed #999; }' +
     '.lbl-body { width:100%; height:100%; display:flex; flex-direction:column; border:3px solid #111; position:relative; overflow:hidden; }' +
 
-    // Watermark 25% opacity, full label
+    // Watermark
     '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:65%; max-height:80%; object-fit:contain; opacity:0.25; pointer-events:none; z-index:0; }' +
 
-    // Top zone: logo 1/3 left, tour name 2/3 right
-    '.zone { position:relative; z-index:1; }' +
-    '.top-zone { flex:1; display:flex; align-items:stretch; border-bottom:3px solid #111; }' +
-    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; padding:8pt; flex-shrink:0; }' +
+    // Top zone
+    '.top-zone { height:33.33%; flex-shrink:0; display:flex; align-items:stretch; border-bottom:3px solid #111; position:relative; z-index:1; }' +
+    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; padding:10pt; flex-shrink:0; }' +
+    '.top-logo-empty { background:rgba(255,255,255,.08); }' +
     '.top-logo { max-width:100%; max-height:100%; object-fit:contain; }' +
-    '.tour-name { flex:1; display:flex; align-items:center; justify-content:center; font-size:36pt; font-weight:900; color:white; letter-spacing:1px; text-align:center; padding:8pt 16pt; }' +
-    '.tour-name-full { width:100%; }' +
+    '.tour-name { flex:1; display:flex; align-items:center; justify-content:center; font-size:34pt; font-weight:900; color:white; text-align:center; padding:8pt 14pt; line-height:1.1; }' +
 
-    // Mid zone: description
-    '.mid-zone { flex:1; border-bottom:3px solid #111; display:flex; flex-direction:column; justify-content:flex-start; padding:6pt 14pt 8pt; }' +
+    // Mid zone
+    '.mid-zone { height:33.33%; flex-shrink:0; border-bottom:3px solid #111; display:flex; flex-direction:column; padding:6pt 14pt 6pt; position:relative; z-index:1; box-sizing:border-box; }' +
+    '.zone-label { font-size:7pt; font-weight:900; color:#555; text-transform:uppercase; letter-spacing:2px; flex-shrink:0; }' +
+    '.zone-value { flex:1; display:flex; align-items:center; justify-content:center; font-size:34pt; font-weight:900; color:#111; line-height:1.05; text-align:center; width:100%; overflow:hidden; }' +
+    '.desc-value { font-size:26pt; word-break:break-word; }' +
 
     // Bot zone
-    '.bot-zone { flex:1; display:flex; }' +
-    '.bot-cell { flex:1; display:flex; flex-direction:column; justify-content:flex-start; padding:6pt 14pt; }' +
-
-    // Labels top-left of each box
-    '.zone-label { font-size:7pt; font-weight:900; color:#555; text-transform:uppercase; letter-spacing:2px; margin-bottom:4pt; align-self:flex-start; }' +
-
-    // Values — as big as possible, centered
-    '.zone-value { font-size:34pt; font-weight:900; color:#111; line-height:1.05; text-align:center; flex:1; display:flex; align-items:center; justify-content:center; width:100%; }' +
-    '.desc-value { font-size:28pt; }' +
-    '.box-value { font-size:40pt; flex-direction:column; gap:2pt; }' +
-    '.of-total { font-size:12pt; font-weight:600; color:#666; }' +
+    '.bot-zone { height:33.33%; flex-shrink:0; display:flex; position:relative; z-index:1; }' +
+    '.bot-cell { flex:1; display:flex; flex-direction:column; padding:6pt 14pt; box-sizing:border-box; }' +
+    '.box-value { flex-direction:column; gap:0; font-size:38pt; }' +
+    '.of-total { font-size:11pt; font-weight:600; color:#666; line-height:1; }' +
 
     '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
     '@media print { .no-print { display:none; } }';
@@ -372,6 +411,7 @@ function printLabels() {
   win.document.close();
   win.focus();
 }
+
 
 
 
