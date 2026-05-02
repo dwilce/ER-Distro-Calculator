@@ -90,6 +90,10 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <label>Tour / Show Name:</label>
       <input type="text" class="tour-input" id="tourName" placeholder="e.g. World Tour 2026" oninput="saveTour()">
     </div>
+    <div class="tour-wrap">
+      <label>Total Boxes:</label>
+      <input type="number" class="tour-input" id="totalBoxes" placeholder="e.g. 24" min="1" style="width:80px" oninput="saveToStorage()">
+    </div>
     <div class="logo-upload-wrap">
       <span class="logo-status" id="logoStatus">No logo uploaded</span>
     </div>
@@ -188,6 +192,7 @@ function saveToStorage() {
   try {
     localStorage.setItem('er_fc_rows', JSON.stringify(rows));
     localStorage.setItem('er_fc_tour', document.getElementById('tourName').value);
+    localStorage.setItem('er_fc_total', document.getElementById('totalBoxes').value);
     if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
   } catch(e) {}
 }
@@ -198,6 +203,8 @@ function loadFromStorage() {
     if (r) rows = JSON.parse(r);
     var t = localStorage.getItem('er_fc_tour');
     if (t) document.getElementById('tourName').value = t;
+    var tb = localStorage.getItem('er_fc_total');
+    if (tb) document.getElementById('totalBoxes').value = tb;
     var l = localStorage.getItem('er_fc_logo');
     if (l) {
       logoDataURL = l;
@@ -212,6 +219,7 @@ function saveTour() { saveToStorage(); }
 // ── PRINT ─────────────────────────────────────────────────────
 function printLabels() {
   var tourName = document.getElementById('tourName').value.trim() || 'ER Productions';
+  var totalBoxes = document.getElementById('totalBoxes').value.trim();
   var validRows = rows.filter(function(r) { return r.box || r.location || r.description; });
 
   if (!validRows.length) {
@@ -250,6 +258,7 @@ function printLabels() {
             '<div class="bot-cell">' +
               '<div class="zone-label">BOX NUMBER</div>' +
               '<div class="zone-value box-value">' + (r.box || '&mdash;') + '</div>' +
+              (totalBoxes ? '<div class="of-total">of ' + totalBoxes + '</div>' : '') +
             '</div>' +
           '</div>' +
 
@@ -281,6 +290,7 @@ function printLabels() {
     '.zone-value { font-size:26pt; font-weight:800; color:#111; line-height:1.1; }' +
     '.desc-value { font-size:22pt; }' +
     '.box-value { font-size:30pt; color:#0d2137; }' +
+    '.of-total { font-size:12pt; font-weight:600; color:#666; margin-top:2pt; }' +
 
     '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
     '@media print { .no-print { display:none; } }';
