@@ -219,32 +219,40 @@ function printLabels() {
     return;
   }
 
-  // Avery 5126: US Letter, 1 col x 2 rows, 8.5" x 5.5" each
-  // Margins: top 0", left 0"
   var labelsHtml = '';
   for (var i = 0; i < validRows.length; i++) {
     var r = validRows[i];
-    var logoHtml = '';
+    var hdrColor = r.colour || '#0d2137';
+    var wmHtml = logoDataURL ? '<img src="' + logoDataURL + '" class="watermark">' : '';
+
     labelsHtml +=
       '<div class="label">' +
-        '<div class="label-hdr" style="background:' + (r.colour||'#0d2137') + '">' +
-          logoHtml +
-          '<div class="tour-name">' + tourName + '</div>' +
-          '<div class="box-num">' + (r.box || '') + '</div>' +
-        '</div>' +
-        '<div class="label-body">' +
-        (logoDataURL ? '<img class="watermark" src="' + logoDataURL + '">' : '') +
-          '<div class="label-field">' +
-            '<div class="field-key">LOCATION</div>' +
-            '<div class="field-val">' + (r.location || '\u2014') + '</div>' +
+        '<div class="lbl-body">' +
+          wmHtml +
+
+          // TOP THIRD: Tour name header (colour-coded)
+          '<div class="zone top-zone" style="background:' + hdrColor + ';border-bottom:3px solid #111">' +
+            '<div class="tour-name">' + tourName + '</div>' +
           '</div>' +
-          '<div class="label-field">' +
-            '<div class="field-key">DESCRIPTION</div>' +
-            '<div class="field-val desc">' + (r.description || '\u2014') + '</div>' +
+
+          // MIDDLE THIRD: Description full width
+          '<div class="zone mid-zone">' +
+            '<div class="zone-label">DESCRIPTION</div>' +
+            '<div class="zone-value desc-value">' + (r.description || '&mdash;') + '</div>' +
           '</div>' +
-        '</div>' +
-        '<div class="label-ftr">' +
-          '<div class="ftr-dot"></div><div class="ftr-dot"></div><div class="ftr-dot"></div>' +
+
+          // BOTTOM THIRD: Location left | Box Number right
+          '<div class="zone bot-zone">' +
+            '<div class="bot-cell" style="border-right:3px solid #111">' +
+              '<div class="zone-label">LOCATION</div>' +
+              '<div class="zone-value">' + (r.location || '&mdash;') + '</div>' +
+            '</div>' +
+            '<div class="bot-cell">' +
+              '<div class="zone-label">BOX NUMBER</div>' +
+              '<div class="zone-value box-value">' + (r.box || '&mdash;') + '</div>' +
+            '</div>' +
+          '</div>' +
+
         '</div>' +
       '</div>';
   }
@@ -253,25 +261,35 @@ function printLabels() {
     '* { box-sizing:border-box; margin:0; padding:0; }' +
     'body { font-family:Arial,sans-serif; background:white; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
     '@page { size:8.5in 11in; margin:0; }' +
-    '.label { width:8.5in; height:5.5in; overflow:hidden; display:flex; flex-direction:column; border-bottom:1px dashed #ccc; page-break-inside:avoid; }' +
-    '.label-hdr { color:white; padding:18pt 24pt; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }' +
-    '.tour-name { font-size:18pt; font-weight:700; letter-spacing:1px; flex:1; text-align:center; }' +
-    '.box-num { font-size:28pt; font-weight:900; letter-spacing:2px; min-width:120pt; text-align:right; }' +
-    '.label-body { flex:1; display:grid; grid-template-columns:1fr 2fr; gap:0; position:relative; overflow:hidden; }' +
-    '.label-field { padding:24pt 28pt; border-right:1px solid #eee; display:flex; flex-direction:column; justify-content:center; }' +
-    '.label-field:last-child { border-right:none; }' +
-    '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); max-width:60%; max-height:80%; object-fit:contain; opacity:0.08; pointer-events:none; z-index:0; }' +    '.label-field { position:relative; z-index:1; }' +    '.field-key { font-size:9pt; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8pt; }' +
-    '.field-val { font-size:26pt; font-weight:700; color:#0d2137; line-height:1.2; }' +
-    '.field-val.desc { font-size:20pt; }' +
-    '.label-ftr { background:#f4f6f9; padding:6pt 24pt; display:flex; align-items:center; gap:6pt; border-top:1px solid #eee; flex-shrink:0; }' +
-    '.ftr-dot { width:6pt; height:6pt; border-radius:50%; background:#1f4e79; }' +
+    '.label { width:8.5in; height:5.5in; page-break-inside:avoid; border-bottom:2px dashed #999; }' +
+    '.lbl-body { width:100%; height:100%; display:flex; flex-direction:column; border:3px solid #111; position:relative; overflow:hidden; }' +
+    '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:70%; max-height:80%; object-fit:contain; opacity:0.07; pointer-events:none; z-index:0; }' +
+
+    // Zones
+    '.zone { flex:1; display:flex; align-items:center; padding:10pt 18pt; gap:14pt; position:relative; z-index:1; }' +
+    '.top-zone { border-bottom:3px solid #111; justify-content:space-between; }' +
+    '.mid-zone { flex-direction:column; align-items:flex-start; justify-content:center; border-bottom:3px solid #111; padding:8pt 18pt; }' +
+    '.bot-zone { padding:0; }' +
+    '.bot-cell { flex:1; display:flex; flex-direction:column; justify-content:center; padding:8pt 18pt; }' +
+
+    // Tour name
+    '.tour-name { font-size:28pt; font-weight:900; color:white; letter-spacing:1px; flex:1; text-align:center; }' +
+
+    // Labels + values
+    '.zone-label { font-size:7pt; font-weight:900; color:#666; text-transform:uppercase; letter-spacing:2px; margin-bottom:4pt; }' +
+    '.top-zone .zone-label { color:rgba(255,255,255,0.7); }' +
+    '.zone-value { font-size:26pt; font-weight:800; color:#111; line-height:1.1; }' +
+    '.desc-value { font-size:22pt; }' +
+    '.box-value { font-size:30pt; color:#0d2137; }' +
+
     '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
     '@media print { .no-print { display:none; } }';
 
-  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flight Case Labels</title><style>' + css + '</style></head><body>' +
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flight Case Labels</title>' +
+    '<style>' + css + '</style></head><body>' +
     labelsHtml +
     '<div class="no-print">' +
-    '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>' +
+    '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">&#10005; Close</button>' +
     '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#0d2137;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>' +
     '</div></body></html>';
 
@@ -280,6 +298,8 @@ function printLabels() {
   win.document.close();
   win.focus();
 }
+
+
 </script>
 </body>
 </html>
