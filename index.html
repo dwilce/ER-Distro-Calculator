@@ -762,14 +762,13 @@ function writeToSheet() {
   distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty, units:[]};
   renderUnitFields(bi, wayNum, subRow);
 
-  // Push to flight case labels if checkbox ticked
   var fcCb = document.getElementById('addToFlightCase');
+  var bankLabel = SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow);
   if (fcCb && fcCb.checked) {
-    var caseCount = parseInt(document.getElementById('fcCaseNum').value) || qty;
-    pushToFlightCases(name, qty, caseCount, bi, wayNum, subRow);
-    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written + ' + caseCount + ' case label' + (caseCount > 1 ? 's' : '') + ' added to Flight Case page</div>';
+    // Show pending message - flight cases pushed on Update & Clear after unit details filled
+    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + bankLabel + '</div><div style="font-size:11px;color:var(--amber);margin-top:4px;font-weight:600">&#128230; Fill unit details below then click Update &amp; Clear to add to Flight Case Labels</div>';
   } else {
-    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow) + '</div>';
+    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + bankLabel + '</div>';
   }
 
   document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
@@ -977,6 +976,16 @@ function openLabels(labelSize) {
 
 // ── REPORT ───────────────────────────────────────────────────
 function closeUnitFields() {
+  // Push to flight cases NOW - after unit details have been entered
+  var fcCb = document.getElementById('addToFlightCase');
+  if (fcCb && fcCb.checked && selectedTarget) {
+    var fcName = document.getElementById('addEqSel').value;
+    var fcQty = parseInt(document.getElementById('addQty').value) || 1;
+    var fcCount = parseInt(document.getElementById('fcCaseNum').value) || fcQty;
+    var fcBi = selectedTarget.bi, fcWay = selectedTarget.wayNum, fcSub = selectedTarget.subRow;
+    pushToFlightCases(fcName, fcQty, fcCount, fcBi, fcWay, fcSub);
+  }
+
   document.getElementById('unitFields').innerHTML = '';
   document.getElementById('writeStatus').innerHTML = '';
   document.getElementById('targetVal').textContent = 'Select an output \u2192';
@@ -1308,68 +1317,74 @@ function closeLabels() {
 
       <div class="help-section">
         <h3>&#9889; Getting Started</h3>
-        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — this updates all amp calculations automatically. Then choose your distro type using the tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A)</strong>, or <strong>72-Way (400A)</strong>.</p>
+        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update automatically. Choose your distro type using the sheet tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A/125A)</strong>, or <strong>72-Way (400A)</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128266; Assigning Equipment</h3>
         <ol>
-          <li>Click the <strong>+</strong> button next to any output (e.g. A1, B3) on the distro sheet</li>
-          <li>The <strong>Add Equipment</strong> panel on the right shows that output as the target</li>
-          <li>Tick <strong>Add to Flight Case Labels</strong> if you want case labels created automatically</li>
+          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) on the distro sheet — the Add Equipment panel on the right activates</li>
+          <li>Tick <strong>Add to Flight Case Labels</strong> if you want case labels created, and set the number of cases</li>
           <li>Select equipment from the dropdown and set the quantity</li>
-          <li>Choose a <strong>Sub-slot</strong> for multiple items on one output (Master + up to 3 subs)</li>
-          <li>Click <strong>Add Device &amp; Enter Information</strong></li>
-          <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
-          <li>Click <strong>Update &amp; Clear</strong> to reset and move to the next output</li>
+          <li>Choose a <strong>Sub-slot</strong> if you need multiple items on one output (Master + up to 3 subs)</li>
+          <li>Click <strong>Add Device &amp; Enter Information</strong> — equipment is written to the distro sheet</li>
+          <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit in the boxes that appear</li>
+          <li>Click <strong>Update &amp; Clear</strong> — this saves unit details, pushes to Flight Case Labels if ticked, and resets the panel ready for the next assignment</li>
         </ol>
-        <p>Click any <strong>populated output</strong> on the distro sheet to edit its assignment and unit details.</p>
+        <p><strong>Editing:</strong> Click any populated output on the distro sheet to reload it into the panel for editing. Change details and click Update &amp; Clear to save.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128202; Grand Summary</h3>
-        <p>The Grand Summary shows total load per phase at the bottom of the distro sheet:</p>
+        <p>The Grand Summary at the bottom of each distro sheet shows total load per phase:</p>
         <ul>
           <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
-          <li><span class="help-badge warn">&#9888; 84%</span> — Between 80–99% — approaching limit</li>
+          <li><span class="help-badge warn">&#9888; 84%</span> — 80–99% of limit — approaching capacity</li>
           <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
         </ul>
-        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle button to switch phase limits.</p>
+        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle in the Grand Summary to switch between phase limits.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128424; Printing Labels</h3>
-        <p>Click <strong>Labels &#9660;</strong> to choose from the dropdown:</p>
+        <p>Click <strong>Labels &#9660;</strong> in the top bar to choose a label type:</p>
         <ul>
-          <li><strong>Avery 5163</strong> — Distro bank labels. US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;.</li>
-          <li><strong>Avery L7173</strong> — Distro bank labels. A4, 10 per sheet (2&times;5), 99.1&times;57mm.</li>
-          <li><strong>Avery 6737</strong> — Equipment labels. A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One label per unit showing name, unit ID, placement and address.</li>
+          <li><strong>Avery 5163</strong> — Distro bank labels. US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. One label per bank showing all outputs with equipment and unit ID.</li>
+          <li><strong>Avery L7173</strong> — Same as 5163 but A4, 99.1&times;57mm.</li>
+          <li><strong>Avery 6737</strong> — Small equipment labels. A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One label per unit with name, unit ID, placement and address.</li>
         </ul>
-        <p>Upload a logo using <strong>&#128444; Logo</strong> — it appears as a watermark on all label types. Print with margins <strong>None</strong> and background graphics <strong>on</strong>.</p>
+        <p>Upload a logo with <strong>&#128444; Logo</strong> — it appears as a watermark on all label prints. Set paper to match the sheet size, margins to <strong>None</strong>, background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128230; Flight Case Labels</h3>
-        <p>Click <strong>Case Labels</strong> in the top bar to open the Flight Case Labels page — creates Avery 5126 labels (177&times;127mm, 2 per A4 sheet).</p>
-        <p><strong>Label layout:</strong> Top third = tour name (colour-coded per row), Middle = description, Bottom = location (left) and box number with total (right). The ER Productions logo appears permanently in the top-left corner.</p>
-        <p><strong>Auto-populate from distro:</strong> Tick <strong>Add to Flight Case Labels</strong> in the Add Equipment panel before clicking Add Device — flight case rows are created automatically using the equipment name, unit ID and placement you entered.</p>
-        <p>Box numbers auto-increment as you add rows. Tour name and total boxes appear on every label. Print with A4, margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — creates Avery 5126 labels (177&times;127mm, 2 per A4 sheet) with rounded trim corners.</p>
+        <p><strong>Label layout:</strong> Top third = coloured tour name band with company logo, Middle third = description (full width), Bottom third = location (left) and box number with total (right).</p>
+        <p><strong>Auto-populate from distro:</strong></p>
+        <ol>
+          <li>Tick <strong>Add to Flight Case Labels</strong> in the Add Equipment panel</li>
+          <li>Set the number of cases to create</li>
+          <li>Click <strong>Add Device &amp; Enter Information</strong></li>
+          <li>Fill in Unit ID and Placement for each unit</li>
+          <li>Click <strong>Update &amp; Clear</strong> — flight case rows are created with the equipment name + unit ID as description, and placement as location</li>
+        </ol>
+        <p>Box numbers auto-increment. Each row has its own colour picker (16 colours). Tour name and total boxes appear on every label. Print with A4, margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128438; Equipment Report</h3>
-        <p>Click <strong>Report</strong> to generate a printable A4 table of all assigned equipment across every distro sheet, showing distro, output, equipment name, amps per unit, unit ID, placement, and address.</p>
+        <p>Click <strong>Report</strong> to open a printable A4 table of every assigned piece of equipment across all three distro sheets, showing distro, output, equipment, amps per unit, unit ID, placement, and address.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file including all assignments, unit details, region, limits, and logo. Shareable and reloadable on any device.</p>
-        <p><strong>&#128194; Load</strong> — Restores a previously saved <code>.erdistro</code> file exactly as it was.</p>
+        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Can be shared and reloaded on any device.</p>
+        <p><strong>&#128194; Load</strong> — Opens a file picker to restore any previously saved <code>.erdistro</code> file exactly as it was.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128269; Inventory</h3>
-        <p>The left panel shows all equipment with watts and amps. Search to filter, or click any item to pre-select it in the dropdown. To add new equipment, use the <strong>&#9889; ER Calculator</strong> menu at the top of the Google Sheet.</p>
+        <p>The left panel lists all equipment with watts and amps per unit for the active region. Search to filter, or click any item to pre-select it in the equipment dropdown. To add new equipment to the inventory, open the Google Sheet and use the <strong>&#9889; ER Calculator</strong> menu &rarr; <strong>&#43; Add New Equipment</strong>.</p>
       </div>
 
     <div class="help-ftr">
