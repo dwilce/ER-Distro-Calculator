@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flight Case Labels — ER Productions</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0d2137;--navy2:#1a3a57;--navy3:#1f4e79;--blue:#2471a3;
+  --surface:#f4f6f9;--card:#fff;--border:#dde3ec;--text:#1a2535;--muted:#6b7a92;--faint:#e8ecf2;
+  font-family:'Arial Narrow',Arial,sans-serif;font-size:14px;color:var(--text);background:var(--surface)
+}
+body{display:grid;grid-template-rows:56px 1fr;min-height:100vh}
+#topbar{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-bolt{width:28px;height:28px;background:#f39c12;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--navy)}
+.logo-text{font-weight:700;font-size:18px;letter-spacing:1px;color:white}
+.logo-sub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:2px}
+.top-controls{display:flex;align-items:center;gap:10px}
+.top-btn{padding:6px 14px;font-size:11px;font-weight:600;border-radius:4px;cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.top-btn:hover{background:rgba(255,255,255,.22);color:white}
+.top-btn.primary{background:var(--navy3);border-color:var(--navy3);color:white}
+.top-btn.primary:hover{background:#2471a3}
+.top-btn.danger{background:#7b2222;border-color:#7b2222;color:white}
+.top-btn.danger:hover{background:#9b3232}
+.back-link{color:rgba(255,255,255,.7);text-decoration:none;font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px}
+.back-link:hover{color:white;background:rgba(255,255,255,.1)}
+main{padding:24px;max-width:1100px;margin:0 auto;width:100%}
+h1{font-size:22px;font-weight:700;color:var(--navy3);margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.tour-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:220px}
+.tour-wrap label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.tour-input{padding:7px 10px;border:1px solid var(--border);border-radius:5px;font-size:13px;font-family:inherit;outline:none;flex:1;background:white}
+.tour-input:focus{border-color:var(--navy3)}
+.logo-upload-wrap{display:flex;align-items:center;gap:6px}
+.logo-status{font-size:11px;color:var(--muted)}
+.logo-status.loaded{color:#1a6b3a;font-weight:600}
+table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+thead tr{background:var(--navy);color:white}
+thead th{padding:11px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+thead th.num-col{width:50px;text-align:center}
+thead th.act-col{width:80px;text-align:center}
+tbody tr{border-bottom:1px solid var(--faint)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8f9fb}
+tbody td{padding:6px 8px;vertical-align:middle}
+tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size:12px}
+.row-input{width:100%;padding:6px 8px;border:1px solid transparent;border-radius:4px;font-size:13px;font-family:inherit;background:transparent;outline:none;color:var(--text)}
+.row-input:focus{border-color:var(--navy3);background:white}
+.row-input::placeholder{color:#ccc}
+.colour-pick{width:36px;height:28px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px;background:white}
+.del-btn{padding:4px 8px;border:none;background:none;color:#ccc;cursor:pointer;font-size:16px;border-radius:3px}
+.del-btn:hover{color:#921e2e;background:#fde0e3}
+.add-row-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border:2px dashed var(--border);border-radius:6px;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;justify-content:center}
+.add-row-btn:hover{border-color:var(--navy3);color:var(--navy3);background:var(--faint)}
+@media print{
+  body,html{margin:0;padding:0;background:white}
+  #topbar,.toolbar,.add-row-btn,.del-btn,.no-print{display:none!important}
+  main{padding:0;max-width:none}
+  h1,.page-sub{display:none}
+}
+</style>
+</head>
+<body>
+<header id="topbar">
+  <a class="logo" href="index.html">
+    <div class="logo-bolt">&#9889;</div>
+    <div>
+      <div class="logo-text">ER EQUIPMENT CALCULATOR</div>
+      <div class="logo-sub">FLIGHT CASE LABELS</div>
+    </div>
+  </a>
+  <div class="top-controls">
+    <button class="top-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
+    <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+    <button class="top-btn" onclick="addRow()">&#43; Add Row</button>
+    <button class="top-btn" onclick="clearAll()">&#128465; Clear All</button>
+    <button class="top-btn danger" onclick="printLabels()">&#128424; Print Labels</button>
+  </div>
+</header>
+
+<main>
+  <h1>Flight Case Labels</h1>
+  <p class="page-sub">Avery 5126 &bull; US Letter &bull; 8.5&quot;&times;5.5&quot; &bull; 2 per sheet &bull; One label printed per row</p>
+
+  <div class="toolbar">
+    <div class="tour-wrap">
+      <label>Tour / Show Name:</label>
+      <input type="text" class="tour-input" id="tourName" placeholder="e.g. World Tour 2026" oninput="saveTour()">
+    </div>
+    <div class="logo-upload-wrap">
+      <span class="logo-status" id="logoStatus">No logo uploaded</span>
+    </div>
+  </div>
+
+  <table id="caseTable">
+    <thead>
+      <tr>
+        <th class="num-col">#</th>
+        <th style="width:60px;text-align:center">Colour</th>
+        <th style="width:120px">Box Number</th>
+        <th style="width:200px">Location</th>
+        <th>Description</th>
+        <th class="act-col">Remove</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <button class="add-row-btn" onclick="addRow()">&#43; Add Flight Case</button>
+</main>
+
+<script>
+var logoDataURL = null;
+var rows = [];
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  loadFromStorage();
+  if (!rows.length) { addRow(); addRow(); addRow(); }
+  renderTable();
+});
+
+// ── LOGO ─────────────────────────────────────────────────────
+function triggerLogoUpload() { document.getElementById('logoInput').click(); }
+function handleLogoUpload(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    logoDataURL = ev.target.result;
+    document.getElementById('logoStatus').textContent = '\u2714 Logo loaded: ' + file.name;
+    document.getElementById('logoStatus').className = 'logo-status loaded';
+    saveToStorage();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+// ── ROWS ─────────────────────────────────────────────────────
+function addRow() {
+  rows.push({box:'', location:'', description:'', colour:'#0d2137'});
+  renderTable();
+  saveToStorage();
+}
+
+function deleteRow(idx) {
+  rows.splice(idx, 1);
+  renderTable();
+  saveToStorage();
+}
+
+function clearAll() {
+  if (!confirm('Clear all rows?')) return;
+  rows = [];
+  addRow();
+}
+
+function updateRow(idx, field, val) {
+  rows[idx][field] = val;
+  saveToStorage();
+}
+
+function renderTable() {
+  var tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="num-cell">' + (i+1) + '</td>' +
+      '<td style="text-align:center"><input type="color" class="colour-pick" value="' + (r.colour||'#0d2137') + '" oninput="updateRow(' + i + ',\'colour\',this.value)" title="Header colour"></td>' +
+      '<td><input class="row-input" placeholder="e.g. BOX-01" value="' + esc(r.box) + '" oninput="updateRow(' + i + ',\'box\',this.value)"></td>' +
+      '<td><input class="row-input" placeholder="e.g. Stage Left" value="' + esc(r.location) + '" oninput="updateRow(' + i + ',\'location\',this.value)"></td>' +
+      '<td><input class="row-input" placeholder="e.g. Lasers &amp; cables" value="' + esc(r.description) + '" oninput="updateRow(' + i + ',\'description\',this.value)"></td>' +
+      '<td style="text-align:center"><button class="del-btn" onclick="deleteRow(' + i + ')">&#10005;</button></td>';
+    tbody.appendChild(tr);
+  }
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── STORAGE ───────────────────────────────────────────────────
+function saveToStorage() {
+  try {
+    localStorage.setItem('er_fc_rows', JSON.stringify(rows));
+    localStorage.setItem('er_fc_tour', document.getElementById('tourName').value);
+    if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
+  } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    var r = localStorage.getItem('er_fc_rows');
+    if (r) rows = JSON.parse(r);
+    var t = localStorage.getItem('er_fc_tour');
+    if (t) document.getElementById('tourName').value = t;
+    var l = localStorage.getItem('er_fc_logo');
+    if (l) {
+      logoDataURL = l;
+      document.getElementById('logoStatus').textContent = '\u2714 Logo loaded';
+      document.getElementById('logoStatus').className = 'logo-status loaded';
+    }
+  } catch(e) {}
+}
+
+function saveTour() { saveToStorage(); }
+
+// ── PRINT ─────────────────────────────────────────────────────
+function printLabels() {
+  var tourName = document.getElementById('tourName').value.trim() || 'ER Productions';
+  var validRows = rows.filter(function(r) { return r.box || r.location || r.description; });
+
+  if (!validRows.length) {
+    alert('Please fill in at least one row before printing.');
+    return;
+  }
+
+  // Avery 5126: US Letter, 1 col x 2 rows, 8.5" x 5.5" each
+  // Margins: top 0", left 0"
+  var labelsHtml = '';
+  for (var i = 0; i < validRows.length; i++) {
+    var r = validRows[i];
+    var logoHtml = logoDataURL ? '<img src="' + logoDataURL + '" style="height:36px;max-width:120px;object-fit:contain">' : '';
+    labelsHtml +=
+      '<div class="label">' +
+        '<div class="label-hdr" style="background:' + (r.colour||'#0d2137') + '">' +
+          logoHtml +
+          '<div class="tour-name">' + tourName + '</div>' +
+          '<div class="box-num">' + (r.box || '') + '</div>' +
+        '</div>' +
+        '<div class="label-body">' +
+          '<div class="label-field">' +
+            '<div class="field-key">LOCATION</div>' +
+            '<div class="field-val">' + (r.location || '\u2014') + '</div>' +
+          '</div>' +
+          '<div class="label-field">' +
+            '<div class="field-key">DESCRIPTION</div>' +
+            '<div class="field-val desc">' + (r.description || '\u2014') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="label-ftr">' +
+          '<div class="ftr-dot"></div><div class="ftr-dot"></div><div class="ftr-dot"></div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  var css =
+    '* { box-sizing:border-box; margin:0; padding:0; }' +
+    'body { font-family:Arial,sans-serif; background:white; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    '@page { size:8.5in 11in; margin:0; }' +
+    '.label { width:8.5in; height:5.5in; overflow:hidden; display:flex; flex-direction:column; border-bottom:1px dashed #ccc; page-break-inside:avoid; }' +
+    '.label-hdr { color:white; padding:18pt 24pt; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }' +
+    '.tour-name { font-size:18pt; font-weight:700; letter-spacing:1px; flex:1; text-align:center; }' +
+    '.box-num { font-size:28pt; font-weight:900; letter-spacing:2px; min-width:120pt; text-align:right; }' +
+    '.label-body { flex:1; display:grid; grid-template-columns:1fr 2fr; gap:0; }' +
+    '.label-field { padding:24pt 28pt; border-right:1px solid #eee; display:flex; flex-direction:column; justify-content:center; }' +
+    '.label-field:last-child { border-right:none; }' +
+    '.field-key { font-size:9pt; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8pt; }' +
+    '.field-val { font-size:26pt; font-weight:700; color:#0d2137; line-height:1.2; }' +
+    '.field-val.desc { font-size:20pt; }' +
+    '.label-ftr { background:#f4f6f9; padding:6pt 24pt; display:flex; align-items:center; gap:6pt; border-top:1px solid #eee; flex-shrink:0; }' +
+    '.ftr-dot { width:6pt; height:6pt; border-radius:50%; background:#1f4e79; }' +
+    '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
+    '@media print { .no-print { display:none; } }';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flight Case Labels</title><style>' + css + '</style></head><body>' +
+    labelsHtml +
+    '<div class="no-print">' +
+    '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>' +
+    '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#0d2137;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>' +
+    '</div></body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+</script>
+</body>
+</html>

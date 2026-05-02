@@ -194,6 +194,9 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
         <button onclick="openEquipmentLabels();closeLabelMenu()">Avery 6737 &nbsp;<small>A4 &bull; 3&times;13 &bull; 38.1&times;21.2mm &bull; Equipment labels</small></button>
       </div>
     </div>
+    <button class="save-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
+    <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+    <button class="save-btn" onclick="window.open('flightcase.html','_blank')">&#128230; Case Labels</button>
     <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
     <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
@@ -266,6 +269,7 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 </div>
 
 <script>
+var logoDataURL = null; // Uploaded logo stored as base64
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLOESPjkJsi9GFUgxV2a0qCTPHt3sgcJmLApN3o7rZkN1E2wy9fs4SnUH2mTFcxREt/exec';
 
 var INVENTORY = [];
@@ -772,6 +776,39 @@ function closeHelp() {
   document.getElementById('helpOverlay').classList.remove('open');
 }
 
+// ── LOGO UPLOAD ──────────────────────────────────────────────
+function triggerLogoUpload() {
+  document.getElementById('logoInput').click();
+}
+
+function handleLogoUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    logoDataURL = e.target.result;
+    var btn = document.querySelector('.save-btn');
+    // Visual confirmation on the Logo button
+    var logoBtns = document.querySelectorAll('.save-btn');
+    for (var i = 0; i < logoBtns.length; i++) {
+      if (logoBtns[i].textContent.indexOf('Logo') >= 0) {
+        logoBtns[i].textContent = '\u2714 Logo';
+        logoBtns[i].style.color = '#52c875';
+        break;
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function getLogoHtml(height, align) {
+  if (!logoDataURL) return '';
+  var h = height || '28px';
+  var a = align || 'left';
+  return '<img src="' + logoDataURL + '" style="height:' + h + ';max-width:80px;object-fit:contain;display:block;margin:' + (a === 'center' ? '0 auto' : '0') + '">';
+}
+
 function openLabels(labelSize) {
   if (!labelSize) labelSize = '5163';
   var cfg = SHEETS[activeSheet];
@@ -810,6 +847,7 @@ function openLabels(labelSize) {
       wayRowsHtml += '<tr><td class="way-num" style="color:' + phColors[wph] + '">' + bankLetter + w + '</td><td class="way-content">' + contentHtml + '</td></tr>';
     }
     labelsHtml += '<div class="label"><div class="lbl-hdr" style="background:' + bgColor + '">'
+      + (logoDataURL ? '<img src="' + logoDataURL + '" style="height:18px;max-width:36px;object-fit:contain;flex-shrink:0;margin-right:4px">' : '')
       + '<span class="lbl-bank">BANK ' + bankLetter + '</span>'
       + '<span class="lbl-distro">' + activeSheet + '</span>'
       + '<span class="lbl-region">' + regionStr + '</span>'
@@ -896,6 +934,7 @@ function getShowState() {
     region: region,
     limits: limits,
     distroData: distroData,
+    logoDataURL: logoDataURL || null,
     savedAt: new Date().toISOString()
   };
 }
@@ -909,6 +948,17 @@ function applyShowState(state) {
   region = state.region || region;
   limits = state.limits || limits;
   distroData = state.distroData || distroData;
+  if (state.logoDataURL) {
+    logoDataURL = state.logoDataURL;
+    var logoBtns = document.querySelectorAll('.save-btn');
+    for (var i = 0; i < logoBtns.length; i++) {
+      if (logoBtns[i].textContent.indexOf('Logo') >= 0) {
+        logoBtns[i].textContent = '\u2714 Logo';
+        logoBtns[i].style.color = '#52c875';
+        break;
+      }
+    }
+  }
   // Sync region buttons
   document.getElementById('btnUS').classList.toggle('active', region === 'US');
   document.getElementById('btnROW').classList.toggle('active', region === 'ROW');
@@ -1122,6 +1172,7 @@ function openEquipmentLabels() {
   for (var li = 0; li < labelItems.length; li++) {
     var item = labelItems[li];
     labelsHtml += '<div class="eq-label">' +
+      (logoDataURL ? '<img src="' + logoDataURL + '" style="height:10px;max-width:30px;object-fit:contain;margin-bottom:1mm">' : '') +
       '<div class="eq-label-name">' + item.eq + '</div>' +
       (item.unitId ? '<div class="eq-label-row"><span class="eq-label-key">ID</span><span class="eq-label-val">' + item.unitId + '</span></div>' : '') +
       (item.placement ? '<div class="eq-label-row"><span class="eq-label-key">POS</span><span class="eq-label-val">' + item.placement + '</span></div>' : '') +
