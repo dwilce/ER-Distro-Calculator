@@ -101,9 +101,8 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <input type="number" class="tour-input" id="totalBoxes" placeholder="e.g. 24" min="1" style="width:80px" oninput="saveToStorage()">
     </div>
     <div class="logo-upload-wrap">
-      <button class="top-btn" onclick="document.getElementById('companyLogoInput').click()">&#127970; Company Logo</button>
-      <input type="file" id="companyLogoInput" accept="image/*" style="display:none" onchange="handleCompanyLogo(event)">
-      <span class="logo-status loaded" id="companyLogoStatus">✔ ER Productions (permanent)</span>
+      <button class="top-btn" onclick="refreshLogo()">&#8635; Refresh Logo</button>
+      <span class="logo-status loaded" id="companyLogoStatus">&#10004; ER Productions (permanent)</span>
     </div>
     <div class="logo-upload-wrap">
       <span class="logo-status" id="wmStatus">&#128444; Watermark: none</span>
@@ -140,6 +139,18 @@ window.addEventListener('DOMContentLoaded', function() {
 
 // ── LOGO ─────────────────────────────────────────────────────
 function triggerLogoUpload() { document.getElementById('logoInput').click(); }
+function refreshLogo() {
+  var l = localStorage.getItem('er_fc_logo');
+  if (l) {
+    logoDataURL = l;
+    var wmEl = document.getElementById('wmStatus');
+    if (wmEl) { wmEl.textContent = '\u2714 Watermark refreshed'; wmEl.className = 'logo-status loaded'; }
+  } else {
+    var wmEl = document.getElementById('wmStatus');
+    if (wmEl) { wmEl.textContent = '\u26a0 No watermark set on main app'; wmEl.className = 'logo-status'; }
+  }
+}
+
 function handleCompanyLogo(e) {
   var file = e.target.files[0];
   if (!file) return;
@@ -400,8 +411,8 @@ function printLabels() {
 
     // Top zone
     '.top-zone { height:33.33%; flex-shrink:0; display:flex; align-items:stretch; border-bottom:3px solid #111; position:relative; z-index:1; }' +
-    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; overflow:hidden; }' +
-    '.top-logo { width:100%; height:100%; object-fit:cover; display:block; }' +
+    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); flex-shrink:0; overflow:hidden; position:relative; }' +
+    '.top-logo { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; display:block; }' +
     '.tour-name { flex:1; display:flex; align-items:center; justify-content:center; color:white; text-align:center; padding:6pt 10pt; overflow:hidden; }' +
     '.tour-name span { font-weight:900; line-height:1.05; display:block; word-break:break-word; white-space:normal; text-align:center; }' +
 
