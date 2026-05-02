@@ -189,8 +189,9 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
     <div class="labels-drop-wrap">
       <button class="labels-btn" onclick="toggleLabelMenu()">&#128424; Labels &#9660;</button>
       <div class="labels-drop" id="labelDrop">
-        <button onclick="openLabels('5163');closeLabelMenu()">Avery 5163 &nbsp;<small>US Letter &bull; 2&times;5 &bull; 4&quot;&times;2&quot;</small></button>
-        <button onclick="openLabels('L7173');closeLabelMenu()">Avery L7173 &nbsp;<small>A4 &bull; 2&times;5 &bull; 99.1&times;57mm</small></button>
+        <button onclick="openLabels('5163');closeLabelMenu()">Avery 5163 &nbsp;<small>US Letter &bull; 2&times;5 &bull; 4&quot;&times;2&quot; &bull; Distro labels</small></button>
+        <button onclick="openLabels('L7173');closeLabelMenu()">Avery L7173 &nbsp;<small>A4 &bull; 2&times;5 &bull; 99.1&times;57mm &bull; Distro labels</small></button>
+        <button onclick="openEquipmentLabels();closeLabelMenu()">Avery 6737 &nbsp;<small>A4 &bull; 3&times;13 &bull; 38.1&times;21.2mm &bull; Equipment labels</small></button>
       </div>
     </div>
     <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
@@ -1079,6 +1080,74 @@ function openReport() {
     '<button onclick="window.print()" style="padding:9px 24px;border:none;border-radius:6px;background:#1f4e79;color:white;font-size:13px;font-weight:700;cursor:pointer">&#128438; Print</button>' +
     '</div>' +
     '</body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+
+function openEquipmentLabels() {
+  // Collect all assigned units across all distro sheets
+  var labelItems = [];
+  for (var sName in SHEETS) {
+    var cfg = SHEETS[sName];
+    var banks = cfg.banks, ways = cfg.ways;
+    for (var bi = 0; bi < banks.length; bi++) {
+      for (var w = 1; w <= ways; w++) {
+        for (var sr = 0; sr < 4; sr++) {
+          var slot = distroData[sName][bi][w][sr];
+          if (!slot) continue;
+          var units = slot.units || [{id:'', address:''}];
+          for (var ui = 0; ui < units.length; ui++) {
+            labelItems.push({
+              eq: slot.eq,
+              unitId: units[ui].id || '',
+              address: units[ui].address || ''
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (!labelItems.length) {
+    alert('No equipment assigned yet. Add equipment to the distro sheets first.');
+    return;
+  }
+
+  // Build label HTML
+  var labelsHtml = '';
+  for (var li = 0; li < labelItems.length; li++) {
+    var item = labelItems[li];
+    labelsHtml += '<div class="eq-label">' +
+      '<div class="eq-label-name">' + item.eq + '</div>' +
+      (item.unitId ? '<div class="eq-label-row"><span class="eq-label-key">ID</span><span class="eq-label-val">' + item.unitId + '</span></div>' : '') +
+      (item.address ? '<div class="eq-label-row"><span class="eq-label-key">ADDR</span><span class="eq-label-val">' + item.address + '</span></div>' : '') +
+    '</div>';
+  }
+
+  // Avery 6737: A4, 3x13, 38.1mm x 21.2mm
+  // Margins: top 10.7mm, left 9mm, col gap 2.5mm, row gap 0mm
+  var css = '* { box-sizing:border-box; margin:0; padding:0; }' +
+    'body { font-family:Arial,sans-serif; background:white; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    '@page { size:210mm 297mm; margin:0; }' +
+    '.page { padding:10.7mm 9mm 0 9mm; }' +
+    '.label-grid { display:grid; grid-template-columns:38.1mm 38.1mm 38.1mm; grid-template-rows:repeat(13,21.2mm); column-gap:2.5mm; row-gap:0; }' +
+    '.eq-label { width:38.1mm; height:21.2mm; overflow:hidden; border:0.5px solid #ddd; padding:2mm 2.5mm; display:flex; flex-direction:column; justify-content:center; gap:1mm; }' +
+    '.eq-label-name { font-weight:900; font-size:7.5pt; line-height:1.2; color:#0d2137; }' +
+    '.eq-label-row { display:flex; align-items:baseline; gap:1.5mm; }' +
+    '.eq-label-key { font-size:5.5pt; font-weight:700; color:#888; text-transform:uppercase; min-width:7mm; flex-shrink:0; }' +
+    '.eq-label-val { font-size:6.5pt; font-weight:600; color:#1a2535; }' +
+    '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
+    '@media print { .no-print { display:none; } }';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Equipment Labels \u2014 Avery 6737</title><style>' + css + '</style></head><body>' +
+    '<div class="page"><div class="label-grid">' + labelsHtml + '</div></div>' +
+    '<div class="no-print">' +
+    '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>' +
+    '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:5px;background:#1f4e79;color:white;font-size:13px;font-weight:700;cursor:pointer">Print Labels</button>' +
+    '</div></body></html>';
 
   var win = window.open('', '_blank');
   win.document.write(html);
