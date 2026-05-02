@@ -445,10 +445,14 @@ function printLabels() {
     '  }' +
     '  setTimeout(function(){' +
     '    document.querySelectorAll(".tour-name").forEach(function(box){' +
-    '      fitText(box, box.querySelector("span"), 0.95);' +
+    '      var span = box.querySelector("span");' +
+    '      if (span) { span.style.width = box.clientWidth - 20 + "px"; }' +
+    '      fitText(box, span, 0.95);' +
     '    });' +
     '    document.querySelectorAll(".desc-value").forEach(function(box){' +
-    '      fitText(box, box.querySelector("span"), 0.66);' +
+    '      var span = box.querySelector("span");' +
+    '      if (span) { span.style.width = box.clientWidth - 20 + "px"; span.style.whiteSpace = "normal"; }' +
+    '      fitText(box, span, 0.66);' +
     '    });' +
     '  }, 150);' +
     '});' +
