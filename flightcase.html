@@ -50,11 +50,18 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
 .row-input{width:100%;padding:6px 8px;border:1px solid transparent;border-radius:4px;font-size:13px;font-family:inherit;background:transparent;outline:none;color:var(--text)}
 .row-input:focus{border-color:var(--navy3);background:white}
 .row-input::placeholder{color:#ccc}
-.colour-pick{width:36px;height:28px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px;background:white}
 .del-btn{padding:4px 8px;border:none;background:none;color:#ccc;cursor:pointer;font-size:16px;border-radius:3px}
 .del-btn:hover{color:#921e2e;background:#fde0e3}
 .add-row-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border:2px dashed var(--border);border-radius:6px;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;justify-content:center}
 .add-row-btn:hover{border-color:var(--navy3);color:var(--navy3);background:var(--faint)}
+.swatch-wrap{position:relative;display:inline-block}
+.swatch-btn{width:32px;height:28px;border-radius:4px;border:2px solid #ccc;cursor:pointer;display:block}
+.swatch-btn:hover{border-color:#333}
+.swatch-panel{display:none;position:absolute;top:32px;left:50%;transform:translateX(-50%);background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:6px;z-index:500;width:112px}
+.swatch-panel.open{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.swatch-opt{width:22px;height:22px;border-radius:3px;border:1px solid rgba(0,0,0,.2);cursor:pointer}
+.swatch-opt:hover{transform:scale(1.2);border-color:#333}
+.swatch-opt.selected{border:2px solid #000}
 @media print{
   body,html{margin:0;padding:0;background:white}
   #topbar,.toolbar,.add-row-btn,.del-btn,.no-print{display:none!important}
@@ -156,15 +163,63 @@ function deleteRow(idx) {
 }
 
 function clearAll() {
-  if (!confirm('Clear all rows?')) return;
+  if (!confirm('Clear all rows and remove uploaded logo?')) return;
   rows = [];
+  logoDataURL = null;
+  document.getElementById('logoStatus').textContent = 'No logo uploaded';
+  document.getElementById('logoStatus').className = 'logo-status';
+  try { localStorage.removeItem('er_fc_logo'); } catch(e) {}
   addRow();
+  saveToStorage();
 }
 
 function updateRow(idx, field, val) {
   rows[idx][field] = val;
   saveToStorage();
 }
+
+var COLOURS = [
+  '#0d2137','#1f4e79','#2471a3','#155a8a',
+  '#7b2222','#c0392b','#922b21','#6e2f1a',
+  '#145a32','#1e8449','#117a65','#0e6655',
+  '#4a235a','#6c3483','#333333','#000000'
+];
+
+function swatchHtml(idx, selected) {
+  var btn = '<div class="swatch-btn" style="background:' + selected + '" onclick="toggleSwatch(' + idx + ',event)"></div>';
+  var opts = COLOURS.map(function(c) {
+    return '<div class="swatch-opt' + (c === selected ? ' selected' : '') + '" style="background:' + c + '" onclick="pickColour(' + idx + ',\'' + c + '\',event)" title="' + c + '"></div>';
+  }).join('');
+  return btn + '<div class="swatch-panel" id="sp' + idx + '">' + opts + '</div>';
+}
+
+function toggleSwatch(idx, e) {
+  e.stopPropagation();
+  var panel = document.getElementById('sp' + idx);
+  var isOpen = panel.classList.contains('open');
+  // Close all panels
+  document.querySelectorAll('.swatch-panel').forEach(function(p) { p.classList.remove('open'); });
+  if (!isOpen) panel.classList.add('open');
+}
+
+function pickColour(idx, colour, e) {
+  e.stopPropagation();
+  updateRow(idx, 'colour', colour);
+  // Update swatch button colour without full re-render
+  var wrap = document.getElementById('sw' + idx);
+  if (wrap) {
+    wrap.querySelector('.swatch-btn').style.background = colour;
+    wrap.querySelectorAll('.swatch-opt').forEach(function(o) {
+      o.classList.toggle('selected', o.title === colour);
+    });
+  }
+  document.getElementById('sp' + idx).classList.remove('open');
+}
+
+// Close swatches when clicking outside
+document.addEventListener('click', function() {
+  document.querySelectorAll('.swatch-panel').forEach(function(p) { p.classList.remove('open'); });
+});
 
 function renderTable() {
   var tbody = document.getElementById('tableBody');
@@ -174,7 +229,7 @@ function renderTable() {
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td class="num-cell">' + (i+1) + '</td>' +
-      '<td style="text-align:center"><input type="color" class="colour-pick" value="' + (r.colour||'#0d2137') + '" oninput="updateRow(' + i + ',\'colour\',this.value)" title="Header colour"></td>' +
+      '<td style="text-align:center"><div class="swatch-wrap" id="sw' + i + '">' + swatchHtml(i, r.colour||'#0d2137') + '</div></td>' +
       '<td><input class="row-input" placeholder="e.g. BOX-01" value="' + esc(r.box) + '" oninput="updateRow(' + i + ',\'box\',this.value)"></td>' +
       '<td><input class="row-input" placeholder="e.g. Stage Left" value="' + esc(r.location) + '" oninput="updateRow(' + i + ',\'location\',this.value)"></td>' +
       '<td><input class="row-input" placeholder="e.g. Lasers &amp; cables" value="' + esc(r.description) + '" oninput="updateRow(' + i + ',\'description\',this.value)"></td>' +
@@ -238,9 +293,10 @@ function printLabels() {
         '<div class="lbl-body">' +
           wmHtml +
 
-          // TOP THIRD: Tour name header (colour-coded)
-          '<div class="zone top-zone" style="background:' + hdrColor + ';border-bottom:3px solid #111">' +
-            '<div class="tour-name">' + tourName + '</div>' +
+          // TOP THIRD: Logo left 1/3, Tour name right 2/3
+          '<div class="zone top-zone" style="background:' + hdrColor + '">' +
+            (logoDataURL ? '<div class="top-logo-wrap"><img src="' + logoDataURL + '" class="top-logo"></div>' : '') +
+            '<div class="tour-name' + (logoDataURL ? '' : ' tour-name-full') + '">' + tourName + '</div>' +
           '</div>' +
 
           // MIDDLE THIRD: Description full width
@@ -272,25 +328,33 @@ function printLabels() {
     '@page { size:8.5in 11in; margin:0; }' +
     '.label { width:8.5in; height:5.5in; page-break-inside:avoid; border-bottom:2px dashed #999; }' +
     '.lbl-body { width:100%; height:100%; display:flex; flex-direction:column; border:3px solid #111; position:relative; overflow:hidden; }' +
-    '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:70%; max-height:80%; object-fit:contain; opacity:0.07; pointer-events:none; z-index:0; }' +
 
-    // Zones
-    '.zone { flex:1; display:flex; align-items:center; padding:10pt 18pt; gap:14pt; position:relative; z-index:1; }' +
-    '.top-zone { border-bottom:3px solid #111; justify-content:space-between; }' +
-    '.mid-zone { flex-direction:column; align-items:flex-start; justify-content:center; border-bottom:3px solid #111; padding:8pt 18pt; }' +
-    '.bot-zone { padding:0; }' +
-    '.bot-cell { flex:1; display:flex; flex-direction:column; justify-content:center; padding:8pt 18pt; }' +
+    // Watermark 25% opacity, full label
+    '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:65%; max-height:80%; object-fit:contain; opacity:0.25; pointer-events:none; z-index:0; }' +
 
-    // Tour name
-    '.tour-name { font-size:28pt; font-weight:900; color:white; letter-spacing:1px; flex:1; text-align:center; }' +
+    // Top zone: logo 1/3 left, tour name 2/3 right
+    '.zone { position:relative; z-index:1; }' +
+    '.top-zone { flex:1; display:flex; align-items:stretch; border-bottom:3px solid #111; }' +
+    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; padding:8pt; flex-shrink:0; }' +
+    '.top-logo { max-width:100%; max-height:100%; object-fit:contain; }' +
+    '.tour-name { flex:1; display:flex; align-items:center; justify-content:center; font-size:36pt; font-weight:900; color:white; letter-spacing:1px; text-align:center; padding:8pt 16pt; }' +
+    '.tour-name-full { width:100%; }' +
 
-    // Labels + values
-    '.zone-label { font-size:7pt; font-weight:900; color:#666; text-transform:uppercase; letter-spacing:2px; margin-bottom:4pt; }' +
-    '.top-zone .zone-label { color:rgba(255,255,255,0.7); }' +
-    '.zone-value { font-size:26pt; font-weight:800; color:#111; line-height:1.1; }' +
-    '.desc-value { font-size:22pt; }' +
-    '.box-value { font-size:30pt; color:#0d2137; }' +
-    '.of-total { font-size:12pt; font-weight:600; color:#666; margin-top:2pt; }' +
+    // Mid zone: description
+    '.mid-zone { flex:1; border-bottom:3px solid #111; display:flex; flex-direction:column; justify-content:flex-start; padding:6pt 14pt 8pt; }' +
+
+    // Bot zone
+    '.bot-zone { flex:1; display:flex; }' +
+    '.bot-cell { flex:1; display:flex; flex-direction:column; justify-content:flex-start; padding:6pt 14pt; }' +
+
+    // Labels top-left of each box
+    '.zone-label { font-size:7pt; font-weight:900; color:#555; text-transform:uppercase; letter-spacing:2px; margin-bottom:4pt; align-self:flex-start; }' +
+
+    // Values — as big as possible, centered
+    '.zone-value { font-size:34pt; font-weight:900; color:#111; line-height:1.05; text-align:center; flex:1; display:flex; align-items:center; justify-content:center; width:100%; }' +
+    '.desc-value { font-size:28pt; }' +
+    '.box-value { font-size:40pt; flex-direction:column; gap:2pt; }' +
+    '.of-total { font-size:12pt; font-weight:600; color:#666; }' +
 
     '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
     '@media print { .no-print { display:none; } }';
@@ -308,6 +372,7 @@ function printLabels() {
   win.document.close();
   win.focus();
 }
+
 
 
 </script>
