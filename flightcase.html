@@ -19,6 +19,8 @@ body{display:grid;grid-template-rows:56px 1fr;min-height:100vh}
 .logo-sub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:2px}
 .top-controls{display:flex;align-items:center;gap:10px}
 .top-btn{padding:6px 14px;font-size:11px;font-weight:600;border-radius:4px;cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.refresh-btn{padding:6px 14px;font-size:11px;font-weight:700;border-radius:4px;cursor:pointer;border:1px solid #f39c12;background:#f39c12;color:#0d2137}
+.refresh-btn:hover{background:#e67e22;border-color:#e67e22}
 .top-btn:hover{background:rgba(255,255,255,.22);color:white}
 .top-btn.primary{background:var(--navy3);border-color:var(--navy3);color:white}
 .top-btn.primary:hover{background:#2471a3}
@@ -80,7 +82,7 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
     </div>
   </a>
   <div class="top-controls">
-    <button class="top-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
+    <button class="refresh-btn" onclick="refreshLogo()">&#8635; Refresh Logo</button>
     <button class="top-btn" onclick="addRow()">&#43; Add Row</button>
     <button class="top-btn" onclick="clearAll()">&#128465; Clear All</button>
     <button class="top-btn danger" onclick="printLabels()">&#128424; Print Labels</button>
@@ -101,11 +103,8 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <input type="number" class="tour-input" id="totalBoxes" placeholder="e.g. 24" min="1" style="width:80px" oninput="saveToStorage()">
     </div>
     <div class="logo-upload-wrap">
-      <button class="top-btn" onclick="refreshLogo()">&#8635; Refresh Logo</button>
-      <span class="logo-status loaded" id="companyLogoStatus">&#10004; ER Productions (permanent)</span>
-    </div>
-    <div class="logo-upload-wrap">
-      <span class="logo-status" id="wmStatus">&#128444; Watermark: none</span>
+      <span class="logo-status loaded" id="companyLogoStatus">&#10004; ER Productions</span>
+      <span class="logo-status" id="wmStatus"></span>
     </div>
 
   <table id="caseTable">
@@ -411,8 +410,9 @@ function printLabels() {
 
     // Top zone
     '.top-zone { height:33.33%; flex-shrink:0; display:flex; align-items:stretch; border-bottom:3px solid #111; position:relative; z-index:1; }' +
-    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); flex-shrink:0; overflow:hidden; position:relative; }' +
-    '.top-logo { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; display:block; }' +
+    '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); flex-shrink:0; display:block; overflow:hidden; }' +
+    '.top-logo { width:100%; height:100%; object-fit:cover; display:block; }' +
+
     '.tour-name { flex:1; display:flex; align-items:center; justify-content:center; color:white; text-align:center; padding:6pt 10pt; overflow:hidden; }' +
     '.tour-name span { font-weight:900; line-height:1.05; display:block; word-break:break-word; white-space:normal; text-align:center; }' +
 
