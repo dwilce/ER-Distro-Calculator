@@ -272,7 +272,7 @@ function swatchHtml(idx, row) {
 }
 
 function swatchPreviewStyle(sty, col1, col2) {
-  if (sty === 'split') return 'linear-gradient(to right,' + col1 + ' 50%,' + col2 + ' 50%)';
+  if (sty === 'split') return 'linear-gradient(to right,' + col1 + ' 0,' + col1 + ' 50%,' + col2 + ' 50%,' + col2 + ' 100%)';
   if (sty === 'chevron') return 'repeating-linear-gradient(105deg,' + col1 + ' 0px,' + col1 + ' 20px,' + col2 + ' 20px,' + col2 + ' 40px)';
   return col1;
 }
@@ -422,7 +422,7 @@ function printLabels() {
     var hdrColor2 = r.colour2 || '#c0392b';
     var hdrStyle = r.style || 'solid';
     var hdrBg;
-    if (hdrStyle === 'split') hdrBg = 'linear-gradient(to right,' + hdrColor + ' 50%,' + hdrColor2 + ' 50%)';
+    if (hdrStyle === 'split') hdrBg = 'linear-gradient(to right,' + hdrColor + ' 0,' + hdrColor + ' 50%,' + hdrColor2 + ' 50%,' + hdrColor2 + ' 100%)';
     else if (hdrStyle === 'chevron') hdrBg = 'repeating-linear-gradient(105deg,' + hdrColor + ' 0,' + hdrColor + ' 30pt,' + hdrColor2 + ' 30pt,' + hdrColor2 + ' 60pt)';
     else hdrBg = hdrColor;
     // Always read latest watermark from localStorage in case it was set by index.html
