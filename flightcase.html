@@ -421,6 +421,7 @@ function printLabels() {
   }
 
   var labelsHtml = '';
+  var pageHtml = '';
   for (var i = 0; i < validRows.length; i++) {
     var r = validRows[i];
     var hdrColor = r.colour || '#0d2137';
@@ -440,7 +441,7 @@ function printLabels() {
       ? '<div class="top-logo-wrap"><img src="' + companyLogoURL + '" class="top-logo"></div>'
       : '<div class="top-logo-wrap top-logo-empty"></div>';
 
-    labelsHtml +=
+    var labelHtml =
       '<div class="label">' +
         '<div class="lbl-trim">' +
         '<div class="lbl-body">' +
@@ -476,16 +477,29 @@ function printLabels() {
         '</div>' +
         '</div>' +
       '</div>';
+
+    pageHtml += labelHtml;
+
+    // Every 2 labels, close the page and start a new one
+    if ((i + 1) % 2 === 0 || i === validRows.length - 1) {
+      // If odd number on last page, add empty spacer
+      if (i === validRows.length - 1 && validRows.length % 2 !== 0) {
+        pageHtml += '<div class="label" style="visibility:hidden"></div>';
+      }
+      labelsHtml += '<div class="page">' + pageHtml + '</div>';
+      pageHtml = '';
+    }
   }
 
   var css =
     '* { box-sizing:border-box; margin:0; padding:0; }' +
     'body { font-family:Arial,sans-serif; background:white; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
     '@page { size:210mm 297mm; margin:0; }' +
-    'body { display:flex; flex-direction:column; align-items:center; padding:21.5mm 0; gap:0; }' +
-    '.label { width:177mm; height:127mm; page-break-inside:avoid; margin-bottom:0; flex-shrink:0; }' +
-    '.label:nth-child(2) { margin-top:0; }' +
-    '.lbl-trim { width:177mm; height:127mm; border:1.5px solid #000; border-radius:5mm; overflow:hidden; position:relative; }' +
+    'body { margin:0; padding:0; }' +
+    '.page { width:210mm; height:297mm; padding:21.5mm 16.5mm; box-sizing:border-box; page-break-after:always; display:flex; flex-direction:column; justify-content:space-between; }' +
+    '.page:last-child { page-break-after:auto; }' +
+    '.label { width:177mm; height:127mm; display:block; flex-shrink:0; }' +
+    '.lbl-trim { width:177mm; height:127mm; border:1.5px solid #000; border-radius:5mm; overflow:hidden; position:relative; display:flex; flex-direction:column; }' +
     '.lbl-body { width:100%; height:100%; display:flex; flex-direction:column; position:relative; overflow:hidden; }' +
 
     // Watermark
