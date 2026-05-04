@@ -149,10 +149,13 @@ function refreshLogo() {
   if (l) {
     logoDataURL = l;
     var wmEl = document.getElementById('wmStatus');
-    if (wmEl) { wmEl.textContent = '\u2714 Watermark refreshed'; wmEl.className = 'logo-status loaded'; }
+    if (wmEl) { wmEl.textContent = '\u2714 Watermark ready'; wmEl.className = 'logo-status loaded'; }
+    // Flash the button green
+    var btn = document.querySelector('.refresh-btn');
+    if (btn) { btn.textContent = '\u2714 Logo loaded'; setTimeout(function(){ btn.textContent = '\u8635 Refresh Logo'; }, 2000); }
   } else {
     var wmEl = document.getElementById('wmStatus');
-    if (wmEl) { wmEl.textContent = '\u26a0 No watermark set on main app'; wmEl.className = 'logo-status'; }
+    if (wmEl) { wmEl.textContent = '\u26a0 No logo on main app yet'; wmEl.className = 'logo-status'; }
   }
 }
 

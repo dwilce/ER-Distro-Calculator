@@ -855,6 +855,8 @@ function handleLogoUpload(event) {
   var reader = new FileReader();
   reader.onload = function(e) {
     logoDataURL = e.target.result;
+    // Save immediately so flight case page can read it via Refresh Logo
+    try { localStorage.setItem('er_fc_logo', logoDataURL); } catch(ex) {}
     var btn = document.querySelector('.save-btn');
     // Visual confirmation on the Logo button
     var logoBtns = document.querySelectorAll('.save-btn');
