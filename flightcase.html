@@ -60,7 +60,13 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
 .swatch-btn{width:32px;height:28px;border-radius:4px;border:2px solid #ccc;cursor:pointer;display:block}
 .swatch-btn:hover{border-color:#333}
 .swatch-panel{display:none;position:fixed;background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.25);padding:6px;z-index:9999;width:112px}
-.swatch-panel.open{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.swatch-panel.open{display:block;width:160px}
+.swatch-style-row{display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #eee}
+.style-opt{flex:1;height:22px;border-radius:3px;border:2px solid #ccc;cursor:pointer}
+.style-opt:hover,.style-opt.sel{border-color:#333;border-width:2px}
+.style-opt.sel{border-color:#000}
+.swatch-colour-label{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin:4px 0 3px}
+.swatch-panel .swatch-opts{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
 .swatch-opt{width:22px;height:22px;border-radius:3px;border:1px solid rgba(0,0,0,.2);cursor:pointer}
 .swatch-opt:hover{transform:scale(1.2);border-color:#333}
 .swatch-opt.selected{border:2px solid #000}
@@ -182,7 +188,7 @@ function handleLogoUpload(e) {
 function addRow() {
   var nextNum = rows.length + 1;
   var padded = nextNum < 10 ? '0' + nextNum : '' + nextNum;
-  rows.push({box: padded, location:'', description:'', colour:'#0d2137'});
+  rows.push({box: padded, location:'', description:'', style:'solid', colour:'#0d2137', colour2:'#c0392b'});
   renderTable();
   updateTotalBoxes();
   saveToStorage();
@@ -234,12 +240,41 @@ var COLOURS = [
   '#3f51b5','#9c27b0','#ffffff','#000000'
 ];
 
-function swatchHtml(idx, selected) {
-  var btn = '<div class="swatch-btn" style="background:' + selected + '" onclick="toggleSwatch(' + idx + ',event)"></div>';
-  var opts = COLOURS.map(function(c) {
-    return '<div class="swatch-opt' + (c === selected ? ' selected' : '') + '" style="background:' + c + '" onclick="pickColour(' + idx + ',\'' + c + '\',event)" title="' + c + '"></div>';
+function swatchHtml(idx, row) {
+  var col1 = row.colour || '#0d2137';
+  var col2 = row.colour2 || '#c0392b';
+  var sty = row.style || 'solid';
+  // Preview button shows current style
+  var previewStyle = swatchPreviewStyle(sty, col1, col2);
+  var btn = '<div class="swatch-btn" style="background:' + previewStyle + '" onclick="toggleSwatch(' + idx + ',event)"></div>';
+  
+  // Style options row
+  var styleOpts = 
+    '<div class="swatch-style-row">' +
+    '<div class="style-opt' + (sty==='solid'?' sel':'') + '" onclick="pickStyle(' + idx + ',\'solid\',event)" title="Solid" style="background:' + col1 + '"></div>' +
+    '<div class="style-opt' + (sty==='split'?' sel':'') + '" onclick="pickStyle(' + idx + ',\'split\',event)" title="Split" style="background:linear-gradient(to right,' + col1 + ' 50%,' + col2 + ' 50%)"></div>' +
+    '<div class="style-opt' + (sty==='chevron'?' sel':'') + '" onclick="pickStyle(' + idx + ',\'chevron\',event)" title="Chevron" style="background:linear-gradient(105deg,' + col1 + ' 45%,' + col2 + ' 45%)"></div>' +
+    '</div>';
+
+  // Colour 1 label
+  var c1label = '<div class="swatch-colour-label">Colour 1</div>';
+  var opts1 = COLOURS.map(function(c) {
+    return '<div class="swatch-opt' + (c===col1?' selected':'') + '" style="background:' + c + '" onclick="pickColour(' + idx + ',\'' + c + '\',1,event)" title="' + c + '"></div>';
   }).join('');
-  return btn + '<div class="swatch-panel" id="sp' + idx + '">' + opts + '</div>';
+
+  // Colour 2 label (only relevant for split/chevron)
+  var c2label = '<div class="swatch-colour-label">Colour 2</div>';
+  var opts2 = COLOURS.map(function(c) {
+    return '<div class="swatch-opt' + (c===col2?' selected':'') + '" style="background:' + c + '" onclick="pickColour(' + idx + ',\'' + c + '\',2,event)" title="' + c + '"></div>';
+  }).join('');
+
+  return btn + '<div class="swatch-panel" id="sp' + idx + '">' + styleOpts + c1label + '<div class="swatch-opts">' + opts1 + '</div>' + c2label + '<div class="swatch-opts">' + opts2 + '</div></div>';
+}
+
+function swatchPreviewStyle(sty, col1, col2) {
+  if (sty === 'split') return 'linear-gradient(to right,' + col1 + ' 50%,' + col2 + ' 50%)';
+  if (sty === 'chevron') return 'linear-gradient(105deg,' + col1 + ' 45%,' + col2 + ' 45%)';
+  return col1;
 }
 
 function toggleSwatch(idx, e) {
@@ -256,18 +291,55 @@ function toggleSwatch(idx, e) {
   }
 }
 
-function pickColour(idx, colour, e) {
+function pickColour(idx, colour, colNum, e) {
   e.stopPropagation();
-  updateRow(idx, 'colour', colour);
-  // Update swatch button colour without full re-render
+  var field = colNum === 2 ? 'colour2' : 'colour';
+  updateRow(idx, field, colour);
+  // Refresh preview button
   var wrap = document.getElementById('sw' + idx);
   if (wrap) {
-    wrap.querySelector('.swatch-btn').style.background = colour;
-    wrap.querySelectorAll('.swatch-opt').forEach(function(o) {
-      o.classList.toggle('selected', o.title === colour);
-    });
+    var row = rows[idx];
+    var preview = swatchPreviewStyle(row.style||'solid', row.colour||'#0d2137', row.colour2||'#c0392b');
+    wrap.querySelector('.swatch-btn').style.background = preview.replace('background:','');
+    // Update selected dots for this colour group
+    var allOpts = wrap.querySelectorAll('.swatch-opt');
+    // Just re-render the panel contents
+    var newHtml = swatchHtml(idx, row);
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = newHtml;
+    var newPanel = tempDiv.querySelector('.swatch-panel');
+    var oldPanel = document.getElementById('sp' + idx);
+    if (newPanel && oldPanel) {
+      newPanel.classList.add('open');
+      var rect = oldPanel.getBoundingClientRect();
+      oldPanel.parentNode.replaceChild(newPanel, oldPanel);
+      newPanel.style.top = rect.top + 'px';
+      newPanel.style.left = rect.left + 'px';
+    }
   }
-  document.getElementById('sp' + idx).classList.remove('open');
+}
+
+function pickStyle(idx, style, e) {
+  e.stopPropagation();
+  updateRow(idx, 'style', style);
+  var wrap = document.getElementById('sw' + idx);
+  if (wrap) {
+    var row = rows[idx];
+    var preview = swatchPreviewStyle(row.style||'solid', row.colour||'#0d2137', row.colour2||'#c0392b');
+    wrap.querySelector('.swatch-btn').style.background = preview.replace('background:','');
+    var newHtml = swatchHtml(idx, row);
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = newHtml;
+    var newPanel = tempDiv.querySelector('.swatch-panel');
+    var oldPanel = document.getElementById('sp' + idx);
+    if (newPanel && oldPanel) {
+      newPanel.classList.add('open');
+      var rect = oldPanel.getBoundingClientRect();
+      oldPanel.parentNode.replaceChild(newPanel, oldPanel);
+      newPanel.style.top = rect.top + 'px';
+      newPanel.style.left = rect.left + 'px';
+    }
+  }
 }
 
 // Close swatches when clicking outside
@@ -283,7 +355,7 @@ function renderTable() {
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td class="num-cell">' + (i+1) + '</td>' +
-      '<td style="text-align:center"><div class="swatch-wrap" id="sw' + i + '">' + swatchHtml(i, r.colour||'#0d2137') + '</div></td>' +
+      '<td style="text-align:center"><div class="swatch-wrap" id="sw' + i + '">' + swatchHtml(i, r) + '</div></td>' +
       '<td><input class="row-input" placeholder="e.g. BOX-01" value="' + esc(r.box) + '" oninput="updateRow(' + i + ',\'box\',this.value)"></td>' +
       '<td><input class="row-input" placeholder="e.g. Stage Left" value="' + esc(r.location) + '" oninput="updateRow(' + i + ',\'location\',this.value)"></td>' +
       '<td><input class="row-input" placeholder="e.g. Lasers &amp; cables" value="' + esc(r.description) + '" oninput="updateRow(' + i + ',\'description\',this.value)"></td>' +
@@ -347,6 +419,12 @@ function printLabels() {
   for (var i = 0; i < validRows.length; i++) {
     var r = validRows[i];
     var hdrColor = r.colour || '#0d2137';
+    var hdrColor2 = r.colour2 || '#c0392b';
+    var hdrStyle = r.style || 'solid';
+    var hdrBg;
+    if (hdrStyle === 'split') hdrBg = 'linear-gradient(to right,' + hdrColor + ' 50%,' + hdrColor2 + ' 50%)';
+    else if (hdrStyle === 'chevron') hdrBg = 'linear-gradient(105deg,' + hdrColor + ' 45%,' + hdrColor2 + ' 45%)';
+    else hdrBg = hdrColor;
     // Always read latest watermark from localStorage in case it was set by index.html
     var currentLogo = logoDataURL || localStorage.getItem('er_fc_logo');
     var wmHtml = currentLogo ? '<img src="' + currentLogo + '" class="watermark">' : '';
@@ -361,7 +439,7 @@ function printLabels() {
         '<div class="lbl-trim">' +
         '<div class="lbl-body">' +
           // TOP THIRD: company logo left 1/3, tour name right 2/3
-          '<div class="top-zone" style="background:' + hdrColor + '">' +
+          '<div class="top-zone" style="background:' + hdrBg + '">' +
             companyHtml +
             '<div class="tour-name"><span id="tn' + i + '">' + tourName + '</span></div>' +
           '</div>' +
@@ -409,7 +487,7 @@ function printLabels() {
     '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:70%; max-height:80%; object-fit:contain; opacity:0.25; pointer-events:none; z-index:0; }' +
 
     // Top zone
-    '.top-zone { height:33.33%; flex-shrink:0; display:flex; align-items:stretch; border-bottom:3px solid #111; position:relative; z-index:1; }' +
+    '.top-zone { height:33.33%; flex-shrink:0; display:flex; align-items:stretch; border-bottom:3px solid #111; position:relative; z-index:1; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
     '.top-logo-wrap { width:33%; border-right:3px solid rgba(255,255,255,.3); flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4pt; background:#000; }' +
     '.top-logo { max-width:100%; max-height:100%; object-fit:contain; display:block; }' +
 
