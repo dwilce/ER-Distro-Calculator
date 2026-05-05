@@ -1225,7 +1225,7 @@ function renderPdfItems() {
   }
 
   pdfItems.forEach(function(item, idx) {
-    var done = item.remaining <= 0;
+    var done = item.qty > 0 && item.remaining <= 0;
     var div = document.createElement('div');
     div.className = 'pdf-item' + (done ? ' pdf-done' : '');
     div.id = 'pdfItem' + idx;
