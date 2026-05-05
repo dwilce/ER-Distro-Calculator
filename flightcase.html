@@ -221,12 +221,14 @@ function clearAll() {
   if (!confirm('Clear all rows and remove uploaded logo?')) return;
   rows = [];
   logoDataURL = null;
+  document.getElementById('tourName').value = '';
+  document.getElementById('totalBoxes').value = '';
   // Restore permanent embedded logo
   companyLogoURL = document.querySelector('script').textContent.match(/var companyLogoURL = "([^"]+)"/)?.[1] || null;
   document.getElementById('companyLogoStatus').textContent = '\u2714 ER Productions (permanent)';
   document.getElementById('companyLogoStatus').className = 'logo-status loaded';
   try { localStorage.removeItem('er_fc_company'); } catch(e) {}
-  try { localStorage.removeItem('er_fc_logo'); localStorage.removeItem('er_fc_company'); } catch(e) {}
+  try { localStorage.removeItem('er_fc_logo'); localStorage.removeItem('er_fc_company'); localStorage.removeItem('er_fc_tour'); localStorage.removeItem('er_fc_total'); } catch(e) {}
   addRow();
   saveToStorage();
 }
