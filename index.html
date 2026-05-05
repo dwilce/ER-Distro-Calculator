@@ -916,17 +916,27 @@ function parsePdf(typedArr) {
     var pagePromises = [];
     for (var p = 1; p <= pdf.numPages; p++) {
       pagePromises.push(pdf.getPage(p).then(function(page) {
-        return page.getTextContent().then(function(tc) {
-          // Preserve column structure by grouping items by Y position
-          var byY = {};
+        return page.getTextContent({normalizeWhitespace: true}).then(function(tc) {
+          // Group text items by approximate Y position (within 3px tolerance)
+          // to reconstruct logical lines from CAD/PDF text fragments
+          var rows = {};
           tc.items.forEach(function(item) {
-            var y = Math.round(item.transform[5]);
-            if (!byY[y]) byY[y] = [];
-            byY[y].push(item.str);
+            if (!item.str || !item.str.trim()) return;
+            // Round Y to nearest 3px bucket to merge nearby fragments
+            var y = Math.round(item.transform[5] / 3) * 3;
+            if (!rows[y]) rows[y] = [];
+            rows[y].push({ x: item.transform[4], str: item.str.trim() });
           });
-          return Object.keys(byY).sort(function(a,b){return b-a;}).map(function(y){
-            return byY[y].join('	');
-          }).join('\n');
+          // Sort each row by X, join with spaces, sort rows top-to-bottom
+          return Object.keys(rows)
+            .sort(function(a,b){ return b - a; })
+            .map(function(y) {
+              return rows[y]
+                .sort(function(a,b){ return a.x - b.x; })
+                .map(function(i){ return i.str; })
+                .join(' ');
+            })
+            .join('\n');
         });
       }));
     }
@@ -938,64 +948,124 @@ function parsePdf(typedArr) {
   });
 }
 
+// Stop-words that should never be treated as equipment names
+var STOP_WORDS = {
+  'the':1,'and':1,'for':1,'with':1,'from':1,'this':1,'that':1,'are':1,'was':1,'not':1,
+  'but':1,'have':1,'had':1,'its':1,'all':1,'one':1,'two':1,'any':1,'may':1,'can':1,
+  'will':1,'has':1,'each':1,'into':1,'also':1,'been':1,'they':1,'than':1,'per':1,
+  'inc':1,'ltd':1,'llc':1,'uk':1,'us':1,'eu':1,'of':1,'or':1,'to':1,'in':1,'on':1,
+  'at':1,'by':1,'as':1,'an':1,'if':1,'be':1,'we':1,'it':1,'is':1,'no':1,'so':1,
+  'do':1,'up':1,'go':1,'ok':1,'ref':1,'see':1,'qty':1,'total':1,'page':1,'date':1,
+  'item':1,'type':1,'unit':1,'note':1,'notes':1,'spec':1,'specs':1,'model':1,
+  'description':1,'name':1,'none':1,'tbc':1,'tba':1,'n/a':1,'na':1
+};
+
+// Junk patterns to reject entire lines
+var JUNK_PATTERNS = [
+  /^[\d\s\.\-\/\,\(\)\*\+\=\:\;\'\"]+$/,  // pure numbers/punctuation
+  /^\d+["'°]?$/,                            // dimension like 10' or 0"
+  /^[a-z]{1,2}$/i,                         // 1–2 char abbreviations
+  /^(page|total|date|ref|description|unit|watts|amps|qty|quantity|item|no\.|copyright|confidential)/i,
+  /^v\d+$/i,                               // version numbers like "V3"
+  /^\d+["x\*\/]\d+/,                      // dimension ratios like "104x208"
+  /^[A-Z]{1,3}\d+$/,                      // codes like "CB5", "ROE"
+  /^\d+\s*(lbs?|kg|mm|cm|m|ft|"|'|px|w|a|v)$/i, // measurement values
+  /^(scale|size|sheet|drawing|print|drg|rev|revision|issue|dwg)[\s\:]/i,
+  /^(600mm|21,?632|60\.00|104\(px\)|208\(px\))/i  // CAD annotation fragments
+];
+
+function isJunkLine(s) {
+  if (!s || s.length < 3) return true;
+  for (var i = 0; i < JUNK_PATTERNS.length; i++) {
+    if (JUNK_PATTERNS[i].test(s)) return true;
+  }
+  // All-uppercase 1–4 char codes (e.g. ROE, CB5, GT)
+  if (/^[A-Z0-9]{1,4}$/.test(s)) return true;
+  // Single-word stop words
+  if (STOP_WORDS[s.toLowerCase()]) return true;
+  // Looks like a CAD label (repetitive dimension data)
+  if ((s.match(/\d/g) || []).length > s.length * 0.5) return true;
+  return false;
+}
+
+// Normalise a string for matching: lowercase, collapse whitespace, strip specials
+function normalise(s) {
+  return s.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Tokenise and remove stop words
+function tokens(s) {
+  return normalise(s).split(' ').filter(function(w) {
+    return w.length > 1 && !STOP_WORDS[w];
+  });
+}
+
 function extractEquipment(text) {
   var lines = text.split('\n');
   var found = [];
   var seen = {};
   var invNames = Object.keys(eqMap);
 
+  // Pre-build normalised inventory tokens for fast matching
+  var invTokens = invNames.map(function(n) { return { name: n, toks: tokens(n), norm: normalise(n) }; });
+
   lines.forEach(function(line) {
     line = line.trim();
-    if (!line || line.length < 2) return;
+    if (!line) return;
 
-    // Parse qty from common formats:
-    // "6 x AT-30", "AT-30 x6", "AT-30 (6)", "6	AT-30", "AT30	6"
-    // Also handles GDTF/SE style: "Robe BMFL	12	..."
     var qty = 1;
     var name = line;
 
-    // Tab-separated: try cols
-    var cols = line.split('	').map(function(c){return c.trim();}).filter(Boolean);
-
-    // GDTF/SE style: Name [tab] Qty or Qty [tab] Name
+    // Tab-separated columns: "Name [tab] Qty" or "Qty [tab] Name"
+    var cols = line.split('\t').map(function(c){return c.trim();}).filter(Boolean);
     if (cols.length >= 2) {
       var firstNum = parseInt(cols[0]);
       var secondNum = parseInt(cols[1]);
-      if (!isNaN(firstNum) && firstNum > 0 && firstNum < 1000 && cols[1].length > 2) {
+      if (!isNaN(firstNum) && firstNum > 0 && firstNum < 1000 && cols[1].length > 3) {
         qty = firstNum; name = cols[1];
-      } else if (!isNaN(secondNum) && secondNum > 0 && secondNum < 1000 && cols[0].length > 2) {
+      } else if (!isNaN(secondNum) && secondNum > 0 && secondNum < 1000 && cols[0].length > 3) {
         qty = secondNum; name = cols[0];
       } else {
-        name = cols[0];
+        // Multi-column: try to reconstruct a longer name from non-numeric cols
+        var textCols = cols.filter(function(c){ return isNaN(parseInt(c)) || c.length > 3; });
+        name = textCols.length ? textCols[0] : cols[0];
       }
     }
 
-    // "6 x Name" or "6x Name"
-    var mPre = name.match(/^(\d+)\s*[xX\*]\s*(.+)$/);
+    // "Qty: Name", "Qty x Name", "Qty* Name"
+    var mPre = name.match(/^(\d+)\s*[xX\*\:]\s*(.+)$/);
     if (mPre) { qty = parseInt(mPre[1]); name = mPre[2].trim(); }
 
-    // "Name x6" or "Name (6)"
+    // "Name x Qty", "Name (Qty)", "Name Qty:"
     var mPost = name.match(/^(.+?)\s*[xX\*]\s*(\d+)$/) || name.match(/^(.+?)\s*\((\d+)\)$/);
     if (mPost) { name = mPost[1].trim(); qty = parseInt(mPost[2]); }
 
-    // Clean name
-    name = name.replace(/^\d+\s*[.\)\-]\s*/, '').trim(); // remove leading "1." "1)" etc
-    if (!name || name.length < 2) return;
-    if (/^[\d\s\.\-\/\,]+$/.test(name)) return; // pure numbers
-    if (/^(page|total|date|ref|description|unit|watts|amps|qty|quantity|item|no\.)/i.test(name)) return;
+    // Remove leading list markers: "1.", "1)", "-", "•"
+    name = name.replace(/^[\d]+\s*[.\)\-]\s*/, '').replace(/^[\•\-\*]\s*/, '').trim();
 
-    // Fuzzy match
+    // Reject junk lines
+    if (isJunkLine(name)) return;
+
+    // Require at least one non-trivial token
+    var toks = tokens(name);
+    if (toks.length === 0) return;
+    // Reject if every token is a stop word or single char
+    if (toks.every(function(t){ return t.length <= 2 || STOP_WORDS[t]; })) return;
+
+    // Fuzzy match against inventory
     var bestMatch = null, bestScore = 0, partials = [];
-    invNames.forEach(function(inv) {
-      var score = fuzzyScore(name, inv);
-      if (score > bestScore) { bestScore = score; bestMatch = inv; }
-      if (score > 0.35 && score < 0.6) partials.push({name: inv, score: score});
+    invTokens.forEach(function(inv) {
+      var score = fuzzyScore(name, inv.name, toks, inv.toks, inv.norm);
+      if (score > bestScore) { bestScore = score; bestMatch = inv.name; }
+      if (score >= 0.45 && score < 0.72) partials.push({name: inv.name, score: score});
     });
     partials.sort(function(a,b){return b.score-a.score;}).splice(5);
 
     var key = name.toLowerCase();
     if (seen[key]) {
-      // Accumulate qty for duplicates
       for (var fi = 0; fi < found.length; fi++) {
         if (found[fi].rawKey === key) { found[fi].qty += qty; break; }
       }
@@ -1008,14 +1078,23 @@ function extractEquipment(text) {
       rawKey: key,
       qty: qty,
       remaining: qty,
-      match: bestScore >= 0.6 ? bestMatch : null,
+      match: bestScore >= 0.72 ? bestMatch : null,
       partials: partials,
       score: bestScore,
       assigned: []
     });
   });
 
+  // Only show items that have a solid match or at least one good partial
   pdfItems = found.filter(function(f) { return f.match || f.partials.length > 0; });
+
+  // Sort: exact matches first, then by score descending
+  pdfItems.sort(function(a,b) {
+    if (a.match && !b.match) return -1;
+    if (!a.match && b.match) return 1;
+    return b.score - a.score;
+  });
+
   renderPdfItems();
   buildPdfSheetSelects();
 
@@ -1061,30 +1140,53 @@ function expandKeywords(s) {
   return extras.join(' ');
 }
 
-function fuzzyScore(a, b) {
-  var a0 = a.toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
-  var b0 = b.toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
-  if (a0 === b0) return 1;
-  if (b0.indexOf(a0) >= 0 || a0.indexOf(b0) >= 0) return 0.9;
+// fuzzyScore: accepts optional pre-computed token arrays and normalised strings for speed
+function fuzzyScore(a, b, aToks, bToks, bNorm) {
+  var aN = normalise(a);
+  var bN = bNorm || normalise(b);
 
-  // Expand with synonyms
-  var ae = expandKeywords(a0);
-  var be = expandKeywords(b0);
+  // Exact normalised match
+  if (aN === bN) return 1;
 
-  var wa = ae.split(/\s+/).filter(function(w){return w.length>1;});
-  var wb = b0.split(/\s+/).filter(function(w){return w.length>1;});
-  var hits = 0, total = 0;
-  wb.forEach(function(w) {
-    total++;
-    if (ae.indexOf(w) >= 0) hits++;
-  });
-  wa.forEach(function(w) {
-    total++;
-    if (be.indexOf(w) >= 0) hits++;
-  });
-  // Bonus for starting with same letters
-  if (a0.charAt(0) === b0.charAt(0) && a0.substring(0,3) === b0.substring(0,3)) hits += 0.5;
-  return total > 0 ? Math.min(1, hits / total) : 0;
+  // Containment: one fully contains the other (weighted by length ratio)
+  if (bN.indexOf(aN) >= 0) return 0.85 + 0.1 * (aN.length / bN.length);
+  if (aN.indexOf(bN) >= 0) return 0.85 + 0.1 * (bN.length / aN.length);
+
+  var wa = aToks || tokens(a);
+  var wb = bToks || tokens(b);
+
+  if (wa.length === 0 || wb.length === 0) return 0;
+
+  // Penalise very short single-token queries — too ambiguous
+  if (wa.length === 1 && wa[0].length <= 4) return 0;
+
+  // Expand with synonyms for both sides
+  var ae = expandKeywords(aN);
+  var be = expandKeywords(bN);
+
+  // Token overlap: count how many tokens from each side appear in the other
+  var hitsAB = 0, hitsBA = 0;
+  wa.forEach(function(w) { if (be.indexOf(w) >= 0) hitsAB++; });
+  wb.forEach(function(w) { if (ae.indexOf(w) >= 0) hitsBA++; });
+
+  var recall = wb.length > 0 ? hitsBA / wb.length : 0;    // how much of inventory name is covered
+  var precision = wa.length > 0 ? hitsAB / wa.length : 0; // how much of query is in inventory name
+
+  // F-score (harmonic mean), emphasising recall slightly
+  var score = recall > 0 && precision > 0
+    ? (2.2 * recall * precision) / (1.2 * precision + recall)
+    : 0;
+
+  // Bonus: first tokens match (strong signal for brand+model combos)
+  if (wa[0] && wb[0] && wa[0] === wb[0]) score = Math.min(1, score + 0.15);
+
+  // Bonus: both start with same 3-char prefix
+  if (aN.substring(0,3) === bN.substring(0,3) && aN.length > 3) score = Math.min(1, score + 0.08);
+
+  // Penalty: query is a single very common word that appears in many items
+  if (wa.length === 1 && hitsAB === 1 && wb.length > 3) score *= 0.5;
+
+  return score;
 }
 
 function renderPdfItems() {
