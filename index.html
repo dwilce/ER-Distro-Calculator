@@ -158,7 +158,16 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .pdf-item-qty.qty-done{color:var(--ok)}
 .pdf-item-match{font-size:10px;color:var(--ok);font-weight:700}
 .pdf-item-nomatch{font-size:10px;color:var(--muted)}
-.pdf-match-sel{font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:3px;max-width:200px}
+.pdf-match-row{display:flex;align-items:center;gap:6px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--faint)}
+.pdf-match-arrow{font-size:11px;color:var(--muted);flex-shrink:0}
+.pdf-match-icon{font-size:11px;font-weight:700;flex-shrink:0;min-width:14px}
+.pdf-match-icon.ok{color:var(--ok)}
+.pdf-match-icon.warn{color:var(--amber)}
+.pdf-match-sel{flex:1;font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:4px;background:white;font-family:inherit;min-width:0;cursor:pointer}
+.pdf-match-sel.matched{border-color:#a5d6a7;background:#f0faf0}
+.pdf-match-sel.unmatched{border-color:var(--amber);background:var(--amber-lt)}
+.pdf-delete-btn{flex-shrink:0;padding:3px 7px;border:1px solid #d9534f;border-radius:4px;background:white;color:#d9534f;font-size:13px;font-weight:700;cursor:pointer;line-height:1}
+.pdf-delete-btn:hover{background:#d9534f;color:white}
 .pdf-mini-tag{font-size:10px;background:#e8f0fb;border:1px solid #b3c9f0;border-radius:3px;padding:1px 5px;color:var(--navy3);font-weight:600}
 .pdf-assign-form{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--faint);border-radius:6px}
 .pdf-field{display:flex;flex-direction:column;gap:3px}
@@ -1189,6 +1198,37 @@ function fuzzyScore(a, b, aToks, bToks, bNorm) {
   return score;
 }
 
+function buildInventoryOptions(selectedName, partials) {
+  // Build grouped <option> list: current match (if any), then best matches, then full inventory
+  var allNames = Object.keys(eqMap).sort();
+  var partialsSet = {};
+  (partials || []).forEach(function(p){ partialsSet[p.name] = true; });
+
+  var html = '';
+  if (!selectedName) {
+    html += '<option value="">— choose inventory item —</option>';
+  }
+
+  // Best matches group (partials, excluding selected)
+  var bestOpts = (partials || []).filter(function(p){ return p.name !== selectedName; })
+    .map(function(p){
+      return '<option value="' + escAttr(p.name) + '">' + p.name + '</option>';
+    }).join('');
+  if (bestOpts) html += '<optgroup label="Best matches">' + bestOpts + '</optgroup>';
+
+  // Full inventory group
+  var allOpts = allNames.filter(function(n){ return n !== selectedName; }).map(function(n){
+    return '<option value="' + escAttr(n) + '">' + n + '</option>';
+  }).join('');
+  html += '<optgroup label="All inventory">' + allOpts + '</optgroup>';
+
+  // Selected goes at top as first real option so it's shown in the control
+  if (selectedName) {
+    html = '<option value="' + escAttr(selectedName) + '" selected>' + selectedName + '</option>' + html;
+  }
+  return html;
+}
+
 function renderPdfItems() {
   var list = document.getElementById('pdfItemList');
   list.innerHTML = '';
@@ -1198,40 +1238,16 @@ function renderPdfItems() {
   }
 
   pdfItems.forEach(function(item, idx) {
+    var done = item.remaining <= 0;
     var div = document.createElement('div');
-    div.className = 'pdf-item' + (item.remaining <= 0 ? ' pdf-done' : '');
+    div.className = 'pdf-item' + (done ? ' pdf-done' : '');
     div.id = 'pdfItem' + idx;
 
-    var matchHtml = '';
-    if (item.match) {
-      // Matched - show matched name + dropdown to override
-      var overrideOpts = '<option value="' + escAttr(item.match) + '" selected>' + item.match + '</option>' +
-        Object.keys(eqMap).filter(function(n){return n !== item.match;}).sort().map(function(n){
-          return '<option value="' + escAttr(n) + '">' + n + '</option>';
-        }).join('');
-      matchHtml = '<span class="pdf-item-match">&#10003;</span>' +
-        '<select class="pdf-match-sel" onchange="setPdfMatch(' + idx + ',this.value)">' + overrideOpts + '</select>';
-    } else if (item.partials.length) {
-      // Partial match - dropdown with best guesses + full list
-      var opts = '<option value="">-- Select match --</option>' +
-        '<optgroup label="Best matches">' +
-        item.partials.map(function(p){
-          return '<option value="' + escAttr(p.name) + '">' + p.name + '</option>';
-        }).join('') + '</optgroup>' +
-        '<optgroup label="All inventory">' +
-        Object.keys(eqMap).sort().map(function(n){
-          return '<option value="' + escAttr(n) + '">' + n + '</option>';
-        }).join('') + '</optgroup>';
-      matchHtml = '<select class="pdf-match-sel" onchange="setPdfMatch(' + idx + ',this.value)">' + opts + '</select>';
-    } else {
-      // No match - show full inventory dropdown
-      var opts = '<option value="">-- Select from inventory --</option>' +
-        '<optgroup label="All inventory">' +
-        Object.keys(eqMap).sort().map(function(n){
-          return '<option value="' + escAttr(n) + '">' + n + '</option>';
-        }).join('') + '</optgroup>';
-      matchHtml = '<select class="pdf-match-sel" onchange="setPdfMatch(' + idx + ',this.value)">' + opts + '</select>';
-    }
+    var isMatched = !!item.match;
+    var iconHtml = isMatched
+      ? '<span class="pdf-match-icon ok">&#10003;</span>'
+      : '<span class="pdf-match-icon warn">?</span>';
+    var selClass = isMatched ? 'pdf-match-sel matched' : 'pdf-match-sel unmatched';
 
     var assignedTags = item.assigned.map(function(a){
       return '<span class="pdf-mini-tag">' + a + '</span>';
@@ -1239,13 +1255,21 @@ function renderPdfItems() {
 
     div.innerHTML =
       '<div class="pdf-item-top">' +
-        '<input type="checkbox" id="pi' + idx + '" ' + (item.remaining <= 0 ? 'disabled' : '') + '>' +
-        '<label for="pi' + idx + '" class="pdf-item-name">' + item.raw + '</label>' +
-        '<span class="pdf-item-qty ' + (item.remaining <= 0 ? 'qty-done' : '') + '">' +
-          (item.remaining <= 0 ? '&#10003;' : item.remaining + ' left / ' + item.qty) +
+        '<input type="checkbox" id="pi' + idx + '" ' + (done ? 'disabled' : '') + '>' +
+        '<label for="pi' + idx + '" class="pdf-item-name" title="' + escAttr(item.raw) + '">' + item.raw + '</label>' +
+        '<span class="pdf-item-qty ' + (done ? 'qty-done' : '') + '">' +
+          (done ? '&#10003; done' : item.remaining + ' left / ' + item.qty) +
         '</span>' +
       '</div>' +
-      '<div class="pdf-item-bottom">' + matchHtml + assignedTags + '</div>';
+      '<div class="pdf-match-row">' +
+        iconHtml +
+        '<span class="pdf-match-arrow">&#8594;</span>' +
+        '<select class="' + selClass + '" onchange="setPdfMatch(' + idx + ',this.value)">' +
+          buildInventoryOptions(item.match, item.partials) +
+        '</select>' +
+        (assignedTags ? '<span style="display:flex;gap:3px;flex-wrap:wrap;">' + assignedTags + '</span>' : '') +
+        '<button class="pdf-delete-btn" onclick="deletePdfItem(' + idx + ')" title="Remove this line">&#10005;</button>' +
+      '</div>';
 
     list.appendChild(div);
   });
@@ -1256,9 +1280,32 @@ function escAttr(s) {
 }
 
 function setPdfMatch(idx, val) {
-  if (!val) return;
-  pdfItems[idx].match = val === '__raw__' ? pdfItems[idx].raw : val;
+  if (!val) { pdfItems[idx].match = null; }
+  else { pdfItems[idx].match = val; }
+  // Update just the select's styling in-place, no full re-render (preserves scroll & checkboxes)
+  var itemEl = document.getElementById('pdfItem' + idx);
+  if (!itemEl) return;
+  var sel = itemEl.querySelector('.pdf-match-sel');
+  var icon = itemEl.querySelector('.pdf-match-icon');
+  if (pdfItems[idx].match) {
+    if (sel) { sel.className = 'pdf-match-sel matched'; }
+    if (icon) { icon.className = 'pdf-match-icon ok'; icon.innerHTML = '&#10003;'; }
+  } else {
+    if (sel) { sel.className = 'pdf-match-sel unmatched'; }
+    if (icon) { icon.className = 'pdf-match-icon warn'; icon.innerHTML = '?'; }
+  }
+}
+
+function deletePdfItem(idx) {
+  pdfItems.splice(idx, 1);
   renderPdfItems();
+  // Update status count
+  var matched = pdfItems.filter(function(f){return f.match;}).length;
+  var partial = pdfItems.filter(function(f){return !f.match && f.partials.length;}).length;
+  var total = pdfItems.reduce(function(s,f){return s+f.qty;},0);
+  document.getElementById('pdfStatus').textContent =
+    pdfItems.length + ' inventory matches found (' + total + ' units total). ' +
+    matched + ' exact, ' + partial + ' need selection.';
 }
 
 function buildPdfSheetSelects() {
