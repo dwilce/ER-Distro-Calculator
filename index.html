@@ -154,8 +154,11 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .pdf-item-bottom{padding-left:24px;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .pdf-item input[type=checkbox]{accent-color:var(--navy3);flex-shrink:0}
 .pdf-item-name{font-weight:600;flex:1;color:var(--text)}
-.pdf-item-qty{font-size:11px;font-weight:700;color:var(--navy3);white-space:nowrap}
+.pdf-item-qty{font-size:11px;font-weight:700;color:var(--navy3);white-space:nowrap;display:flex;align-items:center;gap:4px}
 .pdf-item-qty.qty-done{color:var(--ok)}
+.pdf-qty-input{width:44px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;font-size:11px;font-weight:700;color:var(--navy3);text-align:center;font-family:inherit;background:white}
+.pdf-qty-input:focus{outline:none;border-color:var(--navy3)}
+.pdf-qty-label{color:var(--muted);font-weight:400}
 .pdf-item-match{font-size:10px;color:var(--ok);font-weight:700}
 .pdf-item-nomatch{font-size:10px;color:var(--muted)}
 .pdf-match-row{display:flex;align-items:center;gap:6px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--faint)}
@@ -1262,9 +1265,14 @@ function renderPdfItems() {
       '<div class="pdf-item-top">' +
         '<input type="checkbox" id="pi' + idx + '" ' + (done ? 'disabled' : '') + '>' +
         '<label for="pi' + idx + '" class="pdf-item-name" title="' + escAttr(item.raw) + '">' + item.raw + '</label>' +
-        '<span class="pdf-item-qty ' + (done ? 'qty-done' : '') + '">' +
-          (done ? '&#10003; done' : item.remaining + ' left / ' + item.qty) +
-        '</span>' +
+        (done
+          ? '<span class="pdf-item-qty qty-done">&#10003; done</span>'
+          : '<span class="pdf-item-qty">' +
+              '<input class="pdf-qty-input" type="number" min="1" max="999" value="' + item.qty + '" ' +
+                'title="Edit total quantity" onchange="setPdfQty(' + idx + ',this.value)" onclick="event.stopPropagation()">' +
+              '<span class="pdf-qty-label">left&nbsp;/&nbsp;' + item.qty + '</span>' +
+            '</span>'
+        ) +
       '</div>' +
       '<div class="pdf-match-row">' +
         iconHtml +
@@ -1311,6 +1319,22 @@ function deletePdfItem(idx) {
   document.getElementById('pdfStatus').textContent =
     pdfItems.length + ' inventory matches found (' + total + ' units total). ' +
     matched + ' exact, ' + partial + ' need selection.';
+}
+
+function setPdfQty(idx, val) {
+  var n = parseInt(val);
+  if (isNaN(n) || n < 1) return;
+  var item = pdfItems[idx];
+  var assigned = item.qty - item.remaining;
+  item.qty = n;
+  item.remaining = Math.max(0, n - assigned);
+  // Update the label in-place
+  var itemEl = document.getElementById('pdfItem' + idx);
+  if (!itemEl) return;
+  var lbl = itemEl.querySelector('.pdf-qty-label');
+  var inp = itemEl.querySelector('.pdf-qty-input');
+  if (lbl) lbl.textContent = 'left\u00a0/\u00a0' + n;
+  if (inp) inp.value = n;
 }
 
 function buildPdfSheetSelects() {
