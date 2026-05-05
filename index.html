@@ -989,7 +989,7 @@ function extractEquipment(text) {
     invNames.forEach(function(inv) {
       var score = fuzzyScore(name, inv);
       if (score > bestScore) { bestScore = score; bestMatch = inv; }
-      if (score > 0.4 && score < 0.65) partials.push({name: inv, score: score});
+      if (score > 0.35 && score < 0.6) partials.push({name: inv, score: score});
     });
     partials.sort(function(a,b){return b.score-a.score;}).splice(5);
 
@@ -1008,7 +1008,7 @@ function extractEquipment(text) {
       rawKey: key,
       qty: qty,
       remaining: qty,
-      match: bestScore >= 0.65 ? bestMatch : null,
+      match: bestScore >= 0.6 ? bestMatch : null,
       partials: partials,
       score: bestScore,
       assigned: []
@@ -1028,17 +1028,63 @@ function extractEquipment(text) {
     (found.length - pdfItems.length) + ' non-inventory lines ignored.';
 }
 
+// SFX keyword synonyms - map common words to inventory search terms
+var SFX_KEYWORDS = {
+  'laser': ['laser','lazer'],
+  'cryo': ['cryo','co2','cryogenic'],
+  'smoke': ['smoke','hazer','haze','fog','mist'],
+  'sfx': ['sfx','special effect','effect'],
+  'confetti': ['confetti','cannon'],
+  'flame': ['flame','pyro','fire'],
+  'strobe': ['strobe'],
+  'fan': ['fan'],
+  'wind': ['wind machine','fan'],
+  'uv': ['uv','ultraviolet','blacklight'],
+  'bubble': ['bubble'],
+  'snow': ['snow'],
+  'led': ['led'],
+  'par': ['par'],
+  'wash': ['wash'],
+  'spot': ['spot','profile'],
+  'beam': ['beam'],
+  'moving': ['moving','moving head','mover']
+};
+
+function expandKeywords(s) {
+  var lower = s.toLowerCase();
+  var extras = [lower];
+  Object.keys(SFX_KEYWORDS).forEach(function(kw) {
+    if (lower.indexOf(kw) >= 0) {
+      SFX_KEYWORDS[kw].forEach(function(syn) { extras.push(syn); });
+    }
+  });
+  return extras.join(' ');
+}
+
 function fuzzyScore(a, b) {
-  a = a.toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
-  b = b.toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
-  if (a === b) return 1;
-  if (b.indexOf(a) >= 0 || a.indexOf(b) >= 0) return 0.85;
-  var wa = a.split(/\s+/);
-  var wb = b.split(/\s+/);
-  var hits = 0;
-  wb.forEach(function(w) { if (w.length > 1 && a.indexOf(w) >= 0) hits++; });
-  wa.forEach(function(w) { if (w.length > 1 && b.indexOf(w) >= 0) hits++; });
-  return (wb.length + wa.length) > 0 ? hits / (wb.length + wa.length) : 0;
+  var a0 = a.toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
+  var b0 = b.toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
+  if (a0 === b0) return 1;
+  if (b0.indexOf(a0) >= 0 || a0.indexOf(b0) >= 0) return 0.9;
+
+  // Expand with synonyms
+  var ae = expandKeywords(a0);
+  var be = expandKeywords(b0);
+
+  var wa = ae.split(/\s+/).filter(function(w){return w.length>1;});
+  var wb = b0.split(/\s+/).filter(function(w){return w.length>1;});
+  var hits = 0, total = 0;
+  wb.forEach(function(w) {
+    total++;
+    if (ae.indexOf(w) >= 0) hits++;
+  });
+  wa.forEach(function(w) {
+    total++;
+    if (be.indexOf(w) >= 0) hits++;
+  });
+  // Bonus for starting with same letters
+  if (a0.charAt(0) === b0.charAt(0) && a0.substring(0,3) === b0.substring(0,3)) hits += 0.5;
+  return total > 0 ? Math.min(1, hits / total) : 0;
 }
 
 function renderPdfItems() {
@@ -1056,17 +1102,33 @@ function renderPdfItems() {
 
     var matchHtml = '';
     if (item.match) {
-      matchHtml = '<span class="pdf-item-match">&#10003; ' + item.match + '</span>';
+      // Matched - show matched name + dropdown to override
+      var overrideOpts = '<option value="' + escAttr(item.match) + '" selected>' + item.match + '</option>' +
+        Object.keys(eqMap).filter(function(n){return n !== item.match;}).sort().map(function(n){
+          return '<option value="' + escAttr(n) + '">' + n + '</option>';
+        }).join('');
+      matchHtml = '<span class="pdf-item-match">&#10003;</span>' +
+        '<select class="pdf-match-sel" onchange="setPdfMatch(' + idx + ',this.value)">' + overrideOpts + '</select>';
     } else if (item.partials.length) {
-      // Dropdown for partial matches
+      // Partial match - dropdown with best guesses + full list
       var opts = '<option value="">-- Select match --</option>' +
+        '<optgroup label="Best matches">' +
         item.partials.map(function(p){
           return '<option value="' + escAttr(p.name) + '">' + p.name + '</option>';
-        }).join('') +
-        '<option value="__raw__">Use as-is: ' + item.raw + '</option>';
+        }).join('') + '</optgroup>' +
+        '<optgroup label="All inventory">' +
+        Object.keys(eqMap).sort().map(function(n){
+          return '<option value="' + escAttr(n) + '">' + n + '</option>';
+        }).join('') + '</optgroup>';
       matchHtml = '<select class="pdf-match-sel" onchange="setPdfMatch(' + idx + ',this.value)">' + opts + '</select>';
     } else {
-      matchHtml = '<span class="pdf-item-nomatch">No inventory match</span>';
+      // No match - show full inventory dropdown
+      var opts = '<option value="">-- Select from inventory --</option>' +
+        '<optgroup label="All inventory">' +
+        Object.keys(eqMap).sort().map(function(n){
+          return '<option value="' + escAttr(n) + '">' + n + '</option>';
+        }).join('') + '</optgroup>';
+      matchHtml = '<select class="pdf-match-sel" onchange="setPdfMatch(' + idx + ',this.value)">' + opts + '</select>';
     }
 
     var assignedTags = item.assigned.map(function(a){
