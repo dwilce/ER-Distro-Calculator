@@ -1974,14 +1974,22 @@ function closeLabels() {
 
       <div class="help-section">
         <h3>&#128196; Import from PDF</h3>
-        <p>Click <strong>Import PDF</strong> in the top bar to extract equipment from a PDF equipment list or rider. A popup shows all lines extracted from the PDF:</p>
+        <p>Click <strong>Import PDF</strong> in the top bar to extract equipment from any PDF — stage plots, riders, CAD drawings, or equipment lists. A popup shows all lines matched against your inventory:</p>
         <ul>
-          <li>Lines matching your inventory are highlighted with a green tick and the matched name</li>
-          <li>Tick one or more items, choose a distro sheet, bank, way, sub-slot and quantity, then click <strong>+ Assign Selected</strong></li>
-          <li>Assignments are written to the distro sheet immediately and the slot advances automatically</li>
-          <li>Repeat until all equipment is assigned, then click <strong>Done</strong></li>
+          <li><span class="help-badge ok">&#10003;</span> <strong>Green border</strong> — confident inventory match. The dropdown shows the matched item; change it if needed.</li>
+          <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match found. Open the dropdown to pick the correct inventory item from the <em>Best matches</em> group or scroll to <em>All inventory</em>.</li>
+          <li>Click <strong>&#10005;</strong> on any row to remove lines you don't want to assign.</li>
         </ul>
-        <p>Go back and fill in unit details by clicking each populated output on the distro sheet.</p>
+        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct quantity; the border turns green once set. Quantities are never guessed from the PDF as this was unreliable.</p>
+        <p>Once matches and quantities are confirmed:</p>
+        <ol>
+          <li>Tick one or more items</li>
+          <li>Choose <strong>Distro Sheet</strong>, <strong>Bank</strong>, <strong>Way</strong>, and <strong>Sub-slot</strong> on the right</li>
+          <li>Set the <strong>Quantity</strong> to assign in this slot and click <strong>+ Assign Selected</strong></li>
+          <li>The slot advances automatically — repeat until each item shows <strong>&#10003; done</strong></li>
+          <li>Click <strong>Done</strong> when finished</li>
+        </ol>
+        <p>Go back and fill in unit details (Unit ID, Placement, Address) by clicking each populated output on the distro sheet.</p>
       </div>
 
       <div class="help-section">
