@@ -1507,12 +1507,16 @@ function openLabels(labelSize) {
         for (var ii = 0; ii < items.length; ii++) {
           var units = items[ii].units || [];
           var uid = (units[0] && units[0].id) ? ' <span class="uid">[' + units[0].id + ']</span>' : '';
+          // Voltage warning tag
+          var vw = '';
+          if (items[ii].v120only && region !== 'US') vw = '<span class="volt-tag">120V ONLY</span>';
+          else if (items[ii].v240only && region === 'US') vw = '<span class="volt-tag">240V ONLY</span>';
           if (items[ii].qty > 1 && units.length > 1) {
             var uids = '';
             for (var ui = 0; ui < units.length; ui++) { if (units[ui].id) uids += '<span class="uid">[' + units[ui].id + ']</span>'; }
-            parts.push('<span class="eq">' + items[ii].qty + '\u00d7' + items[ii].eq + '</span>' + uids);
+            parts.push(vw + '<span class="eq">' + items[ii].qty + '\u00d7' + items[ii].eq + '</span>' + uids);
           } else {
-            parts.push('<span class="eq">' + (items[ii].qty > 1 ? items[ii].qty + '\u00d7' : '') + items[ii].eq + '</span>' + uid);
+            parts.push(vw + '<span class="eq">' + (items[ii].qty > 1 ? items[ii].qty + '\u00d7' : '') + items[ii].eq + '</span>' + uid);
           }
         }
         contentHtml = parts.join(' <span class="dot">\u00b7</span> ');
@@ -1564,6 +1568,7 @@ function openLabels(labelSize) {
     + 'tr:last-child td { border-bottom:none; }'
     + '.eq { font-weight:600; } .uid { color:#1f4e79; font-weight:700; }'
     + '.dot { color:#bbb; } .empty { color:#bbb; font-style:italic; }'
+    + '.volt-tag { display:inline-block; background:#FFD700; color:#000; font-size:6pt; font-weight:900; padding:0.5pt 3pt; border-radius:2pt; margin-right:2pt; vertical-align:middle; letter-spacing:0.3px; }'
     + '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }'
     + '@media print { .no-print { display:none; } }';
 
@@ -1747,7 +1752,10 @@ function openReport() {
           var units = slot.units || [{id:'',placement:'',address:''}];
           for (var ui = 0; ui < units.length; ui++) {
             var a = toAmps(slot.watts);
-            rows.push({
+          var vw = '';
+          if (slot.v120only && region !== 'US') vw = '120V ONLY';
+          else if (slot.v240only && region === 'US') vw = '240V ONLY';
+          rows.push({
               distro: sName,
               bank: bankLetter + w + (sr > 0 ? '.' + sr : ''),
               phase: phaseOf(w),
@@ -1755,7 +1763,8 @@ function openReport() {
               amps: a ? a.toFixed(2) + 'A' : '\u2014',
               unitId: units[ui].id || '\u2014',
               placement: units[ui].placement || '\u2014',
-              address: units[ui].address || '\u2014'
+              address: units[ui].address || '\u2014',
+              voltWarn: vw
             });
           }
         }
@@ -1763,19 +1772,28 @@ function openReport() {
     }
   }
 
+  var warnRows = rows.filter(function(r){ return r.voltWarn; });
+  var warnBanner = warnRows.length
+    ? '<div style="background:#FFD700;color:#000;padding:7px 12px;border-radius:4px;font-weight:700;font-size:9pt;margin-bottom:12px">⚠ VOLTAGE WARNINGS: ' + warnRows.length + ' item' + (warnRows.length > 1 ? 's' : '') + ' flagged as incompatible with current region (' + (region === 'US' ? 'US 208V' : 'ROW 230V') + ') — check before powering on</div>'
+    : '';
+
   var now = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
   var rowsHtml = rows.length ? rows.map(function(r, i) {
     var phColors = ['','#7d3c98','#c0622a','#0e7c7b'];
-    return '<tr style="background:' + (i%2===0?'#fff':'#f8f9fa') + '">' +
+    var voltCell = r.voltWarn
+      ? '<td style="text-align:center"><span style="display:inline-block;background:#FFD700;color:#000;padding:1px 6px;border-radius:3px;font-weight:900;font-size:8pt;letter-spacing:0.3px">' + r.voltWarn + '</span></td>'
+      : '<td style="text-align:center;color:#bbb">\u2014</td>';
+    return '<tr style="background:' + (r.voltWarn ? '#fffbe6' : (i%2===0?'#fff':'#f8f9fa')) + '">' +
       '<td>' + r.distro + '</td>' +
       '<td><span style="display:inline-block;background:' + phColors[r.phase] + ';color:white;padding:1px 6px;border-radius:3px;font-weight:700;font-size:10px">' + r.bank + '</span></td>' +
       '<td style="font-weight:600">' + r.eq + '</td>' +
       '<td style="text-align:center">' + r.amps + '</td>' +
+      voltCell +
       '<td style="font-weight:600;color:#1f4e79">' + r.unitId + '</td>' +
       '<td>' + r.placement + '</td>' +
       '<td>' + r.address + '</td>' +
       '</tr>';
-  }).join('') : '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">No equipment assigned yet</td></tr>';
+  }).join('') : '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px">No equipment assigned yet</td></tr>';
 
   var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<title>ER Equipment Report</title>' +
@@ -1808,9 +1826,11 @@ function openReport() {
       '<div class="sum-box"><strong>' + rows.length + '</strong>Total Items</div>' +
       '<div class="sum-box"><strong>' + Object.keys(SHEETS).filter(function(s){ return Object.keys(distroData[s]||{}).some(function(b){ return Object.keys(distroData[s][b]||{}).some(function(w){ return [0,1,2,3].some(function(sr){ return distroData[s][b][w][sr]; }); }); }); }).length + '</strong>Distros Used</div>' +
       '<div class="sum-box"><strong>' + region + '</strong>Region</div>' +
+      (warnRows.length ? '<div class="sum-box" style="border-color:#FFD700;background:#fffbe6"><strong style="color:#b8860b">' + warnRows.length + '</strong>Voltage Warnings</div>' : '') +
     '</div>' +
+    warnBanner +
     '<table><thead><tr>' +
-    '<th>DISTRO</th><th>OUTPUT</th><th>EQUIPMENT</th><th>AMPS</th><th>UNIT ID</th><th>PLACEMENT</th><th>ADDRESS</th>' +
+    '<th>DISTRO</th><th>OUTPUT</th><th>EQUIPMENT</th><th>AMPS</th><th>VOLTAGE</th><th>UNIT ID</th><th>PLACEMENT</th><th>ADDRESS</th>' +
     '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
     '<div class="footer"><span>ER Equipment Calculator &mdash; Auto-generated report</span><span>Page 1</span></div>' +
     '<div class="modal-ftr no-print">' +
@@ -1837,12 +1857,16 @@ function openEquipmentLabels() {
           var slot = distroData[sName][bi][w][sr];
           if (!slot) continue;
           var units = slot.units || [{id:'', address:''}];
+          var vw = '';
+          if (slot.v120only && region !== 'US') vw = '120V ONLY';
+          else if (slot.v240only && region === 'US') vw = '240V ONLY';
           for (var ui = 0; ui < units.length; ui++) {
             labelItems.push({
               eq: slot.eq,
               unitId: units[ui].id || '',
               placement: units[ui].placement || '',
-              address: units[ui].address || ''
+              address: units[ui].address || '',
+              voltWarn: vw
             });
           }
         }
@@ -1861,6 +1885,7 @@ function openEquipmentLabels() {
     var item = labelItems[li];
     labelsHtml += '<div class="eq-label">' +
       (logoDataURL ? '<img src="' + logoDataURL + '" style="height:10px;max-width:30px;object-fit:contain;margin-bottom:1mm">' : '') +
+      (item.voltWarn ? '<div style="display:inline-block;background:#FFD700;color:#000;font-size:6pt;font-weight:900;padding:1pt 4pt;border-radius:2pt;margin-bottom:1mm;letter-spacing:0.3px">⚠ ' + item.voltWarn + '</div>' : '') +
       '<div class="eq-label-name">' + item.eq + '</div>' +
       (item.unitId ? '<div class="eq-label-row"><span class="eq-label-key">ID</span><span class="eq-label-val">' + item.unitId + '</span></div>' : '') +
       (item.placement ? '<div class="eq-label-row"><span class="eq-label-key">POS</span><span class="eq-label-val">' + item.placement + '</span></div>' : '') +
