@@ -105,8 +105,12 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <input type="text" class="tour-input" id="tourName" placeholder="e.g. World Tour 2026" oninput="saveTour()">
     </div>
     <div class="tour-wrap">
+      <label>ER Job No:</label>
+      <input type="text" class="tour-input" id="jobNumber" placeholder="e.g. ER-2026-001" style="width:130px" oninput="saveToStorage()">
+    </div>
+    <div class="tour-wrap">
       <label>Total Boxes:</label>
-      <input type="number" class="tour-input" id="totalBoxes" placeholder="e.g. 24" min="1" style="width:80px" oninput="saveToStorage()">
+      <input type="number" class="tour-input" id="totalBoxes" placeholder="Auto" min="1" style="width:70px" oninput="saveToStorage()">
     </div>
     <div class="logo-upload-wrap">
       <span class="logo-status loaded" id="companyLogoStatus">&#10004; ER Productions</span>
@@ -222,13 +226,14 @@ function clearAll() {
   rows = [];
   logoDataURL = null;
   document.getElementById('tourName').value = '';
+  document.getElementById('jobNumber').value = '';
   document.getElementById('totalBoxes').value = '';
   // Restore permanent embedded logo
   companyLogoURL = document.querySelector('script').textContent.match(/var companyLogoURL = "([^"]+)"/)?.[1] || null;
   document.getElementById('companyLogoStatus').textContent = '\u2714 ER Productions (permanent)';
   document.getElementById('companyLogoStatus').className = 'logo-status loaded';
   try { localStorage.removeItem('er_fc_company'); } catch(e) {}
-  try { localStorage.removeItem('er_fc_logo'); localStorage.removeItem('er_fc_company'); localStorage.removeItem('er_fc_tour'); localStorage.removeItem('er_fc_total'); } catch(e) {}
+  try { localStorage.removeItem('er_fc_logo'); localStorage.removeItem('er_fc_company'); localStorage.removeItem('er_fc_tour'); localStorage.removeItem('er_fc_total'); localStorage.removeItem('er_fc_job'); } catch(e) {}
   addRow();
   saveToStorage();
 }
@@ -380,6 +385,7 @@ function saveToStorage() {
   try {
     localStorage.setItem('er_fc_rows', JSON.stringify(rows));
     localStorage.setItem('er_fc_tour', document.getElementById('tourName').value);
+    localStorage.setItem('er_fc_job', document.getElementById('jobNumber').value);
     localStorage.setItem('er_fc_total', document.getElementById('totalBoxes').value);
     if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
     if (companyLogoURL) localStorage.setItem('er_fc_company', companyLogoURL);
@@ -392,6 +398,8 @@ function loadFromStorage() {
     if (r) rows = JSON.parse(r);
     var t = localStorage.getItem('er_fc_tour');
     if (t) document.getElementById('tourName').value = t;
+    var j = localStorage.getItem('er_fc_job');
+    if (j) document.getElementById('jobNumber').value = j;
     var tb = localStorage.getItem('er_fc_total');
     if (tb) document.getElementById('totalBoxes').value = tb;
     var l = localStorage.getItem('er_fc_logo');
@@ -415,6 +423,7 @@ function saveTour() { saveToStorage(); }
 function printLabels() {
   var tourName = document.getElementById('tourName').value.trim() || 'ER Productions';
   var totalBoxes = document.getElementById('totalBoxes').value.trim();
+  var jobNumber = document.getElementById('jobNumber').value.trim();
   var validRows = rows.filter(function(r) { return r.box || r.location || r.description; });
 
   if (!validRows.length) {
@@ -469,10 +478,14 @@ function printLabels() {
               '<div class="zone-label">LOCATION</div>' +
               '<div class="zone-value">' + (r.location || '&mdash;') + '</div>' +
             '</div>' +
-            '<div class="bot-cell">' +
+            '<div class="bot-cell bot-cell-half" style="border-right:3px solid #111">' +
               '<div class="zone-label">BOX NUMBER</div>' +
               '<div class="zone-value box-value">' + (r.box || '&mdash;') + '</div>' +
               (totalBoxes ? '<div class="of-total">of ' + totalBoxes + '</div>' : '') +
+            '</div>' +
+            '<div class="bot-cell bot-cell-half">' +
+              '<div class="zone-label">ER JOB NUMBER</div>' +
+              '<div class="zone-value job-value">' + (jobNumber || '&mdash;') + '</div>' +
             '</div>' +
           '</div>' +
           '</div>' +
@@ -526,6 +539,8 @@ function printLabels() {
     // Bot zone
     '.bot-zone { flex:1; flex-shrink:0; display:flex; position:relative; z-index:1; }' +
     '.bot-cell { flex:1; display:flex; flex-direction:column; padding:6pt 14pt; box-sizing:border-box; }' +
+    '.bot-cell-half { flex:0.5; }' +
+    '.job-value { font-size:18pt; }' +
     '.box-value { flex-direction:column; gap:0; font-size:38pt; }' +
     '.of-total { font-size:11pt; font-weight:600; color:#666; line-height:1; }' +
 
