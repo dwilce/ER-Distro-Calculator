@@ -55,6 +55,8 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .inv-watts{font-size:11px;color:var(--muted);min-width:36px;text-align:right}
 .inv-amps{font-size:11px;font-weight:600;color:var(--navy3);min-width:40px;text-align:right}
 .tbc-badge{font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-lt);padding:1px 5px;border-radius:3px}
+.volt-badge{font-size:9px;font-weight:700;color:#fff;background:#c0392b;padding:1px 5px;border-radius:3px;white-space:nowrap}
+.volt-warn{font-size:9px;font-weight:700;color:#c0392b;background:#fde8e8;padding:1px 5px;border-radius:3px;white-space:nowrap;margin-left:3px}
 #distro-panel{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 .sheet-title{display:flex;align-items:center;justify-content:space-between;background:var(--navy);color:white;padding:10px 16px;border-radius:8px}
 .sheet-title h2{font-size:20px;font-weight:700}
@@ -356,6 +358,14 @@ function volts() { return region === 'US' ? 208 : 230; }
 function toAmps(w) { return w > 1 ? Math.round(w / volts() * 100) / 100 : null; }
 function phaseOf(w) { return ((w-1)%3)+1; }
 function phaseOfBank(bi) { return (bi%3)+1; }
+function eqWatts(name) { var e = eqMap[name]; return e ? (typeof e === 'object' ? e.watts : e) : 0; }
+function eqVoltWarn(name) {
+  var e = eqMap[name];
+  if (!e || typeof e !== 'object') return null;
+  if (e.v120only && region !== 'US') return '120V';
+  if (e.v240only && region === 'US') return '240V';
+  return null;
+}
 
 // ── STARTUP ──────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
@@ -365,8 +375,8 @@ window.addEventListener('DOMContentLoaded', function() {
       if (data.ok && data.inventory && data.inventory.length > 0) {
         INVENTORY = data.inventory.map(function(i) {
           if (Array.isArray(i)) return i;
-          if (i.isHeader) return ['--- ' + i.name + ' ---', 0];
-          return [i.name, i.watts];
+          if (i.isHeader) return ['--- ' + i.name + ' ---', 0, false, false];
+          return [i.name, i.watts, i.v120only || false, i.v240only || false];
         });
       }
       if (data.ok && data.sheets && data.sheets.length > 0) {
@@ -406,14 +416,16 @@ function buildEqSections() {
     var entry = INVENTORY[i];
     var name = entry[0];
     var w = entry[1];
+    var v120 = entry[2] || false;
+    var v240 = entry[3] || false;
     if (!name) continue;
     if (name.indexOf('---') === 0) {
       var secName = name.replace(/---/g,'').trim();
       if (secName) eqSections.push({name: secName, items:[]});
     } else {
-      eqMap[name] = w;
+      eqMap[name] = {watts: w, v120only: v120, v240only: v240};
       if (eqSections.length === 0) eqSections.push({name:'Equipment', items:[]});
-      eqSections[eqSections.length-1].items.push({name:name, watts:w});
+      eqSections[eqSections.length-1].items.push({name:name, watts:w, v120only:v120, v240only:v240});
     }
   }
   // Fallback: if headers missing from API, split by known item names
@@ -466,7 +478,7 @@ function renderInventory(items) {
   var lastSec = '';
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
-    var name = item[0], watts = item[1];
+    var name = item[0], watts = item[1], v120 = item[2]||false, v240 = item[3]||false;
     if (name.indexOf('---') === 0) {
       lastSec = name.replace(/---/g,'').trim();
       var hdr = document.createElement('div');
@@ -480,6 +492,9 @@ function renderInventory(items) {
     var el = document.createElement('div');
     el.className = 'inv-item';
     var nameDiv = document.createElement('div'); nameDiv.className = 'inv-name'; nameDiv.textContent = name;
+    // Voltage-only badge
+    if (v120) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '120V only — not suitable for ROW (230V)'; vb.textContent = '120V'; nameDiv.appendChild(vb); }
+    if (v240) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '240V only — not suitable for US (208V)'; vb.textContent = '240V'; nameDiv.appendChild(vb); }
     var wDiv = document.createElement('div');
     wDiv.className = tbc ? 'tbc-badge' : 'inv-watts';
     wDiv.textContent = tbc ? 'TBC' : bat ? 'CO\u2082' : watts + 'W';
@@ -631,7 +646,13 @@ function renderDistro() {
           var qtyEl = document.createElement('span'); qtyEl.className = 'way-qty'; qtyEl.textContent = slots[sr].qty > 1 ? 'x' + slots[sr].qty : '';
           var eqEl = document.createElement('span'); eqEl.className = 'way-eq'; eqEl.textContent = slots[sr].eq;
           var amEl = document.createElement('span'); amEl.className = 'way-amps'; amEl.style.color = PH_DK[wph]; amEl.textContent = aTxt;
-          row.appendChild(qtyEl); row.appendChild(eqEl); row.appendChild(amEl);
+          row.appendChild(qtyEl); row.appendChild(eqEl);
+          // Voltage mismatch warning
+          var vw = eqVoltWarn(slots[sr].eq);
+          if (!vw && slots[sr].v120only && region !== 'US') vw = '120V';
+          if (!vw && slots[sr].v240only && region === 'US') vw = '240V';
+          if (vw) { var wb = document.createElement('span'); wb.className = 'volt-warn'; wb.title = vw + ' only — check compatibility with current region'; wb.textContent = '\u26a0 ' + vw + ' only'; row.appendChild(wb); }
+          row.appendChild(amEl);
           row.onclick = (function(b, ww, s) { return function() { selectTarget(b, ww, s); }; })(bi, w, sr);
           itemsDiv.appendChild(row);
         }
@@ -750,7 +771,7 @@ function selSlot(idx, btn) {
 function updateAddPreview() {
   var name = document.getElementById('addEqSel').value;
   var qty = parseInt(document.getElementById('addQty').value) || 1;
-  var w = eqMap[name];
+  var w = eqWatts(name);
   var a = (w && w > 1) ? toAmps(w) : null;
   document.getElementById('previewAmpVal').textContent = a ? (a * qty).toFixed(2) : '\u2014';
 }
@@ -808,8 +829,9 @@ function writeToSheet() {
   var name = document.getElementById('addEqSel').value;
   var qty = parseInt(document.getElementById('addQty').value) || 1;
   var bi = selectedTarget.bi, wayNum = selectedTarget.wayNum, subRow = selectedTarget.subRow;
-  var w = eqMap[name];
-  distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty, units:[]};
+  var w = eqWatts(name);
+  var e = eqMap[name] || {};
+  distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty, units:[], v120only: e.v120only||false, v240only: e.v240only||false};
   renderUnitFields(bi, wayNum, subRow);
 
   var fcCb = document.getElementById('addToFlightCase');
@@ -1383,12 +1405,13 @@ function assignFromPdf() {
   selected.forEach(function(sel) {
     var item = sel.item;
     var eqName = item.match || item.raw;
-    var w = eqMap[eqName] || 0;
+    var w = eqWatts(eqName);
+    var eObj = eqMap[eqName] || {};
     var toAssign = Math.min(qtyPerSlot, item.remaining);
     if (toAssign <= 0) return;
 
     if (!distroData[sheetName]) return;
-    distroData[sheetName][bi][wayNum][subRow] = {eq: eqName, watts: w, qty: toAssign, units: []};
+    distroData[sheetName][bi][wayNum][subRow] = {eq: eqName, watts: w, qty: toAssign, units: [], v120only: eObj.v120only||false, v240only: eObj.v240only||false};
 
     var label = bankLetter + wayNum + (subRow > 0 ? '.' + subRow : '');
     item.assigned.push(label + '(' + toAssign + ')');
