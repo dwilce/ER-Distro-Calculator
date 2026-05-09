@@ -362,7 +362,7 @@ function eqWatts(name) { var e = eqMap[name]; return e ? (typeof e === 'object' 
 function eqVoltWarn(name) {
   var e = eqMap[name];
   if (!e || typeof e !== 'object') return null;
-  if (e.v120only && region !== 'US') return '120V';
+  if (e.v120only) return '120V';
   if (e.v240only && region === 'US') return '240V';
   return null;
 }
@@ -493,7 +493,7 @@ function renderInventory(items) {
     el.className = 'inv-item';
     var nameDiv = document.createElement('div'); nameDiv.className = 'inv-name'; nameDiv.textContent = name;
     // Voltage-only badge
-    if (v120) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '120V only — not suitable for ROW (230V)'; vb.textContent = '120V'; nameDiv.appendChild(vb); }
+    if (v120) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '120V only — always flagged regardless of region'; vb.textContent = '120V'; nameDiv.appendChild(vb); }
     if (v240) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '240V only — not suitable for US (208V)'; vb.textContent = '240V'; nameDiv.appendChild(vb); }
     var wDiv = document.createElement('div');
     wDiv.className = tbc ? 'tbc-badge' : 'inv-watts';
@@ -649,7 +649,7 @@ function renderDistro() {
           row.appendChild(qtyEl); row.appendChild(eqEl);
           // Voltage mismatch warning
           var vw = eqVoltWarn(slots[sr].eq);
-          if (!vw && slots[sr].v120only && region !== 'US') vw = '120V';
+          if (!vw && slots[sr].v120only) vw = '120V';
           if (!vw && slots[sr].v240only && region === 'US') vw = '240V';
           if (vw) { var wb = document.createElement('span'); wb.className = 'volt-warn'; wb.title = vw + ' only — check compatibility with current region'; wb.textContent = '\u26a0 ' + vw + ' only'; row.appendChild(wb); }
           row.appendChild(amEl);
@@ -1507,10 +1507,12 @@ function openLabels(labelSize) {
         for (var ii = 0; ii < items.length; ii++) {
           var units = items[ii].units || [];
           var uid = (units[0] && units[0].id) ? ' <span class="uid">[' + units[0].id + ']</span>' : '';
-          // Voltage warning tag
-          var vw = '';
-          if (items[ii].v120only && region !== 'US') vw = '<span class="volt-tag">120V ONLY</span>';
-          else if (items[ii].v240only && region === 'US') vw = '<span class="volt-tag">240V ONLY</span>';
+          // Voltage warning tag — read live from eqMap so it's always current
+          var vw = eqVoltWarn(items[ii].eq) || '';
+          if (!vw && items[ii].v120only) vw = '120V ONLY';
+          if (!vw && items[ii].v240only && region === 'US') vw = '240V ONLY';
+          if (vw && vw.length < 8) vw = vw + ' ONLY';
+          var vwTag = vw ? '<span class="volt-tag">' + vw + '</span>' : '';
           if (items[ii].qty > 1 && units.length > 1) {
             var uids = '';
             for (var ui = 0; ui < units.length; ui++) { if (units[ui].id) uids += '<span class="uid">[' + units[ui].id + ']</span>'; }
@@ -1752,9 +1754,10 @@ function openReport() {
           var units = slot.units || [{id:'',placement:'',address:''}];
           for (var ui = 0; ui < units.length; ui++) {
             var a = toAmps(slot.watts);
-          var vw = '';
-          if (slot.v120only && region !== 'US') vw = '120V ONLY';
-          else if (slot.v240only && region === 'US') vw = '240V ONLY';
+          var vw = eqVoltWarn(slot.eq) || '';
+          if (!vw && slot.v120only) vw = '120V ONLY';
+          if (!vw && slot.v240only && region === 'US') vw = '240V ONLY';
+          if (vw && vw.length < 8) vw = vw + ' ONLY'; // normalise short form
           rows.push({
               distro: sName,
               bank: bankLetter + w + (sr > 0 ? '.' + sr : ''),
@@ -1857,9 +1860,10 @@ function openEquipmentLabels() {
           var slot = distroData[sName][bi][w][sr];
           if (!slot) continue;
           var units = slot.units || [{id:'', address:''}];
-          var vw = '';
-          if (slot.v120only && region !== 'US') vw = '120V ONLY';
-          else if (slot.v240only && region === 'US') vw = '240V ONLY';
+          var vw = eqVoltWarn(slot.eq) || '';
+          if (!vw && slot.v120only) vw = '120V ONLY';
+          if (!vw && slot.v240only && region === 'US') vw = '240V ONLY';
+          if (vw && vw.length < 8) vw = vw + ' ONLY';
           for (var ui = 0; ui < units.length; ui++) {
             labelItems.push({
               eq: slot.eq,
