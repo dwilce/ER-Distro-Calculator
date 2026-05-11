@@ -256,6 +256,7 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
     <button class="save-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
     <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
+    <button class="report-btn-top" style="background:#5b2c8a;border-color:#5b2c8a" onclick="openDistroDesigner()">&#9889; Distro Designer</button>
   </div>
 </header>
 
@@ -2007,7 +2008,7 @@ function closeLabels() {
 
       <div class="help-section">
         <h3>&#9889; Getting Started</h3>
-        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update automatically. Choose your distro type using the sheet tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A/125A)</strong>, or <strong>72-Way (400A)</strong>.</p>
+        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Choose your distro sheet using the tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A/125A)</strong>, or <strong>72-Way (400A)</strong>. If you're running multiple distros, use the <strong>Distro Designer</strong> to map the full power chain first.</p>
       </div>
 
       <div class="help-section">
@@ -2021,27 +2022,33 @@ function closeLabels() {
           <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
           <li>Click <strong>Update &amp; Clear</strong> — saves unit details, pushes to Flight Case Labels if ticked, and resets the panel</li>
         </ol>
-        <p><strong>Editing:</strong> Click any populated output to reload it into the panel for editing. Make changes and click Update &amp; Clear to save.</p>
+        <p><strong>Editing:</strong> Click any populated output to reload it into the panel. Make changes and click Update &amp; Clear to save.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128196; Import from PDF</h3>
-        <p>Click <strong>Import PDF</strong> in the top bar to extract equipment from any PDF — stage plots, riders, CAD drawings, or equipment lists. A popup shows all lines matched against your inventory:</p>
+        <p>Click <strong>Import PDF</strong> to extract equipment from any PDF — stage plots, riders, CAD drawings, or equipment lists. Matched lines appear in a popup:</p>
         <ul>
           <li><span class="help-badge ok">&#10003;</span> <strong>Green border</strong> — confident inventory match. The dropdown shows the matched item; change it if needed.</li>
-          <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match found. Open the dropdown to pick the correct inventory item from the <em>Best matches</em> group or scroll to <em>All inventory</em>.</li>
-          <li>Click <strong>&#10005;</strong> on any row to remove lines you don't want to assign.</li>
+          <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match. Open the dropdown to pick from <em>Best matches</em> or <em>All inventory</em>.</li>
+          <li>Click <strong>&#10005;</strong> on any row to remove unwanted lines.</li>
         </ul>
-        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct quantity; the border turns green once set. Quantities are never guessed from the PDF as this was unreliable.</p>
-        <p>Once matches and quantities are confirmed:</p>
-        <ol>
-          <li>Tick one or more items</li>
-          <li>Choose <strong>Distro Sheet</strong>, <strong>Bank</strong>, <strong>Way</strong>, and <strong>Sub-slot</strong> on the right</li>
-          <li>Set the <strong>Quantity</strong> to assign in this slot and click <strong>+ Assign Selected</strong></li>
-          <li>The slot advances automatically — repeat until each item shows <strong>&#10003; done</strong></li>
-          <li>Click <strong>Done</strong> when finished</li>
-        </ol>
-        <p>Go back and fill in unit details (Unit ID, Placement, Address) by clicking each populated output on the distro sheet.</p>
+        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set. Quantities are never auto-detected as this proved unreliable across PDF types.</p>
+        <p>Once matches and quantities look right: tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, set quantity, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#9889; Distro Designer</h3>
+        <p>Click <strong>&#9889; Distro Designer</strong> in the top bar to open the interactive power chain map. Use it when running more than one distro to visualise how they feed each other.</p>
+        <ul>
+          <li><strong>Add Distro</strong> — choose a distro type from the left panel (72-Way, 48-Way, 18-Way, Distro Box, Generator, or Custom) and click to place it on the canvas.</li>
+          <li><strong>Connect</strong> — click &#128279; Connect, click the source distro, then click the destination. The connection is drawn with an arrow showing power flow direction. Choose the connector type (CAM Lock, 125A, 63A CEE, 32A CEE, Socapex) before connecting — each has its own colour.</li>
+          <li><strong>Move</strong> — drag any distro node to reposition it. Connections follow automatically.</li>
+          <li><strong>Auto Layout</strong> — arranges nodes into a top-down power flow tree based on connections.</li>
+          <li><strong>Properties panel</strong> (right) — edit label, colour, notes, and link the node to a distro sheet. Click <strong>&#8594; Open in Calculator</strong> to jump directly to that sheet.</li>
+          <li><strong>Export SVG</strong> — saves the diagram as a scalable vector file for documentation.</li>
+        </ul>
+        <p>Click any connection line to select it and change its type or label. Click <strong>&#128465; Delete</strong> to remove selected nodes or connections.</p>
       </div>
 
       <div class="help-section">
@@ -2056,39 +2063,51 @@ function closeLabels() {
       </div>
 
       <div class="help-section">
-        <h3>&#128424; Printing Labels</h3>
-        <p>Click <strong>Labels &#9660;</strong> in the top bar to choose a label type:</p>
+        <h3>&#9888; Voltage Warnings</h3>
+        <p>Items in the inventory can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to set this up, then tick the checkbox for any item that only works on a specific voltage.</p>
         <ul>
-          <li><strong>Avery 5163</strong> — Distro bank labels. US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. One label per bank showing all outputs with equipment and unit ID.</li>
-          <li><strong>Avery L7173</strong> — Same content as 5163 but A4, 99.1&times;57mm.</li>
-          <li><strong>Avery 6737</strong> — Small equipment labels. A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One label per unit showing name, unit ID, placement and address.</li>
+          <li><strong>120V Only</strong> — always flagged with a <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> badge regardless of region.</li>
+          <li><strong>240V Only</strong> — flagged with <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span> when region is set to US (208V).</li>
         </ul>
-        <p>Upload a logo with <strong>&#128444; Logo</strong> — it appears as a watermark on all label types and passes through to the Flight Case Labels page. Set paper to match the sheet size, margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Warnings appear on the distro sheet next to the equipment name, on all label types, and in the Equipment Report as a dedicated VOLTAGE column with a highlighted row.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128424; Printing Labels</h3>
+        <p>Click <strong>Labels &#9660;</strong> to choose a label format:</p>
+        <ul>
+          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. One label per bank showing all outputs, equipment, and unit IDs.</li>
+          <li><strong>Avery L7173</strong> — Same as 5163 but A4, 99.1&times;57mm.</li>
+          <li><strong>Avery 6737</strong> — Individual equipment labels, A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One per unit showing name, ID, placement, and address.</li>
+        </ul>
+        <p>Voltage warnings (<span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> / <span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span>) appear on all label types for flagged items.</p>
+        <p>Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels and the flight case page. Print with margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128230; Flight Case Labels</h3>
-        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — creates Avery 5126 labels (177&times;127mm, 2 per A4 sheet) with rounded trim corners.</p>
-        <p><strong>Label layout:</strong> Top third = coloured tour name band with ER Productions logo, Middle third = description, Bottom third = location (left) and box number with total (right).</p>
-        <p><strong>Header styles:</strong> Each row has a colour picker with four options — Solid, Left/Right Split, Diagonal Stripes, and Top/Bottom Split. Choose two colours for the split and stripe styles.</p>
-        <p><strong>Auto-populate from distro:</strong> Tick <strong>Add to Flight Case Labels</strong>, fill in unit details, then click Update &amp; Clear — rows are created automatically using the equipment name + unit ID as description and placement as location.</p>
-        <p>Box numbers auto-increment. Use <strong>&#8635; Refresh Logo</strong> to pull through any logo uploaded on the main calculator as a watermark. Print with A4, margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — Avery 5126 format (177&times;127mm, 2 per A4 sheet) with rounded trim corners.</p>
+        <p><strong>Layout:</strong> Top third = coloured tour name band with logo. Middle = description. Bottom = location (left) and box number with total (right).</p>
+        <p><strong>Header styles:</strong> Solid, Left/Right Split, Diagonal Stripes, or Top/Bottom Split — each supports a two-colour picker.</p>
+        <p><strong>Auto-populate:</strong> Tick <strong>Add to Flight Case Labels</strong> when assigning equipment, fill in unit details, then click Update &amp; Clear — rows are created automatically. Box numbers auto-increment.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128438; Equipment Report</h3>
-        <p>Click <strong>Report</strong> to open a printable A4 table of every assigned piece of equipment across all three distro sheets, showing distro, output, equipment, amps per unit, unit ID, placement, and address.</p>
+        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets, showing distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. A summary banner highlights any voltage mismatches at the top, and a dedicated <strong>Voltage Warnings</strong> count appears in the summary row.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Shareable and reloadable on any device.</p>
+        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Fully portable and reloadable on any device.</p>
         <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
+        <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128269; Inventory</h3>
-        <p>The left panel lists all equipment with watts and amps per unit for the active region. Search to filter, or click any item to pre-select it in the dropdown. To add new equipment to the inventory, open the Google Sheet and use the <strong>&#9889; ER Calculator</strong> menu &rarr; <strong>&#43; Add New Equipment</strong>.</p>
+        <p>The left panel lists all equipment with watts and amps per unit for the active region. Items flagged as <strong>120V Only</strong> or <strong>240V Only</strong> show a coloured badge. Search to filter. Click any item to pre-select it in the Add Equipment dropdown.</p>
+        <p>To add or edit equipment: open the Google Sheet and use <strong>&#9889; ER Calculator → &#43; Add New Equipment</strong>. Step 4 of the form asks for voltage restriction. Run <strong>Add Voltage Columns</strong> once to enable the checkbox columns if not already present.</p>
       </div>
 
     <div class="help-ftr">
@@ -2097,5 +2116,606 @@ function closeLabels() {
   </div>
 </div>
 </body></html>';
+<!-- ── DISTRO DESIGNER ──────────────────────────────────────── -->
+<div id="ddModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,18,30,0.95)">
+  <div style="display:flex;flex-direction:column;height:100vh">
+    <div style="background:#0d1f35;border-bottom:2px solid #1f4e79;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <span style="color:#FFD700;font-size:16px">⚡</span>
+      <span style="color:#fff;font-weight:800;font-size:13px;letter-spacing:1.5px">DISTRO DESIGNER</span>
+      <div style="height:18px;width:1px;background:#1f4e79"></div>
+      <button class="dd-btn" onclick="ddAddDistro()">＋ Add Distro</button>
+      <button class="dd-btn" id="ddConnBtn" onclick="ddToggleConnect()">&#128279; Connect</button>
+      <button class="dd-btn" onclick="ddAutoLayout()">&#9881; Auto Layout</button>
+      <button class="dd-btn dd-btn-danger" onclick="ddClearAll()">&#128465; Clear All</button>
+      <span id="ddStatus" style="font-size:11px;color:#FFD700;font-style:italic;margin-left:4px"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="dd-btn" onclick="ddExport()">&#128438; Export SVG</button>
+        <button class="dd-btn dd-btn-danger" onclick="closeDistroDesigner()">&#10005; Close</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden">
+      <!-- Left: palette -->
+      <div style="width:190px;background:#091525;border-right:1px solid #1a3a57;overflow-y:auto;flex-shrink:0">
+        <div class="dd-panel-hdr">DISTRO UNITS</div>
+        <div id="ddPalette" style="padding:8px;display:flex;flex-direction:column;gap:5px"></div>
+        <div class="dd-panel-hdr" style="margin-top:4px">CONNECTOR TYPE</div>
+        <div id="ddConnTypes" style="padding:8px;display:flex;flex-direction:column;gap:4px"></div>
+        <div class="dd-panel-hdr" style="margin-top:4px">LEGEND</div>
+        <div id="ddLegend" style="padding:8px"></div>
+      </div>
+      <!-- Canvas -->
+      <div style="flex:1;position:relative;overflow:hidden" id="ddWrap">
+        <svg id="ddSvg" style="position:absolute;inset:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="ddGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+              <path d="M28 0L0 0 0 28" fill="none" stroke="#0f2035" stroke-width="0.6"/>
+            </pattern>
+            <marker id="arr" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#FFD700"/></marker>
+            <marker id="arr-r" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#e74c3c"/></marker>
+            <marker id="arr-g" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#27ae60"/></marker>
+            <marker id="arr-b" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#3498db"/></marker>
+            <marker id="arr-w" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fff"/></marker>
+          </defs>
+          <rect width="100%" height="100%" fill="#0a1520"/>
+          <rect width="100%" height="100%" fill="url(#ddGrid)"/>
+          <g id="ddConnLayer"></g>
+          <g id="ddNodeLayer"></g>
+          <line id="ddDragLine" stroke="#FFD700" stroke-width="2" stroke-dasharray="6 3" opacity="0" marker-end="url(#arr)"/>
+        </svg>
+        <div id="ddEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+          <div style="font-size:56px;opacity:0.07;line-height:1">⚡</div>
+          <div style="color:#1f4e79;font-size:12px;font-weight:700;margin-top:10px;letter-spacing:0.5px">Add distros from the panel to start mapping your power chain</div>
+          <div style="color:#0d2137;font-size:10px;margin-top:6px">Drag to position · Use Connect to wire distros · Click to open calculator</div>
+        </div>
+      </div>
+      <!-- Right: properties -->
+      <div style="width:200px;background:#091525;border-left:1px solid #1a3a57;overflow-y:auto;flex-shrink:0">
+        <div class="dd-panel-hdr">SELECTED</div>
+        <div id="ddProps" style="padding:10px;color:#2a5a7a;font-size:11px;font-style:italic">Nothing selected</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.dd-btn{padding:4px 10px;background:#132233;border:1px solid #1f4e79;color:#7fb3d3;font-size:11px;font-weight:600;border-radius:3px;cursor:pointer}
+.dd-btn:hover{background:#1f4e79;color:#fff}
+.dd-btn.active{background:#FFD700;border-color:#FFD700;color:#000}
+.dd-btn-danger{border-color:#7b2222;color:#e74c3c}
+.dd-btn-danger:hover{background:#c0392b;color:#fff;border-color:#c0392b}
+.dd-panel-hdr{padding:7px 10px;font-size:9px;font-weight:700;color:#2a5a7a;letter-spacing:1.5px;border-bottom:1px solid #0f2035;background:#061018}
+.dd-palette-btn{width:100%;padding:6px 8px;background:#0d1f35;border:1px solid #1a3a57;color:#7fb3d3;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;text-align:left;transition:all .15s}
+.dd-palette-btn:hover{background:#1f4e79;color:#fff;border-color:#3498db}
+.dd-conn-type{display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:3px;border:1px solid transparent}
+.dd-conn-type:hover,.dd-conn-type.active{background:#0d1f35;border-color:#1f4e79}
+.dd-conn-type.active{border-color:#FFD700}
+.dd-prop-row{margin-bottom:8px}
+.dd-prop-label{font-size:9px;font-weight:700;color:#2a5a7a;letter-spacing:1px;margin-bottom:3px}
+.dd-prop-input{width:100%;padding:4px 6px;background:#0d1f35;border:1px solid #1a3a57;color:#c0d8f0;font-size:11px;border-radius:3px;box-sizing:border-box}
+.dd-prop-input:focus{outline:none;border-color:#FFD700}
+.dd-prop-select{width:100%;padding:4px 6px;background:#0d1f35;border:1px solid #1a3a57;color:#c0d8f0;font-size:11px;border-radius:3px;box-sizing:border-box}
+.dd-jump-btn{width:100%;padding:5px;background:#1f4e79;border:1px solid #2471a3;color:#fff;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;margin-top:4px}
+.dd-jump-btn:hover{background:#2471a3}
+.dd-del-btn{width:100%;padding:5px;background:#7b2222;border:1px solid #c0392b;color:#fff;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;margin-top:4px}
+.dd-del-btn:hover{background:#c0392b}
+</style>
+
+<script>
+// ── DISTRO DESIGNER ──────────────────────────────────────────
+var dd = {
+  nodes: [],       // {id, type, label, x, y, w, h, color, note}
+  conns: [],       // {id, from, to, type, label}
+  nextId: 1,
+  connecting: false,
+  connFrom: null,
+  connType: 'cam-lock',
+  dragging: null,
+  dragOffX: 0, dragOffY: 0,
+  selected: null,  // node id or 'conn:id'
+  svgPt: null
+};
+
+var DD_DISTRO_TYPES = [
+  {key:'72way', label:'72-Way (400A)', color:'#7b2222', sub:'12-bank · 6-way · 400A'},
+  {key:'48way', label:'48-Way (63A)',  color:'#5b2c8a', sub:'8-bank · 6-way · 63A'},
+  {key:'18way', label:'18-Way (32A)',  color:'#1f4e79', sub:'3-bank · 6-way · 32A'},
+  {key:'dist',  label:'Distribution Box', color:'#37612b', sub:'Custom distro'},
+  {key:'gen',   label:'Generator / Mains', color:'#333',   sub:'Power source'},
+  {key:'custom',label:'Custom Unit',  color:'#0e7c7b', sub:'Label as needed'},
+];
+
+var DD_CONN_TYPES = [
+  {key:'cam-lock', label:'CAM Lock',    color:'#FFD700', marker:'arr'},
+  {key:'125a',     label:'125A Plug',   color:'#e74c3c', marker:'arr-r'},
+  {key:'63a',      label:'63A CEE',     color:'#27ae60', marker:'arr-g'},
+  {key:'32a',      label:'32A CEE',     color:'#3498db', marker:'arr-b'},
+  {key:'socapex',  label:'Socapex',     color:'#fff',    marker:'arr-w'},
+  {key:'custom',   label:'Custom',      color:'#aaa',    marker:'arr'},
+];
+
+function openDistroDesigner() {
+  document.getElementById('ddModal').style.display = 'block';
+  ddBuildPalette();
+  ddBuildConnTypes();
+  ddRender();
+  // Set up SVG point for coord conversion
+  var svg = document.getElementById('ddSvg');
+  dd.svgPt = svg.createSVGPoint();
+  svg.addEventListener('mousemove', ddOnMouseMove);
+  svg.addEventListener('click', ddOnSvgClick);
+}
+
+function closeDistroDesigner() {
+  document.getElementById('ddModal').style.display = 'none';
+  var svg = document.getElementById('ddSvg');
+  svg.removeEventListener('mousemove', ddOnMouseMove);
+  svg.removeEventListener('click', ddOnSvgClick);
+}
+
+function ddSvgCoords(e) {
+  var svg = document.getElementById('ddSvg');
+  dd.svgPt.x = e.clientX; dd.svgPt.y = e.clientY;
+  return dd.svgPt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function ddBuildPalette() {
+  var p = document.getElementById('ddPalette'); p.innerHTML = '';
+  DD_DISTRO_TYPES.forEach(function(dt) {
+    var btn = document.createElement('button');
+    btn.className = 'dd-palette-btn';
+    btn.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + dt.color + ';margin-right:5px;vertical-align:middle"></span>' +
+      '<strong>' + dt.label + '</strong><br><span style="color:#2a5a7a;font-size:9px;font-weight:400">' + dt.sub + '</span>';
+    btn.onclick = function() { ddAddDistroOfType(dt); };
+    p.appendChild(btn);
+  });
+}
+
+function ddBuildConnTypes() {
+  var c = document.getElementById('ddConnTypes'); c.innerHTML = '';
+  var leg = document.getElementById('ddLegend'); leg.innerHTML = '';
+  DD_CONN_TYPES.forEach(function(ct) {
+    var row = document.createElement('div');
+    row.className = 'dd-conn-type' + (dd.connType === ct.key ? ' active' : '');
+    row.id = 'ddct-' + ct.key;
+    row.innerHTML = '<svg width="24" height="10"><line x1="2" y1="5" x2="18" y2="5" stroke="' + ct.color + '" stroke-width="2.5"/><polygon points="18 2,24 5,18 8" fill="' + ct.color + '"/></svg>' +
+      '<span style="font-size:10px;color:#c0d8f0">' + ct.label + '</span>';
+    row.onclick = function() { dd.connType = ct.key; ddBuildConnTypes(); };
+    c.appendChild(row);
+    // Legend
+    var lrow = document.createElement('div');
+    lrow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px';
+    lrow.innerHTML = '<svg width="20" height="8"><line x1="1" y1="4" x2="14" y2="4" stroke="' + ct.color + '" stroke-width="2"/><polygon points="14 1.5,20 4,14 6.5" fill="' + ct.color + '"/></svg>' +
+      '<span style="font-size:9px;color:#4a7a9b">' + ct.label + '</span>';
+    leg.appendChild(lrow);
+  });
+}
+
+function ddAddDistro() { ddAddDistroOfType(DD_DISTRO_TYPES[2]); }
+
+function ddAddDistroOfType(dt) {
+  var wrap = document.getElementById('ddWrap');
+  var cx = wrap.clientWidth / 2, cy = wrap.clientHeight / 2;
+  // Stagger placement
+  var offset = dd.nodes.length * 20;
+  var node = {
+    id: dd.nextId++,
+    type: dt.key,
+    label: dt.label,
+    color: dt.color,
+    x: 80 + (offset % 300),
+    y: 80 + Math.floor(offset / 300) * 140,
+    w: 160, h: 70,
+    note: '',
+    sheetKey: null  // link to calculator sheet
+  };
+  // Try to link to matching SHEETS key
+  if (typeof SHEETS !== 'undefined') {
+    var keys = Object.keys(SHEETS);
+    if (dt.key === '72way' && keys.find(function(k){return k.indexOf('72')>=0;})) node.sheetKey = keys.find(function(k){return k.indexOf('72')>=0;});
+    if (dt.key === '48way' && keys.find(function(k){return k.indexOf('48')>=0;})) node.sheetKey = keys.find(function(k){return k.indexOf('48')>=0;});
+    if (dt.key === '18way' && keys.find(function(k){return k.indexOf('18')>=0;})) node.sheetKey = keys.find(function(k){return k.indexOf('18')>=0;});
+  }
+  dd.nodes.push(node);
+  ddRender();
+  ddSelect('node', node.id);
+  document.getElementById('ddEmpty').style.display = 'none';
+}
+
+function ddToggleConnect() {
+  dd.connecting = !dd.connecting;
+  dd.connFrom = null;
+  var btn = document.getElementById('ddConnBtn');
+  btn.classList.toggle('active', dd.connecting);
+  ddSetStatus(dd.connecting ? 'Click source distro, then destination to connect' : '');
+  var dl = document.getElementById('ddDragLine');
+  dl.setAttribute('opacity', '0');
+}
+
+function ddSetStatus(msg) { document.getElementById('ddStatus').textContent = msg; }
+
+function ddOnSvgClick(e) {
+  if (e.target === document.getElementById('ddSvg') || e.target.tagName === 'rect' || e.target.tagName === 'pattern') {
+    ddSelect(null, null);
+  }
+}
+
+function ddOnMouseMove(e) {
+  if (dd.connecting && dd.connFrom !== null) {
+    var pt = ddSvgCoords(e);
+    var dl = document.getElementById('ddDragLine');
+    var from = dd.nodes.find(function(n){return n.id===dd.connFrom;});
+    if (from) {
+      dl.setAttribute('x1', from.x + from.w/2);
+      dl.setAttribute('y1', from.y + from.h/2);
+      dl.setAttribute('x2', pt.x);
+      dl.setAttribute('y2', pt.y);
+      dl.setAttribute('opacity', '0.7');
+    }
+  }
+  if (dd.dragging !== null) {
+    var pt = ddSvgCoords(e);
+    var node = dd.nodes.find(function(n){return n.id===dd.dragging;});
+    if (node) {
+      node.x = Math.max(0, pt.x - dd.dragOffX);
+      node.y = Math.max(0, pt.y - dd.dragOffY);
+      ddRender();
+      if (dd.selected && dd.selected.type === 'node' && dd.selected.id === node.id) {
+        ddRenderProps();
+      }
+    }
+  }
+}
+
+function ddNodeMouseDown(e, nodeId) {
+  if (dd.connecting) {
+    if (dd.connFrom === null) {
+      dd.connFrom = nodeId;
+      ddSetStatus('Now click the destination distro');
+    } else if (dd.connFrom !== nodeId) {
+      // Create connection
+      var ct = DD_CONN_TYPES.find(function(c){return c.key===dd.connType;}) || DD_CONN_TYPES[0];
+      dd.conns.push({id: dd.nextId++, from: dd.connFrom, to: nodeId, type: dd.connType, label: ct.label, color: ct.color, marker: ct.marker});
+      dd.connFrom = null;
+      var dl = document.getElementById('ddDragLine');
+      dl.setAttribute('opacity','0');
+      ddSetStatus('Connected! Click another source or turn off Connect mode');
+      ddRender();
+    }
+    e.stopPropagation();
+    return;
+  }
+  // Start drag
+  var pt = ddSvgCoords(e);
+  var node = dd.nodes.find(function(n){return n.id===nodeId;});
+  if (node) {
+    dd.dragging = nodeId;
+    dd.dragOffX = pt.x - node.x;
+    dd.dragOffY = pt.y - node.y;
+  }
+  ddSelect('node', nodeId);
+  e.stopPropagation();
+  var svg = document.getElementById('ddSvg');
+  function onUp() { dd.dragging = null; svg.removeEventListener('mouseup', onUp); }
+  svg.addEventListener('mouseup', onUp);
+}
+
+function ddConnClick(e, connId) {
+  if (dd.connecting) return;
+  ddSelect('conn', connId);
+  e.stopPropagation();
+}
+
+function ddSelect(type, id) {
+  dd.selected = type ? {type:type, id:id} : null;
+  ddRender();
+  ddRenderProps();
+}
+
+function ddRenderProps() {
+  var panel = document.getElementById('ddProps');
+  if (!dd.selected) { panel.innerHTML = '<div style="color:#2a5a7a;font-size:11px;font-style:italic;padding:4px">Nothing selected</div>'; return; }
+
+  if (dd.selected.type === 'node') {
+    var node = dd.nodes.find(function(n){return n.id===dd.selected.id;});
+    if (!node) return;
+    var sheetOptions = '';
+    if (typeof SHEETS !== 'undefined') {
+      sheetOptions = '<option value="">None</option>';
+      Object.keys(SHEETS).forEach(function(k){ sheetOptions += '<option value="' + k + '"' + (node.sheetKey===k?' selected':'') + '>' + k + '</option>'; });
+    }
+    panel.innerHTML =
+      '<div class="dd-prop-row"><div class="dd-prop-label">LABEL</div>' +
+      '<input class="dd-prop-input" value="' + ddEsc(node.label) + '" onchange="ddUpdateNode(' + node.id + ',\'label\',this.value)"></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">COLOUR</div>' +
+      '<input type="color" value="' + node.color + '" style="width:100%;height:26px;border:1px solid #1a3a57;border-radius:3px;background:#0d1f35;cursor:pointer" onchange="ddUpdateNode(' + node.id + ',\'color\',this.value)"></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">NOTE</div>' +
+      '<input class="dd-prop-input" placeholder="e.g. Stage left" value="' + ddEsc(node.note||'') + '" onchange="ddUpdateNode(' + node.id + ',\'note\',this.value)"></div>' +
+      (sheetOptions ? '<div class="dd-prop-row"><div class="dd-prop-label">LINKED SHEET</div><select class="dd-prop-select" onchange="ddUpdateNode(' + node.id + ',\'sheetKey\',this.value)">' + sheetOptions + '</select></div>' : '') +
+      (node.sheetKey ? '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + node.sheetKey + '\')">&#8594; Open in Calculator</button>' : '') +
+      '<button class="dd-del-btn" onclick="ddDeleteNode(' + node.id + ')">&#128465; Delete Distro</button>';
+  } else if (dd.selected.type === 'conn') {
+    var conn = dd.conns.find(function(c){return c.id===dd.selected.id;});
+    if (!conn) return;
+    var typeOpts = DD_CONN_TYPES.map(function(ct){
+      return '<option value="' + ct.key + '"' + (conn.type===ct.key?' selected':'') + '>' + ct.label + '</option>';
+    }).join('');
+    panel.innerHTML =
+      '<div class="dd-prop-row"><div class="dd-prop-label">CONNECTOR TYPE</div>' +
+      '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'type\',this.value)">' + typeOpts + '</select></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">CUSTOM LABEL</div>' +
+      '<input class="dd-prop-input" placeholder="e.g. 63A feeder" value="' + ddEsc(conn.label||'') + '" onchange="ddUpdateConn(' + conn.id + ',\'label\',this.value)"></div>' +
+      '<button class="dd-del-btn" onclick="ddDeleteConn(' + conn.id + ')">&#128465; Delete Connection</button>';
+  }
+}
+
+function ddUpdateNode(id, key, val) {
+  var node = dd.nodes.find(function(n){return n.id===id;});
+  if (!node) return;
+  node[key] = val;
+  if (key === 'color') ddRender();
+  ddRenderProps();
+}
+
+function ddUpdateConn(id, key, val) {
+  var conn = dd.conns.find(function(c){return c.id===id;});
+  if (!conn) return;
+  if (key === 'type') {
+    var ct = DD_CONN_TYPES.find(function(c){return c.key===val;});
+    if (ct) { conn.color = ct.color; conn.marker = ct.marker; conn.label = ct.label; }
+  }
+  conn[key] = val;
+  ddRender();
+  ddRenderProps();
+}
+
+function ddDeleteNode(id) {
+  dd.nodes = dd.nodes.filter(function(n){return n.id!==id;});
+  dd.conns = dd.conns.filter(function(c){return c.from!==id && c.to!==id;});
+  dd.selected = null;
+  ddRender();
+  ddRenderProps();
+  if (!dd.nodes.length) document.getElementById('ddEmpty').style.display = 'flex';
+}
+
+function ddDeleteConn(id) {
+  dd.conns = dd.conns.filter(function(c){return c.id!==id;});
+  dd.selected = null;
+  ddRender();
+  ddRenderProps();
+}
+
+function ddJumpToSheet(sheetKey) {
+  closeDistroDesigner();
+  // Switch active sheet in calculator
+  if (typeof setActiveSheet === 'function') { setActiveSheet(sheetKey); }
+  else { activeSheet = sheetKey; renderDistro(); updateSheetTabs(); }
+}
+
+function ddEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function ddRender() {
+  var nodeLayer = document.getElementById('ddNodeLayer');
+  var connLayer = document.getElementById('ddConnLayer');
+  nodeLayer.innerHTML = '';
+  connLayer.innerHTML = '';
+
+  var ns = 'http://www.w3.org/2000/svg';
+
+  // Draw connections
+  dd.conns.forEach(function(conn) {
+    var from = dd.nodes.find(function(n){return n.id===conn.from;});
+    var to   = dd.nodes.find(function(n){return n.id===conn.to;});
+    if (!from || !to) return;
+
+    var isSel = dd.selected && dd.selected.type==='conn' && dd.selected.id===conn.id;
+
+    // Calculate edge-to-edge path
+    var x1 = from.x + from.w/2, y1 = from.y + from.h;
+    var x2 = to.x + to.w/2,   y2 = to.y;
+    // If horizontal arrangement, use side ports
+    var dx = Math.abs(x2-x1), dy = Math.abs(y2-y1);
+    if (dx > dy * 1.5) {
+      if (to.x > from.x) { x1 = from.x+from.w; y1 = from.y+from.h/2; x2 = to.x; y2 = to.y+to.h/2; }
+      else { x1 = from.x; y1 = from.y+from.h/2; x2 = to.x+to.w; y2 = to.y+to.h/2; }
+    }
+
+    var cp1x = x1, cp1y = (y1+y2)/2, cp2x = x2, cp2y = (y1+y2)/2;
+    if (dx > dy * 1.5) { cp1x = (x1+x2)/2; cp1y = y1; cp2x = (x1+x2)/2; cp2y = y2; }
+
+    var path = document.createElementNS(ns, 'path');
+    var d = 'M'+x1+' '+y1+' C'+cp1x+' '+cp1y+','+cp2x+' '+cp2y+','+x2+' '+y2;
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', conn.color || '#FFD700');
+    path.setAttribute('stroke-width', isSel ? 4 : 2.5);
+    path.setAttribute('stroke-dasharray', '');
+    path.setAttribute('marker-end', 'url(#' + (conn.marker||'arr') + ')');
+    if (isSel) path.setAttribute('filter', 'drop-shadow(0 0 4px ' + conn.color + ')');
+    path.style.cursor = 'pointer';
+    path.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
+    connLayer.appendChild(path);
+
+    // Label on path
+    var midX = (x1+x2)/2, midY = (y1+y2)/2;
+    var lbg = document.createElementNS(ns, 'rect');
+    var lbl = conn.label || '';
+    var lblW = lbl.length * 6 + 10, lblH = 14;
+    lbg.setAttribute('x', midX - lblW/2); lbg.setAttribute('y', midY - lblH/2 - 1);
+    lbg.setAttribute('width', lblW); lbg.setAttribute('height', lblH);
+    lbg.setAttribute('rx', 3); lbg.setAttribute('fill', '#091525');
+    lbg.setAttribute('stroke', conn.color); lbg.setAttribute('stroke-width', '1');
+    lbg.style.cursor = 'pointer';
+    lbg.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
+    connLayer.appendChild(lbg);
+
+    var lt = document.createElementNS(ns, 'text');
+    lt.setAttribute('x', midX); lt.setAttribute('y', midY + 4);
+    lt.setAttribute('text-anchor', 'middle');
+    lt.setAttribute('font-size', '9'); lt.setAttribute('font-weight', '700');
+    lt.setAttribute('fill', conn.color); lt.setAttribute('font-family', 'monospace');
+    lt.textContent = lbl;
+    lt.style.cursor = 'pointer';
+    lt.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
+    connLayer.appendChild(lt);
+  });
+
+  // Draw nodes
+  dd.nodes.forEach(function(node) {
+    var isSel = dd.selected && dd.selected.type==='node' && dd.selected.id===node.id;
+    var isConnSrc = dd.connecting && dd.connFrom === node.id;
+    var g = document.createElementNS(ns, 'g');
+    g.style.cursor = dd.connecting ? 'crosshair' : 'grab';
+    g.addEventListener('mousedown', (function(nid){ return function(e){ ddNodeMouseDown(e,nid); }; })(node.id));
+
+    // Drop shadow / glow when selected
+    var shadow = document.createElementNS(ns, 'rect');
+    shadow.setAttribute('x', node.x-3); shadow.setAttribute('y', node.y-3);
+    shadow.setAttribute('width', node.w+6); shadow.setAttribute('height', node.h+6);
+    shadow.setAttribute('rx', 8); shadow.setAttribute('fill', 'none');
+    if (isSel) {
+      shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2');
+      shadow.setAttribute('filter', 'drop-shadow(0 0 6px #FFD700)');
+    } else if (isConnSrc) {
+      shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2');
+      shadow.setAttribute('stroke-dasharray', '4 2');
+    }
+    g.appendChild(shadow);
+
+    // Main body
+    var rect = document.createElementNS(ns, 'rect');
+    rect.setAttribute('x', node.x); rect.setAttribute('y', node.y);
+    rect.setAttribute('width', node.w); rect.setAttribute('height', node.h);
+    rect.setAttribute('rx', 6);
+    rect.setAttribute('fill', node.color);
+    rect.setAttribute('stroke', isSel ? '#FFD700' : '#fff');
+    rect.setAttribute('stroke-width', isSel ? 2 : 0.5);
+    rect.setAttribute('stroke-opacity', isSel ? 1 : 0.2);
+    g.appendChild(rect);
+
+    // Top stripe
+    var stripe = document.createElementNS(ns, 'rect');
+    stripe.setAttribute('x', node.x); stripe.setAttribute('y', node.y);
+    stripe.setAttribute('width', node.w); stripe.setAttribute('height', 16);
+    stripe.setAttribute('rx', 6); stripe.setAttribute('fill', 'rgba(0,0,0,0.35)');
+    g.appendChild(stripe);
+    var stripe2 = document.createElementNS(ns, 'rect');
+    stripe2.setAttribute('x', node.x); stripe2.setAttribute('y', node.y+10);
+    stripe2.setAttribute('width', node.w); stripe2.setAttribute('height', 6);
+    stripe2.setAttribute('fill', 'rgba(0,0,0,0.35)');
+    g.appendChild(stripe2);
+
+    // Label
+    var txt = document.createElementNS(ns, 'text');
+    txt.setAttribute('x', node.x + node.w/2); txt.setAttribute('y', node.y + 11);
+    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '8');
+    txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', 'rgba(255,255,255,0.6)');
+    txt.setAttribute('font-family', 'monospace'); txt.setAttribute('letter-spacing', '1');
+    txt.textContent = node.type.toUpperCase();
+    g.appendChild(txt);
+
+    // Main name
+    var name = document.createElementNS(ns, 'text');
+    name.setAttribute('x', node.x + node.w/2); name.setAttribute('y', node.y + 34);
+    name.setAttribute('text-anchor', 'middle'); name.setAttribute('font-size', '12');
+    name.setAttribute('font-weight', '800'); name.setAttribute('fill', '#ffffff');
+    name.setAttribute('font-family', 'sans-serif');
+    name.textContent = node.label.length > 18 ? node.label.substring(0,17)+'…' : node.label;
+    g.appendChild(name);
+
+    // Note
+    if (node.note) {
+      var nt = document.createElementNS(ns, 'text');
+      nt.setAttribute('x', node.x + node.w/2); nt.setAttribute('y', node.y + 50);
+      nt.setAttribute('text-anchor', 'middle'); nt.setAttribute('font-size', '9');
+      nt.setAttribute('fill', 'rgba(255,255,255,0.55)'); nt.setAttribute('font-family', 'sans-serif');
+      nt.textContent = node.note.length > 22 ? node.note.substring(0,21)+'…' : node.note;
+      g.appendChild(nt);
+    }
+
+    // Link indicator
+    if (node.sheetKey) {
+      var lnk = document.createElementNS(ns, 'text');
+      lnk.setAttribute('x', node.x + node.w - 8); lnk.setAttribute('y', node.y + 12);
+      lnk.setAttribute('text-anchor', 'end'); lnk.setAttribute('font-size', '9');
+      lnk.setAttribute('fill', '#FFD700'); lnk.setAttribute('font-family', 'monospace');
+      lnk.textContent = '⚡';
+      g.appendChild(lnk);
+    }
+
+    // Connection ports (dots on edges)
+    [[node.x+node.w/2, node.y], [node.x+node.w/2, node.y+node.h],
+     [node.x, node.y+node.h/2], [node.x+node.w, node.y+node.h/2]].forEach(function(pt) {
+      var dot = document.createElementNS(ns, 'circle');
+      dot.setAttribute('cx', pt[0]); dot.setAttribute('cy', pt[1]); dot.setAttribute('r', 4);
+      dot.setAttribute('fill', dd.connecting ? '#FFD700' : 'rgba(255,255,255,0.2)');
+      dot.setAttribute('stroke', dd.connecting ? '#fff' : 'none'); dot.setAttribute('stroke-width', '1');
+      g.appendChild(dot);
+    });
+
+    nodeLayer.appendChild(g);
+  });
+}
+
+function ddAutoLayout() {
+  if (!dd.nodes.length) return;
+  // Build a simple tree layout based on connections (power flows down)
+  var levels = {};
+  var assigned = {};
+  // Find roots (nodes with no incoming connections)
+  var hasIncoming = {};
+  dd.conns.forEach(function(c){ hasIncoming[c.to] = true; });
+  var roots = dd.nodes.filter(function(n){ return !hasIncoming[n.id]; });
+  if (!roots.length) roots = [dd.nodes[0]];
+
+  function assignLevel(nodeId, level) {
+    if (assigned[nodeId] !== undefined) return;
+    assigned[nodeId] = level;
+    if (!levels[level]) levels[level] = [];
+    levels[level].push(nodeId);
+    dd.conns.filter(function(c){return c.from===nodeId;}).forEach(function(c){ assignLevel(c.to, level+1); });
+  }
+  roots.forEach(function(r){ assignLevel(r.id, 0); });
+  // Assign remaining unconnected nodes
+  dd.nodes.forEach(function(n){ if (assigned[n.id]===undefined) { assigned[n.id]=0; if(!levels[0])levels[0]=[]; levels[0].push(n.id); } });
+
+  var wrap = document.getElementById('ddWrap');
+  var W = wrap.clientWidth, H = wrap.clientHeight;
+  var levelCount = Object.keys(levels).length;
+  var yStep = Math.min(150, (H - 80) / Math.max(1, levelCount));
+
+  Object.keys(levels).forEach(function(level) {
+    var nodeIds = levels[level];
+    var xStep = Math.min(200, (W - 80) / Math.max(1, nodeIds.length));
+    nodeIds.forEach(function(nid, i) {
+      var node = dd.nodes.find(function(n){return n.id===nid;});
+      if (!node) return;
+      node.x = 40 + i * (node.w + xStep - node.w);
+      node.y = 40 + level * yStep;
+    });
+  });
+  ddRender();
+}
+
+function ddClearAll() {
+  if (!dd.nodes.length && !dd.conns.length) return;
+  if (!confirm('Clear all distros and connections?')) return;
+  dd.nodes = []; dd.conns = []; dd.selected = null; dd.connFrom = null; dd.connecting = false;
+  document.getElementById('ddConnBtn').classList.remove('active');
+  document.getElementById('ddEmpty').style.display = 'flex';
+  ddSetStatus('');
+  ddRender();
+  ddRenderProps();
+}
+
+function ddExport() {
+  var svg = document.getElementById('ddSvg');
+  var clone = svg.cloneNode(true);
+  // Remove drag line
+  var dl = clone.querySelector('#ddDragLine'); if(dl) dl.remove();
+  var blob = new Blob(['<?xml version="1.0"?>' + clone.outerHTML], {type:'image/svg+xml'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'ER-Distro-Map.svg'; a.click();
+}
+</script>
 </body>
 </html>
