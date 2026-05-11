@@ -1944,177 +1944,6 @@ function closeLabels() {
   document.getElementById('labelsOverlay').classList.remove('open');
 }
 </script>
-<div class="pdf-overlay" id="pdfOverlay">
-  <div class="pdf-modal">
-    <div class="pdf-hdr">
-      <h2>&#128196; PDF Equipment Import</h2>
-      <button class="modal-close" onclick="closePdfModal()">&#10005;</button>
-    </div>
-    <div class="pdf-body">
-      <div class="pdf-status" id="pdfStatus">Reading PDF...</div>
-      <div class="pdf-cols">
-        <div class="pdf-col">
-          <div class="pdf-col-hdr">Equipment Found</div>
-          <div class="pdf-hint">Select items to assign, then choose an output below</div>
-          <div id="pdfItemList" class="pdf-item-list"></div>
-        </div>
-        <div class="pdf-col">
-          <div class="pdf-col-hdr">Assign To Output</div>
-          <div class="pdf-assign-form">
-            <div class="pdf-field">
-              <label>Distro Sheet</label>
-              <select id="pdfSheet"></select>
-            </div>
-            <div class="pdf-field">
-              <label>Bank</label>
-              <select id="pdfBank"></select>
-            </div>
-            <div class="pdf-field">
-              <label>Way</label>
-              <select id="pdfWay"></select>
-            </div>
-            <div class="pdf-field">
-              <label>Sub-slot</label>
-              <select id="pdfSub">
-                <option value="0">Master</option>
-                <option value="1">Sub 1</option>
-                <option value="2">Sub 2</option>
-                <option value="3">Sub 3</option>
-              </select>
-            </div>
-            <div class="pdf-field">
-              <label>Quantity</label>
-              <input type="number" id="pdfQty" value="1" min="1" max="99">
-            </div>
-            <button class="pdf-assign-btn" onclick="assignFromPdf()">&#43; Assign Selected</button>
-          </div>
-          <div class="pdf-assigned-hdr">Assigned</div>
-          <div id="pdfAssigned" class="pdf-assigned-list"></div>
-        </div>
-      </div>
-    </div>
-    <div class="pdf-ftr">
-      <button class="print-btn" onclick="closePdfModal()">Done</button>
-    </div>
-  </div>
-</div>
-<div class="help-overlay" id="helpOverlay" onclick="closeHelp()">
-  <div class="help-modal" onclick="event.stopPropagation()">
-    <div class="help-hdr">
-      <h2>&#63; How to Use the ER Equipment Calculator</h2>
-      <button class="modal-close" onclick="closeHelp()">&#10005;</button>
-    </div>
-    <div class="help-body">
-
-      <div class="help-section">
-        <h3>&#9889; Getting Started</h3>
-        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Choose your distro sheet using the tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A/125A)</strong>, or <strong>72-Way (400A)</strong>. If you're running multiple distros, use the <strong>Distro Designer</strong> to map the full power chain first.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128266; Assigning Equipment</h3>
-        <ol>
-          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) — the Add Equipment panel on the right activates</li>
-          <li>Optionally tick <strong>Add to Flight Case Labels</strong> and set the number of cases</li>
-          <li>Select equipment from the dropdown and set the quantity</li>
-          <li>Choose a <strong>Sub-slot</strong> for multiple items on one output (Master + up to 3 subs)</li>
-          <li>Click <strong>Add Device &amp; Enter Information</strong> — equipment is written to the distro sheet</li>
-          <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
-          <li>Click <strong>Update &amp; Clear</strong> — saves unit details, pushes to Flight Case Labels if ticked, and resets the panel</li>
-        </ol>
-        <p><strong>Editing:</strong> Click any populated output to reload it into the panel. Make changes and click Update &amp; Clear to save.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128196; Import from PDF</h3>
-        <p>Click <strong>Import PDF</strong> to extract equipment from any PDF — stage plots, riders, CAD drawings, or equipment lists. Matched lines appear in a popup:</p>
-        <ul>
-          <li><span class="help-badge ok">&#10003;</span> <strong>Green border</strong> — confident inventory match. The dropdown shows the matched item; change it if needed.</li>
-          <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match. Open the dropdown to pick from <em>Best matches</em> or <em>All inventory</em>.</li>
-          <li>Click <strong>&#10005;</strong> on any row to remove unwanted lines.</li>
-        </ul>
-        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set. Quantities are never auto-detected as this proved unreliable across PDF types.</p>
-        <p>Once matches and quantities look right: tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, set quantity, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#9889; Distro Designer</h3>
-        <p>Click <strong>&#9889; Distro Designer</strong> in the top bar to open the interactive power chain map. Use it when running more than one distro to visualise how they feed each other.</p>
-        <ul>
-          <li><strong>Add Distro</strong> — choose a distro type from the left panel (72-Way, 48-Way, 18-Way, Distro Box, Generator, or Custom) and click to place it on the canvas.</li>
-          <li><strong>Connect</strong> — click &#128279; Connect, click the source distro, then click the destination. The connection is drawn with an arrow showing power flow direction. Choose the connector type (CAM Lock, 125A, 63A CEE, 32A CEE, Socapex) before connecting — each has its own colour.</li>
-          <li><strong>Move</strong> — drag any distro node to reposition it. Connections follow automatically.</li>
-          <li><strong>Auto Layout</strong> — arranges nodes into a top-down power flow tree based on connections.</li>
-          <li><strong>Properties panel</strong> (right) — edit label, colour, notes, and link the node to a distro sheet. Click <strong>&#8594; Open in Calculator</strong> to jump directly to that sheet.</li>
-          <li><strong>Export SVG</strong> — saves the diagram as a scalable vector file for documentation.</li>
-        </ul>
-        <p>Click any connection line to select it and change its type or label. Click <strong>&#128465; Delete</strong> to remove selected nodes or connections.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128202; Grand Summary</h3>
-        <p>The Grand Summary at the bottom of each distro sheet shows total load per phase:</p>
-        <ul>
-          <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
-          <li><span class="help-badge warn">&#9888; 84%</span> — 80–99% of limit — approaching capacity</li>
-          <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
-        </ul>
-        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle in the Grand Summary to switch between phase limits.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#9888; Voltage Warnings</h3>
-        <p>Items in the inventory can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to set this up, then tick the checkbox for any item that only works on a specific voltage.</p>
-        <ul>
-          <li><strong>120V Only</strong> — always flagged with a <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> badge regardless of region.</li>
-          <li><strong>240V Only</strong> — flagged with <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span> when region is set to US (208V).</li>
-        </ul>
-        <p>Warnings appear on the distro sheet next to the equipment name, on all label types, and in the Equipment Report as a dedicated VOLTAGE column with a highlighted row.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128424; Printing Labels</h3>
-        <p>Click <strong>Labels &#9660;</strong> to choose a label format:</p>
-        <ul>
-          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. One label per bank showing all outputs, equipment, and unit IDs.</li>
-          <li><strong>Avery L7173</strong> — Same as 5163 but A4, 99.1&times;57mm.</li>
-          <li><strong>Avery 6737</strong> — Individual equipment labels, A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One per unit showing name, ID, placement, and address.</li>
-        </ul>
-        <p>Voltage warnings (<span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> / <span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span>) appear on all label types for flagged items.</p>
-        <p>Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels and the flight case page. Print with margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128230; Flight Case Labels</h3>
-        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — Avery 5126 format (177&times;127mm, 2 per A4 sheet) with rounded trim corners.</p>
-        <p><strong>Layout:</strong> Top third = coloured tour name band with logo. Middle = description. Bottom = location (left) and box number with total (right).</p>
-        <p><strong>Header styles:</strong> Solid, Left/Right Split, Diagonal Stripes, or Top/Bottom Split — each supports a two-colour picker.</p>
-        <p><strong>Auto-populate:</strong> Tick <strong>Add to Flight Case Labels</strong> when assigning equipment, fill in unit details, then click Update &amp; Clear — rows are created automatically. Box numbers auto-increment.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128438; Equipment Report</h3>
-        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets, showing distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. A summary banner highlights any voltage mismatches at the top, and a dedicated <strong>Voltage Warnings</strong> count appears in the summary row.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Fully portable and reloadable on any device.</p>
-        <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
-        <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>&#128269; Inventory</h3>
-        <p>The left panel lists all equipment with watts and amps per unit for the active region. Items flagged as <strong>120V Only</strong> or <strong>240V Only</strong> show a coloured badge. Search to filter. Click any item to pre-select it in the Add Equipment dropdown.</p>
-        <p>To add or edit equipment: open the Google Sheet and use <strong>&#9889; ER Calculator → &#43; Add New Equipment</strong>. Step 4 of the form asks for voltage restriction. Run <strong>Add Voltage Columns</strong> once to enable the checkbox columns if not already present.</p>
-      </div>
-
-    <div class="help-ftr">
-      <button class="print-btn" onclick="closeHelp()">Close</button>
-    </div>
-  </div>
-</div>
 
 <!-- ── DISTRO DESIGNER ──────────────────────────────────────── -->
 <div id="ddModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,18,30,0.95)">
@@ -2717,5 +2546,177 @@ function ddExport() {
   a.download = 'ER-Distro-Map.svg'; a.click();
 }
 </script>
+<div class="pdf-overlay" id="pdfOverlay">
+  <div class="pdf-modal">
+    <div class="pdf-hdr">
+      <h2>&#128196; PDF Equipment Import</h2>
+      <button class="modal-close" onclick="closePdfModal()">&#10005;</button>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-status" id="pdfStatus">Reading PDF...</div>
+      <div class="pdf-cols">
+        <div class="pdf-col">
+          <div class="pdf-col-hdr">Equipment Found</div>
+          <div class="pdf-hint">Select items to assign, then choose an output below</div>
+          <div id="pdfItemList" class="pdf-item-list"></div>
+        </div>
+        <div class="pdf-col">
+          <div class="pdf-col-hdr">Assign To Output</div>
+          <div class="pdf-assign-form">
+            <div class="pdf-field">
+              <label>Distro Sheet</label>
+              <select id="pdfSheet"></select>
+            </div>
+            <div class="pdf-field">
+              <label>Bank</label>
+              <select id="pdfBank"></select>
+            </div>
+            <div class="pdf-field">
+              <label>Way</label>
+              <select id="pdfWay"></select>
+            </div>
+            <div class="pdf-field">
+              <label>Sub-slot</label>
+              <select id="pdfSub">
+                <option value="0">Master</option>
+                <option value="1">Sub 1</option>
+                <option value="2">Sub 2</option>
+                <option value="3">Sub 3</option>
+              </select>
+            </div>
+            <div class="pdf-field">
+              <label>Quantity</label>
+              <input type="number" id="pdfQty" value="1" min="1" max="99">
+            </div>
+            <button class="pdf-assign-btn" onclick="assignFromPdf()">&#43; Assign Selected</button>
+          </div>
+          <div class="pdf-assigned-hdr">Assigned</div>
+          <div id="pdfAssigned" class="pdf-assigned-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pdf-ftr">
+      <button class="print-btn" onclick="closePdfModal()">Done</button>
+    </div>
+  </div>
+</div>
+<div class="help-overlay" id="helpOverlay" onclick="closeHelp()">
+  <div class="help-modal" onclick="event.stopPropagation()">
+    <div class="help-hdr">
+      <h2>&#63; How to Use the ER Equipment Calculator</h2>
+      <button class="modal-close" onclick="closeHelp()">&#10005;</button>
+    </div>
+    <div class="help-body">
+
+      <div class="help-section">
+        <h3>&#9889; Getting Started</h3>
+        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Choose your distro sheet using the tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A/125A)</strong>, or <strong>72-Way (400A)</strong>. If you're running multiple distros, use the <strong>Distro Designer</strong> to map the full power chain first.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128266; Assigning Equipment</h3>
+        <ol>
+          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) — the Add Equipment panel on the right activates</li>
+          <li>Optionally tick <strong>Add to Flight Case Labels</strong> and set the number of cases</li>
+          <li>Select equipment from the dropdown and set the quantity</li>
+          <li>Choose a <strong>Sub-slot</strong> for multiple items on one output (Master + up to 3 subs)</li>
+          <li>Click <strong>Add Device &amp; Enter Information</strong> — equipment is written to the distro sheet</li>
+          <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
+          <li>Click <strong>Update &amp; Clear</strong> — saves unit details, pushes to Flight Case Labels if ticked, and resets the panel</li>
+        </ol>
+        <p><strong>Editing:</strong> Click any populated output to reload it into the panel. Make changes and click Update &amp; Clear to save.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128196; Import from PDF</h3>
+        <p>Click <strong>Import PDF</strong> to extract equipment from any PDF — stage plots, riders, CAD drawings, or equipment lists. Matched lines appear in a popup:</p>
+        <ul>
+          <li><span class="help-badge ok">&#10003;</span> <strong>Green border</strong> — confident inventory match. The dropdown shows the matched item; change it if needed.</li>
+          <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match. Open the dropdown to pick from <em>Best matches</em> or <em>All inventory</em>.</li>
+          <li>Click <strong>&#10005;</strong> on any row to remove unwanted lines.</li>
+        </ul>
+        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set. Quantities are never auto-detected as this proved unreliable across PDF types.</p>
+        <p>Once matches and quantities look right: tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, set quantity, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#9889; Distro Designer</h3>
+        <p>Click <strong>&#9889; Distro Designer</strong> in the top bar to open the interactive power chain map. Use it when running more than one distro to visualise how they feed each other.</p>
+        <ul>
+          <li><strong>Add Distro</strong> — choose a distro type from the left panel (72-Way, 48-Way, 18-Way, Distro Box, Generator, or Custom) and click to place it on the canvas.</li>
+          <li><strong>Connect</strong> — click &#128279; Connect, click the source distro, then click the destination. The connection is drawn with an arrow showing power flow direction. Choose the connector type (CAM Lock, 125A, 63A CEE, 32A CEE, Socapex) before connecting — each has its own colour.</li>
+          <li><strong>Move</strong> — drag any distro node to reposition it. Connections follow automatically.</li>
+          <li><strong>Auto Layout</strong> — arranges nodes into a top-down power flow tree based on connections.</li>
+          <li><strong>Properties panel</strong> (right) — edit label, colour, notes, and link the node to a distro sheet. Click <strong>&#8594; Open in Calculator</strong> to jump directly to that sheet.</li>
+          <li><strong>Export SVG</strong> — saves the diagram as a scalable vector file for documentation.</li>
+        </ul>
+        <p>Click any connection line to select it and change its type or label. Click <strong>&#128465; Delete</strong> to remove selected nodes or connections.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128202; Grand Summary</h3>
+        <p>The Grand Summary at the bottom of each distro sheet shows total load per phase:</p>
+        <ul>
+          <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
+          <li><span class="help-badge warn">&#9888; 84%</span> — 80–99% of limit — approaching capacity</li>
+          <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
+        </ul>
+        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle in the Grand Summary to switch between phase limits.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#9888; Voltage Warnings</h3>
+        <p>Items in the inventory can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to set this up, then tick the checkbox for any item that only works on a specific voltage.</p>
+        <ul>
+          <li><strong>120V Only</strong> — always flagged with a <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> badge regardless of region.</li>
+          <li><strong>240V Only</strong> — flagged with <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span> when region is set to US (208V).</li>
+        </ul>
+        <p>Warnings appear on the distro sheet next to the equipment name, on all label types, and in the Equipment Report as a dedicated VOLTAGE column with a highlighted row.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128424; Printing Labels</h3>
+        <p>Click <strong>Labels &#9660;</strong> to choose a label format:</p>
+        <ul>
+          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. One label per bank showing all outputs, equipment, and unit IDs.</li>
+          <li><strong>Avery L7173</strong> — Same as 5163 but A4, 99.1&times;57mm.</li>
+          <li><strong>Avery 6737</strong> — Individual equipment labels, A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One per unit showing name, ID, placement, and address.</li>
+        </ul>
+        <p>Voltage warnings (<span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> / <span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span>) appear on all label types for flagged items.</p>
+        <p>Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels and the flight case page. Print with margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128230; Flight Case Labels</h3>
+        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — Avery 5126 format (177&times;127mm, 2 per A4 sheet) with rounded trim corners.</p>
+        <p><strong>Layout:</strong> Top third = coloured tour name band with logo. Middle = description. Bottom = location (left) and box number with total (right).</p>
+        <p><strong>Header styles:</strong> Solid, Left/Right Split, Diagonal Stripes, or Top/Bottom Split — each supports a two-colour picker.</p>
+        <p><strong>Auto-populate:</strong> Tick <strong>Add to Flight Case Labels</strong> when assigning equipment, fill in unit details, then click Update &amp; Clear — rows are created automatically. Box numbers auto-increment.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128438; Equipment Report</h3>
+        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets, showing distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. A summary banner highlights any voltage mismatches at the top, and a dedicated <strong>Voltage Warnings</strong> count appears in the summary row.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128190; Saving &amp; Loading</h3>
+        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Fully portable and reloadable on any device.</p>
+        <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
+        <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>&#128269; Inventory</h3>
+        <p>The left panel lists all equipment with watts and amps per unit for the active region. Items flagged as <strong>120V Only</strong> or <strong>240V Only</strong> show a coloured badge. Search to filter. Click any item to pre-select it in the Add Equipment dropdown.</p>
+        <p>To add or edit equipment: open the Google Sheet and use <strong>&#9889; ER Calculator → &#43; Add New Equipment</strong>. Step 4 of the form asks for voltage restriction. Run <strong>Add Voltage Columns</strong> once to enable the checkbox columns if not already present.</p>
+      </div>
+
+    <div class="help-ftr">
+      <button class="print-btn" onclick="closeHelp()">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
