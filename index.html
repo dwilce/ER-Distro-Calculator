@@ -25,9 +25,10 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .region-toggle{display:flex;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden}
 .region-btn{padding:6px 14px;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);border:none;background:none;cursor:pointer}
 .region-btn.active{background:var(--blue);color:white}
-.sheet-tabs{display:flex;gap:4px}
-.sheet-tab{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.15);border-radius:4px;cursor:pointer;background:none}
-.sheet-tab.active{background:var(--blue);color:white;border-color:var(--blue)}
+.sheet-tabs{display:flex;gap:4px;align-items:center}
+.sheet-select{padding:5px 10px;font-size:11px;font-weight:600;color:white;background:var(--navy2);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer;min-width:160px;max-width:240px}
+.sheet-select:focus{outline:none;border-color:var(--blue)}
+.sheet-select option{background:#1a3a57;color:white}
 .help-btn{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer}
 .help-btn:hover{background:rgba(255,255,255,.22);color:white}
 .labels-drop-wrap{position:relative}
@@ -237,7 +238,9 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
       <button class="region-btn active" id="btnUS" onclick="setRegion('US')">US 208V</button>
       <button class="region-btn" id="btnROW" onclick="setRegion('ROW')">ROW 230V</button>
     </div>
-    <div class="sheet-tabs" id="sheetTabs"></div>
+    <div class="sheet-tabs" id="sheetTabs">
+      <select id="sheetSelect" class="sheet-select" onchange="switchSheet(this.value)"></select>
+    </div>
     <button class="help-btn" onclick="openHelp()">&#63; Help</button>
     <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
     <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
@@ -551,22 +554,24 @@ function buildEqDropdown() {
 
 // ── SHEET TABS ───────────────────────────────────────────────
 function buildSheetTabs() {
-  var div = document.getElementById('sheetTabs');
-  div.innerHTML = '';
+  var sel = document.getElementById('sheetSelect');
+  sel.innerHTML = '';
   var names = Object.keys(SHEETS);
-  for (var i = 0; i < names.length; i++) {
-    var btn = document.createElement('button');
-    btn.className = 'sheet-tab' + (i === 0 ? ' active' : '');
-    btn.textContent = names[i];
-    btn.onclick = (function(n) { return function() {
-      var tabs = document.querySelectorAll('#sheetTabs .sheet-tab');
-      for (var ti = 0; ti < tabs.length; ti++) tabs[ti].classList.remove('active');
-      this.classList.add('active');
-      activeSheet = n;
-      renderDistro();
-    }; })(names[i]);
-    div.appendChild(btn);
-  }
+  // Ensure activeSheet is valid
+  if (!SHEETS[activeSheet] && names.length) activeSheet = names[0];
+  names.forEach(function(name) {
+    var opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if (name === activeSheet) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function switchSheet(name) {
+  if (!SHEETS[name]) return;
+  activeSheet = name;
+  renderDistro();
 }
 
 // ── REGION ───────────────────────────────────────────────────
@@ -716,6 +721,8 @@ function renderDistro() {
   }
   gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:.6">' + activeSheet + '</span></div>' + limRowHtml + phHtml;
   panel.appendChild(gs);
+  // Refresh designer flowchart if open
+  if (document.getElementById('ddModal').style.display !== 'none') ddRender();
 }
 
 // ── TARGET SELECTION ─────────────────────────────────────────
@@ -1658,11 +1665,9 @@ function applyShowState(state) {
   // Sync region buttons
   document.getElementById('btnUS').classList.toggle('active', region === 'US');
   document.getElementById('btnROW').classList.toggle('active', region === 'ROW');
-  // Sync sheet tabs
-  var tabs = document.querySelectorAll('#sheetTabs .sheet-tab');
-  for (var i = 0; i < tabs.length; i++) {
-    tabs[i].classList.toggle('active', tabs[i].textContent === activeSheet);
-  }
+  // Sync sheet dropdown
+  var sel = document.getElementById('sheetSelect');
+  if (sel) sel.value = activeSheet;
   renderDistro();
   return true;
 }
@@ -2062,6 +2067,62 @@ var DD_CONN_TYPES = [
   {key:'custom',   label:'Custom',      color:'#aaa',    marker:'arr'},
 ];
 
+// Sheet config per distro type (null = no distro sheet, e.g. generator)
+var DD_SHEET_CONFIGS = {
+  '72way': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'], limit:400, altLimit:0},
+  '48way': {ways:6, banks:['A','B','C','D','E','F','G','H'],                 limit:63,  altLimit:125},
+  '18way': {ways:6, banks:['A','B','C'],                                      limit:32,  altLimit:0},
+  'dist':  {ways:6, banks:['A','B','C'],                                      limit:32,  altLimit:0},
+  'gen':   null,
+  'custom':{ways:6, banks:['A','B','C'],                                      limit:32,  altLimit:0},
+};
+
+// Sync SHEETS and distroData from the current designer node set.
+// Called after any add / rename / delete.
+function ddSyncSheets() {
+  // Build the set of sheets the designer wants
+  var desired = {}; // sheetName → cfg
+  dd.nodes.forEach(function(node) {
+    var cfg = DD_SHEET_CONFIGS[node.type];
+    if (!cfg) return;
+    var name = node.label.trim() || ('Distro ' + node.id);
+    node.sheetKey = name;
+    if (!desired[name]) desired[name] = JSON.parse(JSON.stringify(cfg));
+  });
+
+  var hasDistroNodes = Object.keys(desired).length > 0;
+
+  // Add any new sheets
+  Object.keys(desired).forEach(function(name) {
+    if (!SHEETS[name]) {
+      SHEETS[name] = desired[name];
+    }
+  });
+
+  // Remove sheets no longer in designer (only when designer has at least one distro node)
+  if (hasDistroNodes) {
+    Object.keys(SHEETS).forEach(function(name) {
+      if (!desired[name]) {
+        delete SHEETS[name];
+        delete distroData[name];
+        delete limits[name];
+      }
+    });
+  }
+
+  // Initialise distroData for any new sheets
+  initDistroData();
+
+  // Keep activeSheet valid
+  var names = Object.keys(SHEETS);
+  if (names.length && !SHEETS[activeSheet]) activeSheet = names[0];
+
+  // Refresh all dependent UI
+  buildSheetTabs();
+  buildPdfSheetSelects();
+  renderDistro();
+}
+
 function openDistroDesigner() {
   document.getElementById('ddModal').style.display = 'block';
   ddBuildPalette();
@@ -2122,29 +2183,45 @@ function ddBuildConnTypes() {
 function ddAddDistro() { ddAddDistroOfType(DD_DISTRO_TYPES[2]); }
 
 function ddAddDistroOfType(dt) {
-  var wrap = document.getElementById('ddWrap');
-  var cx = wrap.clientWidth / 2, cy = wrap.clientHeight / 2;
-  // Stagger placement
-  var offset = dd.nodes.length * 20;
+  var offset = dd.nodes.length * 22;
+  var cfg = DD_SHEET_CONFIGS[dt.key];
+
+  // Make a unique name (avoid collisions with existing sheets)
+  var baseName = dt.label;
+  var name = baseName;
+  var n = 2;
+  while (SHEETS[name]) { name = baseName + ' ' + n++; }
+
   var node = {
     id: dd.nextId++,
     type: dt.key,
-    label: dt.label,
+    label: name,
     color: dt.color,
-    x: 80 + (offset % 300),
-    y: 80 + Math.floor(offset / 300) * 140,
+    x: 60 + (offset % 320),
+    y: 60 + Math.floor(offset / 320) * 150,
     w: 160, h: 70,
     note: '',
-    sheetKey: null  // link to calculator sheet
+    sheetKey: cfg ? name : null
   };
-  // Try to link to matching SHEETS key
-  if (typeof SHEETS !== 'undefined') {
-    var keys = Object.keys(SHEETS);
-    if (dt.key === '72way' && keys.find(function(k){return k.indexOf('72')>=0;})) node.sheetKey = keys.find(function(k){return k.indexOf('72')>=0;});
-    if (dt.key === '48way' && keys.find(function(k){return k.indexOf('48')>=0;})) node.sheetKey = keys.find(function(k){return k.indexOf('48')>=0;});
-    if (dt.key === '18way' && keys.find(function(k){return k.indexOf('18')>=0;})) node.sheetKey = keys.find(function(k){return k.indexOf('18')>=0;});
-  }
   dd.nodes.push(node);
+
+  // On first designer distro, remove the 3 default sheets
+  var defaults = {'18-Way (32A)':1,'48-Way (63A)':1,'72-Way (400A)':1};
+  var hadOnlyDefaults = Object.keys(SHEETS).every(function(k){ return defaults[k]; });
+  if (cfg && hadOnlyDefaults) {
+    Object.keys(defaults).forEach(function(k){ delete SHEETS[k]; delete distroData[k]; delete limits[k]; });
+  }
+
+  // Create the calculator sheet immediately if this type has one
+  if (cfg && !SHEETS[name]) {
+    SHEETS[name] = JSON.parse(JSON.stringify(cfg));
+    initDistroData();
+    activeSheet = name;
+    buildSheetTabs();
+    buildPdfSheetSelects();
+    renderDistro();
+  }
+
   ddRender();
   ddSelect('node', node.id);
   document.getElementById('ddEmpty').style.display = 'none';
@@ -2247,21 +2324,21 @@ function ddRenderProps() {
   if (dd.selected.type === 'node') {
     var node = dd.nodes.find(function(n){return n.id===dd.selected.id;});
     if (!node) return;
-    var sheetOptions = '';
-    if (typeof SHEETS !== 'undefined') {
-      sheetOptions = '<option value="">None</option>';
-      Object.keys(SHEETS).forEach(function(k){ sheetOptions += '<option value="' + k + '"' + (node.sheetKey===k?' selected':'') + '>' + k + '</option>'; });
-    }
+    var hasCfg = !!DD_SHEET_CONFIGS[node.type];
     panel.innerHTML =
-      '<div class="dd-prop-row"><div class="dd-prop-label">LABEL</div>' +
-      '<input class="dd-prop-input" value="' + ddEsc(node.label) + '" onchange="ddUpdateNode(' + node.id + ',\'label\',this.value)"></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">LABEL / SHEET NAME</div>' +
+      '<input class="dd-prop-input" value="' + ddEsc(node.label) + '" onchange="ddUpdateNode(' + node.id + ',\'label\',this.value)" ' +
+        (hasCfg ? 'title="Changing this renames the calculator sheet"' : '') + '></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">COLOUR</div>' +
       '<input type="color" value="' + node.color + '" style="width:100%;height:26px;border:1px solid #1a3a57;border-radius:3px;background:#0d1f35;cursor:pointer" onchange="ddUpdateNode(' + node.id + ',\'color\',this.value)"></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">NOTE</div>' +
       '<input class="dd-prop-input" placeholder="e.g. Stage left" value="' + ddEsc(node.note||'') + '" onchange="ddUpdateNode(' + node.id + ',\'note\',this.value)"></div>' +
-      (sheetOptions ? '<div class="dd-prop-row"><div class="dd-prop-label">LINKED SHEET</div><select class="dd-prop-select" onchange="ddUpdateNode(' + node.id + ',\'sheetKey\',this.value)">' + sheetOptions + '</select></div>' : '') +
-      (node.sheetKey ? '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + node.sheetKey + '\')">&#8594; Open in Calculator</button>' : '') +
-      '<button class="dd-del-btn" onclick="ddDeleteNode(' + node.id + ')">&#128465; Delete Distro</button>';
+      (hasCfg
+        ? '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px;font-weight:700">⚡ CALCULATOR SHEET: ' + ddEsc(node.sheetKey || node.label) + '</div>' +
+          '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + ddEsc(node.sheetKey || node.label) + '\')">&#8594; Open in Calculator</button>'
+        : '<div style="font-size:9px;color:#4a7a9b;padding:3px 0 6px">No calculator sheet (source unit)</div>'
+      ) +
+      '<button class="dd-del-btn" onclick="ddDeleteNode(' + node.id + ')" style="margin-top:8px">&#128465; Delete Distro</button>';
   } else if (dd.selected.type === 'conn') {
     var conn = dd.conns.find(function(c){return c.id===dd.selected.id;});
     if (!conn) return;
@@ -2280,6 +2357,30 @@ function ddRenderProps() {
 function ddUpdateNode(id, key, val) {
   var node = dd.nodes.find(function(n){return n.id===id;});
   if (!node) return;
+
+  if (key === 'label') {
+    var oldName = node.sheetKey;
+    var newName = val.trim() || ('Distro ' + node.id);
+    // Rename the sheet if it exists and the name actually changed
+    if (oldName && oldName !== newName && SHEETS[oldName]) {
+      SHEETS[newName] = SHEETS[oldName];
+      distroData[newName] = distroData[oldName];
+      limits[newName] = limits[oldName];
+      delete SHEETS[oldName];
+      delete distroData[oldName];
+      delete limits[oldName];
+      if (activeSheet === oldName) activeSheet = newName;
+      node.sheetKey = newName;
+      buildSheetTabs();
+      buildPdfSheetSelects();
+      renderDistro();
+    }
+    node.label = newName;
+    ddRender();
+    ddRenderProps();
+    return;
+  }
+
   node[key] = val;
   if (key === 'color') ddRender();
   ddRenderProps();
@@ -2298,9 +2399,35 @@ function ddUpdateConn(id, key, val) {
 }
 
 function ddDeleteNode(id) {
+  var node = dd.nodes.find(function(n){return n.id===id;});
+  // Remove the linked calculator sheet
+  if (node && node.sheetKey && SHEETS[node.sheetKey]) {
+    delete SHEETS[node.sheetKey];
+    delete distroData[node.sheetKey];
+    delete limits[node.sheetKey];
+  }
   dd.nodes = dd.nodes.filter(function(n){return n.id!==id;});
   dd.conns = dd.conns.filter(function(c){return c.from!==id && c.to!==id;});
   dd.selected = null;
+
+  // If no designer distro sheets remain, restore the 3 defaults
+  var remaining = dd.nodes.filter(function(n){ return DD_SHEET_CONFIGS[n.type]; });
+  if (!remaining.length) {
+    SHEETS = {
+      '18-Way (32A)':  {ways:6, banks:['A','B','C'],                                        limit:32,  altLimit:0},
+      '48-Way (63A)':  {ways:6, banks:['A','B','C','D','E','F','G','H'],                    limit:63,  altLimit:125},
+      '72-Way (400A)': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'],    limit:400, altLimit:0}
+    };
+    initDistroData();
+    activeSheet = '18-Way (32A)';
+  } else {
+    var names = Object.keys(SHEETS);
+    if (!SHEETS[activeSheet]) activeSheet = names[0] || '';
+  }
+
+  buildSheetTabs();
+  buildPdfSheetSelects();
+  if (activeSheet) renderDistro();
   ddRender();
   ddRenderProps();
   if (!dd.nodes.length) document.getElementById('ddEmpty').style.display = 'flex';
@@ -2314,13 +2441,40 @@ function ddDeleteConn(id) {
 }
 
 function ddJumpToSheet(sheetKey) {
+  if (!SHEETS[sheetKey]) return;
   closeDistroDesigner();
-  // Switch active sheet in calculator
-  if (typeof setActiveSheet === 'function') { setActiveSheet(sheetKey); }
-  else { activeSheet = sheetKey; renderDistro(); updateSheetTabs(); }
+  activeSheet = sheetKey;
+  buildSheetTabs();
+  renderDistro();
 }
 
 function ddEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// Collect equipment assigned to a sheet, grouped by bank+way output
+function ddGetEquipmentForSheet(sheetKey) {
+  if (!distroData[sheetKey] || !SHEETS[sheetKey]) return [];
+  var cfg = SHEETS[sheetKey];
+  var items = [];
+  var banks = cfg.banks;
+  for (var bi = 0; bi < banks.length; bi++) {
+    for (var w = 1; w <= cfg.ways; w++) {
+      var slots = distroData[sheetKey][bi][w];
+      if (!slots) continue;
+      for (var sr = 0; sr < 4; sr++) {
+        var slot = slots[sr];
+        if (slot && slot.eq) {
+          items.push({
+            output: banks[bi] + w + (sr > 0 ? '.' + sr : ''),
+            eq: slot.eq,
+            qty: slot.qty || 1,
+            phase: ((w-1)%3)+1
+          });
+        }
+      }
+    }
+  }
+  return items;
+}
 
 function ddRender() {
   var nodeLayer = document.getElementById('ddNodeLayer');
@@ -2330,98 +2484,94 @@ function ddRender() {
 
   var ns = 'http://www.w3.org/2000/svg';
 
-  // Draw connections
+  // ── Draw distro-to-distro connections ────────────────────────
   dd.conns.forEach(function(conn) {
     var from = dd.nodes.find(function(n){return n.id===conn.from;});
     var to   = dd.nodes.find(function(n){return n.id===conn.to;});
     if (!from || !to) return;
-
     var isSel = dd.selected && dd.selected.type==='conn' && dd.selected.id===conn.id;
 
-    // Calculate edge-to-edge path
     var x1 = from.x + from.w/2, y1 = from.y + from.h;
     var x2 = to.x + to.w/2,   y2 = to.y;
-    // If horizontal arrangement, use side ports
     var dx = Math.abs(x2-x1), dy = Math.abs(y2-y1);
     if (dx > dy * 1.5) {
       if (to.x > from.x) { x1 = from.x+from.w; y1 = from.y+from.h/2; x2 = to.x; y2 = to.y+to.h/2; }
       else { x1 = from.x; y1 = from.y+from.h/2; x2 = to.x+to.w; y2 = to.y+to.h/2; }
     }
-
     var cp1x = x1, cp1y = (y1+y2)/2, cp2x = x2, cp2y = (y1+y2)/2;
     if (dx > dy * 1.5) { cp1x = (x1+x2)/2; cp1y = y1; cp2x = (x1+x2)/2; cp2y = y2; }
 
     var path = document.createElementNS(ns, 'path');
-    var d = 'M'+x1+' '+y1+' C'+cp1x+' '+cp1y+','+cp2x+' '+cp2y+','+x2+' '+y2;
-    path.setAttribute('d', d);
+    path.setAttribute('d', 'M'+x1+' '+y1+' C'+cp1x+' '+cp1y+','+cp2x+' '+cp2y+','+x2+' '+y2);
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', conn.color || '#FFD700');
     path.setAttribute('stroke-width', isSel ? 4 : 2.5);
-    path.setAttribute('stroke-dasharray', '');
     path.setAttribute('marker-end', 'url(#' + (conn.marker||'arr') + ')');
     if (isSel) path.setAttribute('filter', 'drop-shadow(0 0 4px ' + conn.color + ')');
     path.style.cursor = 'pointer';
     path.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
     connLayer.appendChild(path);
 
-    // Label on path
+    // Connector label
     var midX = (x1+x2)/2, midY = (y1+y2)/2;
-    var lbg = document.createElementNS(ns, 'rect');
     var lbl = conn.label || '';
-    var lblW = lbl.length * 6 + 10, lblH = 14;
-    lbg.setAttribute('x', midX - lblW/2); lbg.setAttribute('y', midY - lblH/2 - 1);
-    lbg.setAttribute('width', lblW); lbg.setAttribute('height', lblH);
-    lbg.setAttribute('rx', 3); lbg.setAttribute('fill', '#091525');
-    lbg.setAttribute('stroke', conn.color); lbg.setAttribute('stroke-width', '1');
-    lbg.style.cursor = 'pointer';
-    lbg.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
-    connLayer.appendChild(lbg);
-
-    var lt = document.createElementNS(ns, 'text');
-    lt.setAttribute('x', midX); lt.setAttribute('y', midY + 4);
-    lt.setAttribute('text-anchor', 'middle');
-    lt.setAttribute('font-size', '9'); lt.setAttribute('font-weight', '700');
-    lt.setAttribute('fill', conn.color); lt.setAttribute('font-family', 'monospace');
-    lt.textContent = lbl;
-    lt.style.cursor = 'pointer';
-    lt.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
-    connLayer.appendChild(lt);
+    if (lbl) {
+      var lblW = lbl.length * 6 + 10;
+      var lbg = document.createElementNS(ns, 'rect');
+      lbg.setAttribute('x', midX-lblW/2); lbg.setAttribute('y', midY-8);
+      lbg.setAttribute('width', lblW); lbg.setAttribute('height', 14);
+      lbg.setAttribute('rx', 3); lbg.setAttribute('fill', '#091525');
+      lbg.setAttribute('stroke', conn.color); lbg.setAttribute('stroke-width', '1');
+      lbg.style.cursor = 'pointer';
+      lbg.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
+      connLayer.appendChild(lbg);
+      var lt = document.createElementNS(ns, 'text');
+      lt.setAttribute('x', midX); lt.setAttribute('y', midY+4);
+      lt.setAttribute('text-anchor', 'middle'); lt.setAttribute('font-size', '9');
+      lt.setAttribute('font-weight', '700'); lt.setAttribute('fill', conn.color);
+      lt.setAttribute('font-family', 'monospace'); lt.textContent = lbl;
+      lt.style.cursor = 'pointer';
+      lt.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
+      connLayer.appendChild(lt);
+    }
   });
 
-  // Draw nodes
+  // ── Phase colours for equipment items ────────────────────────
+  var PH_ITEM = ['','#5b1a6b','#8b3a10','#0a5a5a'];
+  var PH_ITEM_LT = ['','rgba(125,60,152,0.18)','rgba(192,98,42,0.18)','rgba(14,124,123,0.18)'];
+
+  // ── Draw distro nodes + their equipment flowchart ─────────────
   dd.nodes.forEach(function(node) {
     var isSel = dd.selected && dd.selected.type==='node' && dd.selected.id===node.id;
     var isConnSrc = dd.connecting && dd.connFrom === node.id;
+
+    // Get equipment for this node's sheet
+    var eqItems = node.sheetKey ? ddGetEquipmentForSheet(node.sheetKey) : [];
+
+    // ── DISTRO NODE BOX ──────────────────────────────────────
     var g = document.createElementNS(ns, 'g');
     g.style.cursor = dd.connecting ? 'crosshair' : 'grab';
     g.addEventListener('mousedown', (function(nid){ return function(e){ ddNodeMouseDown(e,nid); }; })(node.id));
 
-    // Drop shadow / glow when selected
+    // Glow/selection ring
     var shadow = document.createElementNS(ns, 'rect');
     shadow.setAttribute('x', node.x-3); shadow.setAttribute('y', node.y-3);
     shadow.setAttribute('width', node.w+6); shadow.setAttribute('height', node.h+6);
     shadow.setAttribute('rx', 8); shadow.setAttribute('fill', 'none');
-    if (isSel) {
-      shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2');
-      shadow.setAttribute('filter', 'drop-shadow(0 0 6px #FFD700)');
-    } else if (isConnSrc) {
-      shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2');
-      shadow.setAttribute('stroke-dasharray', '4 2');
-    }
+    if (isSel) { shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2'); shadow.setAttribute('filter', 'drop-shadow(0 0 6px #FFD700)'); }
+    else if (isConnSrc) { shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2'); shadow.setAttribute('stroke-dasharray', '4 2'); }
     g.appendChild(shadow);
 
-    // Main body
     var rect = document.createElementNS(ns, 'rect');
     rect.setAttribute('x', node.x); rect.setAttribute('y', node.y);
     rect.setAttribute('width', node.w); rect.setAttribute('height', node.h);
-    rect.setAttribute('rx', 6);
-    rect.setAttribute('fill', node.color);
+    rect.setAttribute('rx', 6); rect.setAttribute('fill', node.color);
     rect.setAttribute('stroke', isSel ? '#FFD700' : '#fff');
     rect.setAttribute('stroke-width', isSel ? 2 : 0.5);
     rect.setAttribute('stroke-opacity', isSel ? 1 : 0.2);
     g.appendChild(rect);
 
-    // Top stripe
+    // Header stripe
     var stripe = document.createElementNS(ns, 'rect');
     stripe.setAttribute('x', node.x); stripe.setAttribute('y', node.y);
     stripe.setAttribute('width', node.w); stripe.setAttribute('height', 16);
@@ -2433,45 +2583,45 @@ function ddRender() {
     stripe2.setAttribute('fill', 'rgba(0,0,0,0.35)');
     g.appendChild(stripe2);
 
-    // Label
-    var txt = document.createElementNS(ns, 'text');
-    txt.setAttribute('x', node.x + node.w/2); txt.setAttribute('y', node.y + 11);
-    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '8');
-    txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', 'rgba(255,255,255,0.6)');
-    txt.setAttribute('font-family', 'monospace'); txt.setAttribute('letter-spacing', '1');
-    txt.textContent = node.type.toUpperCase();
-    g.appendChild(txt);
+    // Type label
+    var typeTxt = document.createElementNS(ns, 'text');
+    typeTxt.setAttribute('x', node.x+node.w/2); typeTxt.setAttribute('y', node.y+11);
+    typeTxt.setAttribute('text-anchor', 'middle'); typeTxt.setAttribute('font-size', '8');
+    typeTxt.setAttribute('font-weight', '700'); typeTxt.setAttribute('fill', 'rgba(255,255,255,0.6)');
+    typeTxt.setAttribute('font-family', 'monospace'); typeTxt.setAttribute('letter-spacing', '1');
+    typeTxt.textContent = node.type.toUpperCase();
+    g.appendChild(typeTxt);
 
     // Main name
-    var name = document.createElementNS(ns, 'text');
-    name.setAttribute('x', node.x + node.w/2); name.setAttribute('y', node.y + 34);
-    name.setAttribute('text-anchor', 'middle'); name.setAttribute('font-size', '12');
-    name.setAttribute('font-weight', '800'); name.setAttribute('fill', '#ffffff');
-    name.setAttribute('font-family', 'sans-serif');
-    name.textContent = node.label.length > 18 ? node.label.substring(0,17)+'…' : node.label;
-    g.appendChild(name);
+    var nameTxt = document.createElementNS(ns, 'text');
+    nameTxt.setAttribute('x', node.x+node.w/2); nameTxt.setAttribute('y', node.y+34);
+    nameTxt.setAttribute('text-anchor', 'middle'); nameTxt.setAttribute('font-size', '12');
+    nameTxt.setAttribute('font-weight', '800'); nameTxt.setAttribute('fill', '#ffffff');
+    nameTxt.setAttribute('font-family', 'sans-serif');
+    nameTxt.textContent = node.label.length > 18 ? node.label.substring(0,17)+'…' : node.label;
+    g.appendChild(nameTxt);
 
     // Note
     if (node.note) {
-      var nt = document.createElementNS(ns, 'text');
-      nt.setAttribute('x', node.x + node.w/2); nt.setAttribute('y', node.y + 50);
-      nt.setAttribute('text-anchor', 'middle'); nt.setAttribute('font-size', '9');
-      nt.setAttribute('fill', 'rgba(255,255,255,0.55)'); nt.setAttribute('font-family', 'sans-serif');
-      nt.textContent = node.note.length > 22 ? node.note.substring(0,21)+'…' : node.note;
-      g.appendChild(nt);
+      var noteTxt = document.createElementNS(ns, 'text');
+      noteTxt.setAttribute('x', node.x+node.w/2); noteTxt.setAttribute('y', node.y+50);
+      noteTxt.setAttribute('text-anchor', 'middle'); noteTxt.setAttribute('font-size', '9');
+      noteTxt.setAttribute('fill', 'rgba(255,255,255,0.55)'); noteTxt.setAttribute('font-family', 'sans-serif');
+      noteTxt.textContent = node.note.length > 22 ? node.note.substring(0,21)+'…' : node.note;
+      g.appendChild(noteTxt);
     }
 
-    // Link indicator
+    // Sheet link indicator + item count badge
     if (node.sheetKey) {
-      var lnk = document.createElementNS(ns, 'text');
-      lnk.setAttribute('x', node.x + node.w - 8); lnk.setAttribute('y', node.y + 12);
-      lnk.setAttribute('text-anchor', 'end'); lnk.setAttribute('font-size', '9');
-      lnk.setAttribute('fill', '#FFD700'); lnk.setAttribute('font-family', 'monospace');
-      lnk.textContent = '⚡';
-      g.appendChild(lnk);
+      var countBadge = document.createElementNS(ns, 'text');
+      countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
+      countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
+      countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
+      countBadge.textContent = eqItems.length ? '⚡ '+eqItems.length : '⚡';
+      g.appendChild(countBadge);
     }
 
-    // Connection ports (dots on edges)
+    // Connection ports
     [[node.x+node.w/2, node.y], [node.x+node.w/2, node.y+node.h],
      [node.x, node.y+node.h/2], [node.x+node.w, node.y+node.h/2]].forEach(function(pt) {
       var dot = document.createElementNS(ns, 'circle');
@@ -2482,6 +2632,117 @@ function ddRender() {
     });
 
     nodeLayer.appendChild(g);
+
+    // ── EQUIPMENT FLOWCHART ITEMS ─────────────────────────────
+    if (eqItems.length === 0) return;
+
+    var EQ_W = 150, EQ_H = 36, EQ_GAP_X = 16, EQ_GAP_Y = 50;
+    var cols = Math.min(eqItems.length, 4);  // max 4 columns
+    var rows = Math.ceil(eqItems.length / cols);
+    var gridW = cols * (EQ_W + EQ_GAP_X) - EQ_GAP_X;
+
+    // Grid starts centred under the distro node
+    var gridStartX = node.x + node.w/2 - gridW/2;
+    var gridStartY = node.y + node.h + EQ_GAP_Y;
+
+    // Vertical trunk line from distro bottom to grid top
+    var trunkX = node.x + node.w/2;
+    var trunkY1 = node.y + node.h;
+    var trunkY2 = gridStartY - 6;
+
+    var trunk = document.createElementNS(ns, 'line');
+    trunk.setAttribute('x1', trunkX); trunk.setAttribute('y1', trunkY1);
+    trunk.setAttribute('x2', trunkX); trunk.setAttribute('y2', trunkY2);
+    trunk.setAttribute('stroke', 'rgba(255,255,255,0.15)'); trunk.setAttribute('stroke-width', '1.5');
+    trunk.setAttribute('stroke-dasharray', '4 3');
+    connLayer.appendChild(trunk);
+
+    // Horizontal bus line across all columns
+    if (cols > 1) {
+      var busY = trunkY2;
+      var busX1 = gridStartX + EQ_W/2;
+      var busX2 = gridStartX + (cols-1)*(EQ_W+EQ_GAP_X) + EQ_W/2;
+      var bus = document.createElementNS(ns, 'line');
+      bus.setAttribute('x1', busX1); bus.setAttribute('y1', busY);
+      bus.setAttribute('x2', busX2); bus.setAttribute('y2', busY);
+      bus.setAttribute('stroke', 'rgba(255,255,255,0.15)'); bus.setAttribute('stroke-width', '1.5');
+      bus.setAttribute('stroke-dasharray', '4 3');
+      connLayer.appendChild(bus);
+    }
+
+    eqItems.forEach(function(item, idx) {
+      var col = idx % cols;
+      var row = Math.floor(idx / cols);
+      var ex = gridStartX + col * (EQ_W + EQ_GAP_X);
+      var ey = gridStartY + row * (EQ_H + 12);
+
+      var phCol = PH_ITEM[item.phase] || '#1a3a57';
+      var phLt  = PH_ITEM_LT[item.phase] || 'rgba(31,78,121,0.2)';
+
+      // Drop line from bus to item
+      var dropX = ex + EQ_W/2;
+      var dropY1 = trunkY2;
+      var dropY2 = ey;
+      var drop = document.createElementNS(ns, 'line');
+      drop.setAttribute('x1', dropX); drop.setAttribute('y1', dropY1);
+      drop.setAttribute('x2', dropX); drop.setAttribute('y2', dropY2);
+      drop.setAttribute('stroke', 'rgba(255,255,255,0.12)'); drop.setAttribute('stroke-width', '1');
+      drop.setAttribute('stroke-dasharray', '3 3');
+      connLayer.appendChild(drop);
+
+      // Equipment card
+      var eg = document.createElementNS(ns, 'g');
+      eg.style.cursor = 'pointer';
+      eg.addEventListener('click', (function(sk){ return function(){ closeDistroDesigner(); activeSheet=sk; buildSheetTabs(); renderDistro(); }; })(node.sheetKey));
+
+      // Card background
+      var ebg = document.createElementNS(ns, 'rect');
+      ebg.setAttribute('x', ex); ebg.setAttribute('y', ey);
+      ebg.setAttribute('width', EQ_W); ebg.setAttribute('height', EQ_H);
+      ebg.setAttribute('rx', 4); ebg.setAttribute('fill', phLt);
+      ebg.setAttribute('stroke', phCol); ebg.setAttribute('stroke-width', '1');
+      eg.appendChild(ebg);
+
+      // Phase stripe on left
+      var ps = document.createElementNS(ns, 'rect');
+      ps.setAttribute('x', ex); ps.setAttribute('y', ey);
+      ps.setAttribute('width', 4); ps.setAttribute('height', EQ_H);
+      ps.setAttribute('rx', 4); ps.setAttribute('fill', phCol);
+      eg.appendChild(ps);
+      var ps2 = document.createElementNS(ns, 'rect'); // square off right side of stripe
+      ps2.setAttribute('x', ex); ps2.setAttribute('y', ey);
+      ps2.setAttribute('width', 2); ps2.setAttribute('height', EQ_H);
+      ps2.setAttribute('fill', phCol);
+      eg.appendChild(ps2);
+
+      // Output label (e.g. A1)
+      var outTxt = document.createElementNS(ns, 'text');
+      outTxt.setAttribute('x', ex+9); outTxt.setAttribute('y', ey+13);
+      outTxt.setAttribute('font-size', '8'); outTxt.setAttribute('font-weight', '900');
+      outTxt.setAttribute('fill', phCol); outTxt.setAttribute('font-family', 'monospace');
+      outTxt.textContent = item.output;
+      eg.appendChild(outTxt);
+
+      // Equipment name
+      var eqTxt = document.createElementNS(ns, 'text');
+      var eqLabel = (item.qty > 1 ? item.qty+'× ' : '') + item.eq;
+      if (eqLabel.length > 20) eqLabel = eqLabel.substring(0,19)+'…';
+      eqTxt.setAttribute('x', ex+9); eqTxt.setAttribute('y', ey+26);
+      eqTxt.setAttribute('font-size', '10'); eqTxt.setAttribute('font-weight', '700');
+      eqTxt.setAttribute('fill', '#c0d8f0'); eqTxt.setAttribute('font-family', 'sans-serif');
+      eqTxt.textContent = eqLabel;
+      eg.appendChild(eqTxt);
+
+      // Click-to-open hint
+      var hint = document.createElementNS(ns, 'text');
+      hint.setAttribute('x', ex+EQ_W-6); hint.setAttribute('y', ey+14);
+      hint.setAttribute('text-anchor', 'end'); hint.setAttribute('font-size', '8');
+      hint.setAttribute('fill', 'rgba(255,255,255,0.3)'); hint.setAttribute('font-family', 'monospace');
+      hint.textContent = '→';
+      eg.appendChild(hint);
+
+      nodeLayer.appendChild(eg);
+    });
   });
 }
 
@@ -2527,11 +2788,34 @@ function ddAutoLayout() {
 
 function ddClearAll() {
   if (!dd.nodes.length && !dd.conns.length) return;
-  if (!confirm('Clear all distros and connections?')) return;
+  if (!confirm('Clear all distros and connections? Their calculator sheets will also be removed.')) return;
+  // Remove all designer-created sheets
+  dd.nodes.forEach(function(node) {
+    if (node.sheetKey && SHEETS[node.sheetKey]) {
+      delete SHEETS[node.sheetKey];
+      delete distroData[node.sheetKey];
+      delete limits[node.sheetKey];
+    }
+  });
   dd.nodes = []; dd.conns = []; dd.selected = null; dd.connFrom = null; dd.connecting = false;
   document.getElementById('ddConnBtn').classList.remove('active');
   document.getElementById('ddEmpty').style.display = 'flex';
   ddSetStatus('');
+  // If no sheets left, restore defaults
+  if (!Object.keys(SHEETS).length) {
+    SHEETS = {
+      '18-Way (32A)':  {ways:6, banks:['A','B','C'],                                        limit:32,  altLimit:0},
+      '48-Way (63A)':  {ways:6, banks:['A','B','C','D','E','F','G','H'],                    limit:63,  altLimit:125},
+      '72-Way (400A)': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'],    limit:400, altLimit:0}
+    };
+    initDistroData();
+    activeSheet = '18-Way (32A)';
+  }
+  var names = Object.keys(SHEETS);
+  if (!SHEETS[activeSheet]) activeSheet = names[0];
+  buildSheetTabs();
+  buildPdfSheetSelects();
+  renderDistro();
   ddRender();
   ddRenderProps();
 }
@@ -2610,7 +2894,8 @@ function ddExport() {
 
       <div class="help-section">
         <h3>&#9889; Getting Started</h3>
-        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Choose your distro sheet using the tabs: <strong>18-Way (32A)</strong>, <strong>48-Way (63A/125A)</strong>, or <strong>72-Way (400A)</strong>. If you're running multiple distros, use the <strong>Distro Designer</strong> to map the full power chain first.</p>
+        <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Switch between distro sheets using the <strong>dropdown selector</strong> next to the region toggle.</p>
+        <p>By default the calculator includes three standard sheets (18-Way, 48-Way, 72-Way). If you open the <strong>Distro Designer</strong> and add your own distros, these defaults are replaced by your custom sheets — and restored automatically if you remove all designer distros.</p>
       </div>
 
       <div class="help-section">
@@ -2641,16 +2926,23 @@ function ddExport() {
 
       <div class="help-section">
         <h3>&#9889; Distro Designer</h3>
-        <p>Click <strong>&#9889; Distro Designer</strong> in the top bar to open the interactive power chain map. Use it when running more than one distro to visualise how they feed each other.</p>
+        <p>Click <strong>&#9889; Distro Designer</strong> to open the interactive power chain map. Use it to plan and visualise how multiple distros feed each other, and to see what equipment is assigned to each one.</p>
+
+        <p><strong>Adding distros &amp; creating sheets:</strong> Click a distro type in the left panel — 72-Way, 48-Way, 18-Way, Distro Box, Generator, or Custom. Each distro type (except Generator) automatically creates a matching calculator sheet with the correct bank, way, and phase limit configuration. The first designer distro removes the three default sheets to avoid confusion; they return automatically if you remove all designer distros.</p>
+
+        <p><strong>Flowchart view:</strong> Once equipment is assigned in the calculator, the designer shows it as a live flowchart beneath each distro node — a trunk line drops from the distro box, a horizontal bus spans across, and individual equipment cards hang below showing the output label (e.g. A1), quantity, and equipment name. Cards are colour-coded by phase (purple Ph1, orange Ph2, teal Ph3). Click any equipment card to jump straight to that distro sheet in the calculator. The flowchart updates instantly whenever you assign or remove equipment.</p>
+
+        <p><strong>Connecting distros:</strong> Click &#128279; Connect, click the source distro, then the destination. An arrow is drawn showing power flow direction. Choose the connector type from the left panel before connecting — CAM Lock (gold), 125A (red), 63A CEE (green), 32A CEE (blue), Socapex (white). Click a connection line to select it and change its type, label, or delete it.</p>
+
+        <p><strong>Other controls:</strong></p>
         <ul>
-          <li><strong>Add Distro</strong> — choose a distro type from the left panel (72-Way, 48-Way, 18-Way, Distro Box, Generator, or Custom) and click to place it on the canvas.</li>
-          <li><strong>Connect</strong> — click &#128279; Connect, click the source distro, then click the destination. The connection is drawn with an arrow showing power flow direction. Choose the connector type (CAM Lock, 125A, 63A CEE, 32A CEE, Socapex) before connecting — each has its own colour.</li>
-          <li><strong>Move</strong> — drag any distro node to reposition it. Connections follow automatically.</li>
-          <li><strong>Auto Layout</strong> — arranges nodes into a top-down power flow tree based on connections.</li>
-          <li><strong>Properties panel</strong> (right) — edit label, colour, notes, and link the node to a distro sheet. Click <strong>&#8594; Open in Calculator</strong> to jump directly to that sheet.</li>
-          <li><strong>Export SVG</strong> — saves the diagram as a scalable vector file for documentation.</li>
+          <li><strong>Drag</strong> any distro node to reposition it on the canvas</li>
+          <li><strong>Auto Layout</strong> — arranges nodes into a top-down power flow tree</li>
+          <li><strong>Properties panel</strong> (right) — rename the distro (also renames the calculator sheet), change colour, add a location note, or jump to the calculator sheet</li>
+          <li><strong>&#128465; Delete Distro</strong> — removes the node and its calculator sheet</li>
+          <li><strong>&#128465; Clear All</strong> — removes all designer distros and restores default sheets</li>
+          <li><strong>Export SVG</strong> — saves the full diagram as a vector file for documentation</li>
         </ul>
-        <p>Click any connection line to select it and change its type or label. Click <strong>&#128465; Delete</strong> to remove selected nodes or connections.</p>
       </div>
 
       <div class="help-section">
