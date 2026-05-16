@@ -2205,7 +2205,7 @@ function ddAddDistroOfType(dt) {
     note: '',
     sheetKey: cfg ? name : null,
     parentSheet: null,   // SocaSwitch: which distro sheet feeds it
-    parentOutput: null   // SocaSwitch: which bank+way output feeds it (e.g. "A3")
+    parentBank: null     // SocaSwitch: which bank (e.g. "A") feeds it via Socapex
   };
   dd.nodes.push(node);
 
@@ -2337,34 +2337,30 @@ function ddRenderProps() {
     var hasCfg = !!DD_SHEET_CONFIGS[node.type];
     var isSoca = node.type === 'socaswitch';
 
-    // Build parent sheet + output selectors for SocaSwitch
+    // Build parent sheet + bank selectors for SocaSwitch
     var socaHtml = '';
     if (isSoca) {
       var sheetOpts = '<option value="">— choose distro —</option>';
       Object.keys(SHEETS).forEach(function(k) {
         sheetOpts += '<option value="' + ddEsc(k) + '"' + (node.parentSheet===k?' selected':'') + '>' + ddEsc(k) + '</option>';
       });
-      // Build output options from parentSheet config
-      var outputOpts = '<option value="">— choose output —</option>';
+      // Build bank options from parentSheet config
+      var bankOpts = '<option value="">— choose bank —</option>';
       if (node.parentSheet && SHEETS[node.parentSheet]) {
-        var pcfg = SHEETS[node.parentSheet];
-        pcfg.banks.forEach(function(b) {
-          for (var w = 1; w <= pcfg.ways; w++) {
-            var val = b + w;
-            outputOpts += '<option value="' + val + '"' + (node.parentOutput===val?' selected':'') + '>' + val + '</option>';
-          }
+        SHEETS[node.parentSheet].banks.forEach(function(b) {
+          bankOpts += '<option value="' + b + '"' + (node.parentBank===b?' selected':'') + '>Bank ' + b + '</option>';
         });
       }
       socaHtml =
         '<div class="dd-prop-row"><div class="dd-prop-label">FED FROM DISTRO</div>' +
         '<select class="dd-prop-select" onchange="ddSetSocaParent(' + node.id + ',\'sheet\',this.value)">' + sheetOpts + '</select></div>' +
         (node.parentSheet
-          ? '<div class="dd-prop-row"><div class="dd-prop-label">FED FROM OUTPUT</div>' +
-            '<select class="dd-prop-select" onchange="ddSetSocaParent(' + node.id + ',\'output\',this.value)">' + outputOpts + '</select></div>'
+          ? '<div class="dd-prop-row"><div class="dd-prop-label">FED FROM BANK</div>' +
+            '<select class="dd-prop-select" onchange="ddSetSocaParent(' + node.id + ',\'bank\',this.value)">' + bankOpts + '</select></div>'
           : '') +
-        (node.parentSheet && node.parentOutput
-          ? '<div style="font-size:9px;color:#fff;background:#8b5e00;padding:4px 6px;border-radius:3px;margin-bottom:6px">&#9889; Fed via Socapex from ' + ddEsc(node.parentSheet) + ' ' + ddEsc(node.parentOutput) + '</div>'
-          : '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px">Select a parent distro and output above</div>');
+        (node.parentSheet && node.parentBank
+          ? '<div style="font-size:9px;color:#fff;background:#8b5e00;padding:4px 6px;border-radius:3px;margin-bottom:6px">&#9889; Fed via Socapex from ' + ddEsc(node.parentSheet) + ' — Bank ' + ddEsc(node.parentBank) + '</div>'
+          : '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px">Select a parent distro and bank above</div>');
     }
 
     panel.innerHTML =
@@ -2446,9 +2442,9 @@ function ddSetSocaParent(nodeId, field, val) {
   if (!node) return;
   if (field === 'sheet') {
     node.parentSheet = val || null;
-    node.parentOutput = null; // reset output when sheet changes
-  } else if (field === 'output') {
-    node.parentOutput = val || null;
+    node.parentBank = null; // reset bank when sheet changes
+  } else if (field === 'bank') {
+    node.parentBank = val || null;
   }
   ddRender();
   ddRenderProps();
@@ -2505,13 +2501,14 @@ function ddJumpToSheet(sheetKey) {
 
 function ddEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
-// Collect equipment assigned to a sheet, grouped by bank+way output
-function ddGetEquipmentForSheet(sheetKey) {
+// Get all equipment for a sheet, optionally filtered to one bank
+function ddGetEquipmentForSheet(sheetKey, bankFilter) {
   if (!distroData[sheetKey] || !SHEETS[sheetKey]) return [];
   var cfg = SHEETS[sheetKey];
   var items = [];
   var banks = cfg.banks;
   for (var bi = 0; bi < banks.length; bi++) {
+    if (bankFilter && banks[bi] !== bankFilter) continue;
     for (var w = 1; w <= cfg.ways; w++) {
       var slots = distroData[sheetKey][bi][w];
       if (!slots) continue;
@@ -2541,11 +2538,9 @@ function ddRender() {
 
   // ── Draw Socapex feed lines for SocaSwitch nodes ─────────────
   dd.nodes.forEach(function(node) {
-    if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentOutput) return;
-    // Find the parent distro node that owns this sheet
+    if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentBank) return;
     var parentNode = dd.nodes.find(function(n){ return n.sheetKey === node.parentSheet; });
     if (!parentNode) return;
-    // Draw a white dashed Socapex line from parent node bottom-centre to SocaSwitch top-centre
     var x1 = parentNode.x + parentNode.w/2, y1 = parentNode.y + parentNode.h;
     var x2 = node.x + node.w/2, y2 = node.y;
     var cp = (y2-y1)/2;
@@ -2558,9 +2553,8 @@ function ddRender() {
     path.setAttribute('marker-end','url(#arr-w)');
     path.setAttribute('opacity','0.7');
     connLayer.appendChild(path);
-    // Mid-label showing the output
     var midX = (x1+x2)/2, midY = (y1+y2)/2;
-    var lbl = 'SOCA ' + node.parentOutput;
+    var lbl = 'SOCA Bank ' + node.parentBank;
     var lw = lbl.length*6+10;
     var lbg = document.createElementNS(ns,'rect');
     lbg.setAttribute('x',midX-lw/2); lbg.setAttribute('y',midY-8);
@@ -2637,8 +2631,16 @@ function ddRender() {
     var isSel = dd.selected && dd.selected.type==='node' && dd.selected.id===node.id;
     var isConnSrc = dd.connecting && dd.connFrom === node.id;
 
-    // Get equipment for this node's sheet
-    var eqItems = node.sheetKey ? ddGetEquipmentForSheet(node.sheetKey) : [];
+    // Get equipment for this node's flowchart children
+    var eqItems;
+    if (node.type === 'socaswitch') {
+      // Show equipment from the parent distro's linked bank
+      eqItems = (node.parentSheet && node.parentBank)
+        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank)
+        : [];
+    } else {
+      eqItems = node.sheetKey ? ddGetEquipmentForSheet(node.sheetKey) : [];
+    }
 
     // ── DISTRO NODE BOX ──────────────────────────────────────
     var g = document.createElementNS(ns, 'g');
@@ -2695,15 +2697,15 @@ function ddRender() {
 
     // Note / parent output
     var noteText = node.type === 'socaswitch'
-      ? (node.parentSheet && node.parentOutput
-          ? 'Via Socapex ← ' + node.parentOutput
+      ? (node.parentSheet && node.parentBank
+          ? 'Socapex \u2190 Bank ' + node.parentBank
           : 'No feed assigned')
       : (node.note || '');
     if (noteText) {
       var noteTxt = document.createElementNS(ns, 'text');
       noteTxt.setAttribute('x', node.x+node.w/2); noteTxt.setAttribute('y', node.y+50);
       noteTxt.setAttribute('text-anchor', 'middle'); noteTxt.setAttribute('font-size', '9');
-      noteTxt.setAttribute('fill', node.type==='socaswitch' && (!node.parentSheet||!node.parentOutput) ? '#e74c3c' : 'rgba(255,255,255,0.65)');
+      noteTxt.setAttribute('fill', node.type==='socaswitch' && (!node.parentSheet||!node.parentBank) ? '#e74c3c' : 'rgba(255,255,255,0.65)');
       noteTxt.setAttribute('font-family', 'sans-serif');
       noteTxt.textContent = noteText.length > 22 ? noteText.substring(0,21)+'…' : noteText;
       g.appendChild(noteTxt);
