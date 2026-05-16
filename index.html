@@ -1963,6 +1963,10 @@ function closeLabels() {
       <button class="dd-btn dd-btn-danger" onclick="ddClearAll()">&#128465; Clear All</button>
       <span id="ddStatus" style="font-size:11px;color:#FFD700;font-style:italic;margin-left:4px"></span>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="dd-btn" onclick="ddZoom(0.2)" title="Zoom in">&#43;</button>
+        <button class="dd-btn" id="ddZoomLbl" onclick="ddResetView()" title="Reset view" style="min-width:44px;text-align:center">100%</button>
+        <button class="dd-btn" onclick="ddZoom(-0.2)" title="Zoom out">&#8722;</button>
+        <button class="dd-btn" onclick="ddFitAll()" title="Fit all to screen">&#9974;</button>
         <button class="dd-btn" onclick="ddExport()">&#128438; Export SVG</button>
         <button class="dd-btn dd-btn-danger" onclick="closeDistroDesigner()">&#10005; Close</button>
       </div>
@@ -1991,9 +1995,11 @@ function closeLabels() {
             <marker id="arr-w" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fff"/></marker>
           </defs>
           <rect width="100%" height="100%" fill="#0a1520"/>
-          <rect width="100%" height="100%" fill="url(#ddGrid)"/>
-          <g id="ddConnLayer"></g>
-          <g id="ddNodeLayer"></g>
+          <rect id="ddGridRect" width="100%" height="100%" fill="url(#ddGrid)"/>
+          <g id="ddViewport">
+            <g id="ddConnLayer"></g>
+            <g id="ddNodeLayer"></g>
+          </g>
           <line id="ddDragLine" stroke="#FFD700" stroke-width="2" stroke-dasharray="6 3" opacity="0" marker-end="url(#arr)"/>
         </svg>
         <div id="ddEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
@@ -2037,16 +2043,23 @@ function closeLabels() {
 <script>
 // ── DISTRO DESIGNER ──────────────────────────────────────────
 var dd = {
-  nodes: [],       // {id, type, label, x, y, w, h, color, note}
-  conns: [],       // {id, from, to, type, label}
+  nodes: [],
+  conns: [],
   nextId: 1,
   connecting: false,
   connFrom: null,
   connType: 'cam-lock',
   dragging: null,
   dragOffX: 0, dragOffY: 0,
-  selected: null,  // node id or 'conn:id'
-  svgPt: null
+  selected: null,
+  svgPt: null,
+  // Viewport transform
+  scale: 1,
+  panX: 0,
+  panY: 0,
+  panning: false,
+  panStartX: 0, panStartY: 0,
+  panOriginX: 0, panOriginY: 0
 };
 
 var DD_DISTRO_TYPES = [
@@ -2130,11 +2143,15 @@ function openDistroDesigner() {
   ddBuildPalette();
   ddBuildConnTypes();
   ddRender();
-  // Set up SVG point for coord conversion
   var svg = document.getElementById('ddSvg');
   dd.svgPt = svg.createSVGPoint();
   svg.addEventListener('mousemove', ddOnMouseMove);
   svg.addEventListener('click', ddOnSvgClick);
+  svg.addEventListener('wheel', ddOnWheel, {passive: false});
+  svg.addEventListener('mousedown', ddOnPanStart);
+  svg.addEventListener('mouseup', ddOnPanEnd);
+  svg.addEventListener('mouseleave', ddOnPanEnd);
+  ddApplyViewport();
 }
 
 function closeDistroDesigner() {
@@ -2142,12 +2159,95 @@ function closeDistroDesigner() {
   var svg = document.getElementById('ddSvg');
   svg.removeEventListener('mousemove', ddOnMouseMove);
   svg.removeEventListener('click', ddOnSvgClick);
+  svg.removeEventListener('wheel', ddOnWheel);
+  svg.removeEventListener('mousedown', ddOnPanStart);
+  svg.removeEventListener('mouseup', ddOnPanEnd);
+  svg.removeEventListener('mouseleave', ddOnPanEnd);
+}
+
+function ddApplyViewport() {
+  var vp = document.getElementById('ddViewport');
+  if (vp) vp.setAttribute('transform', 'translate('+dd.panX+','+dd.panY+') scale('+dd.scale+')');
+  var lbl = document.getElementById('ddZoomLbl');
+  if (lbl) lbl.textContent = Math.round(dd.scale * 100) + '%';
+}
+
+function ddZoom(delta) {
+  var wrap = document.getElementById('ddWrap');
+  var cx = wrap.clientWidth / 2, cy = wrap.clientHeight / 2;
+  var newScale = Math.max(0.15, Math.min(3, dd.scale + delta));
+  // Zoom toward centre
+  dd.panX = cx - (cx - dd.panX) * (newScale / dd.scale);
+  dd.panY = cy - (cy - dd.panY) * (newScale / dd.scale);
+  dd.scale = newScale;
+  ddApplyViewport();
+}
+
+function ddResetView() {
+  dd.scale = 1; dd.panX = 0; dd.panY = 0;
+  ddApplyViewport();
+}
+
+function ddFitAll() {
+  if (!dd.nodes.length) { ddResetView(); return; }
+  var wrap = document.getElementById('ddWrap');
+  var W = wrap.clientWidth, H = wrap.clientHeight;
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  dd.nodes.forEach(function(n) {
+    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+    // Account for equipment cards below — rough estimate
+    var eqCount = n.sheetKey ? Object.keys(distroData[n.sheetKey] || {}).length * 3 : 0;
+    maxX = Math.max(maxX, n.x + n.w);
+    maxY = Math.max(maxY, n.y + n.h + (eqCount > 0 ? 200 : 0));
+  });
+  var pad = 40;
+  var scaleX = (W - pad*2) / (maxX - minX || 1);
+  var scaleY = (H - pad*2) / (maxY - minY || 1);
+  dd.scale = Math.max(0.15, Math.min(1.5, Math.min(scaleX, scaleY)));
+  dd.panX = pad - minX * dd.scale;
+  dd.panY = pad - minY * dd.scale;
+  ddApplyViewport();
+}
+
+function ddOnWheel(e) {
+  e.preventDefault();
+  var svg = document.getElementById('ddSvg');
+  var rect = svg.getBoundingClientRect();
+  var mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  var delta = e.deltaY < 0 ? 0.12 : -0.12;
+  var newScale = Math.max(0.15, Math.min(3, dd.scale + delta));
+  dd.panX = mx - (mx - dd.panX) * (newScale / dd.scale);
+  dd.panY = my - (my - dd.panY) * (newScale / dd.scale);
+  dd.scale = newScale;
+  ddApplyViewport();
+}
+
+function ddOnPanStart(e) {
+  // Middle mouse or space+left = pan
+  if (e.button === 1 || (e.button === 0 && e.spaceKey) || e.altKey) {
+    dd.panning = true;
+    dd.panStartX = e.clientX; dd.panStartY = e.clientY;
+    dd.panOriginX = dd.panX; dd.panOriginY = dd.panY;
+    document.getElementById('ddSvg').style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+}
+
+function ddOnPanEnd(e) {
+  if (dd.panning) {
+    dd.panning = false;
+    document.getElementById('ddSvg').style.cursor = 'default';
+  }
 }
 
 function ddSvgCoords(e) {
   var svg = document.getElementById('ddSvg');
-  dd.svgPt.x = e.clientX; dd.svgPt.y = e.clientY;
-  return dd.svgPt.matrixTransform(svg.getScreenCTM().inverse());
+  var rect = svg.getBoundingClientRect();
+  // Convert screen coords to canvas coords accounting for pan/zoom
+  return {
+    x: (e.clientX - rect.left - dd.panX) / dd.scale,
+    y: (e.clientY - rect.top  - dd.panY) / dd.scale
+  };
 }
 
 function ddBuildPalette() {
@@ -2256,6 +2356,13 @@ function ddOnSvgClick(e) {
 }
 
 function ddOnMouseMove(e) {
+  // Pan mode
+  if (dd.panning) {
+    dd.panX = dd.panOriginX + (e.clientX - dd.panStartX);
+    dd.panY = dd.panOriginY + (e.clientY - dd.panStartY);
+    ddApplyViewport();
+    return;
+  }
   if (dd.connecting && dd.connFrom !== null) {
     var pt = ddSvgCoords(e);
     var dl = document.getElementById('ddDragLine');
@@ -2639,7 +2746,24 @@ function ddRender() {
         ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank)
         : [];
     } else {
-      eqItems = node.sheetKey ? ddGetEquipmentForSheet(node.sheetKey) : [];
+      // For regular distro nodes: exclude any banks claimed by a SocaSwitch
+      var claimedBanks = {};
+      dd.nodes.forEach(function(n) {
+        if (n.type === 'socaswitch' && n.parentSheet === node.sheetKey && n.parentBank) {
+          claimedBanks[n.parentBank] = true;
+        }
+      });
+      var cfg = node.sheetKey && SHEETS[node.sheetKey];
+      if (cfg) {
+        eqItems = [];
+        cfg.banks.forEach(function(b) {
+          if (!claimedBanks[b]) {
+            eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
+          }
+        });
+      } else {
+        eqItems = [];
+      }
     }
 
     // ── DISTRO NODE BOX ──────────────────────────────────────
