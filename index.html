@@ -104,7 +104,7 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 .way-sub{opacity:.65;padding-left:12px}
 .way-amps{font-size:11px;font-weight:600;color:var(--navy3);text-align:right;padding-right:8px;white-space:nowrap}
 .grand-summary{border-radius:8px;overflow:hidden;border:1px solid var(--border)}
-.gs-title{background:var(--navy);color:white;padding:8px 14px;font-weight:700;font-size:14px;letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.gs-title{background:var(--navy);color:white;padding:5px 12px;font-weight:700;font-size:11px;letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
 .gs-limit-row{display:flex;align-items:center;gap:10px;background:var(--amber-lt);padding:8px 14px;border-bottom:1px solid #f0d995}
 .gs-limit-label{font-size:12px;color:#7a5500;font-weight:500}
 .limit-toggle{display:flex;align-items:center;gap:6px;border:2px solid #d68910;border-radius:6px;background:white;padding:4px 10px;cursor:pointer;font-size:13px;font-weight:700}
@@ -112,15 +112,16 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 .lim-active{color:#b45f06;font-weight:900}
 .lim-inactive{color:#ccc;font-weight:500}
 .lim-sep{color:#ddd;font-weight:300}
-.gs-phase{display:grid;grid-template-columns:1fr 80px 90px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--faint)}
-.gs-phase:last-child{border-bottom:none}
+.gs-phases{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border)}
+.gs-phase{display:flex;flex-direction:column;align-items:center;padding:6px 8px;border-right:1px solid var(--faint)}
+.gs-phase:last-child{border-right:none}
 .gs-phase.ph1{border-left:4px solid var(--ph1)}
 .gs-phase.ph2{border-left:4px solid var(--ph2)}
 .gs-phase.ph3{border-left:4px solid var(--ph3)}
-.gs-ph-label{font-weight:700;font-size:14px}
+.gs-ph-label{font-weight:700;font-size:10px;white-space:nowrap}
 .gs-ph1{color:var(--ph1)}.gs-ph2{color:var(--ph2)}.gs-ph3{color:var(--ph3)}
-.gs-total{font-size:18px;font-weight:700;text-align:right}
-.gs-status{text-align:center;font-size:11px;font-weight:700;padding:4px 8px;border-radius:4px}
+.gs-total{font-size:14px;font-weight:700;text-align:center}
+.gs-status{text-align:center;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:2px}
 .status-ok{background:var(--ok-lt);color:var(--ok)}
 .status-warn{background:#fef3cd;color:#b45f06}
 .status-over{background:var(--over-lt);color:var(--over);animation:pulse 1s infinite}
@@ -243,6 +244,25 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
+
+/* Mobile menu */
+#mob-menu-btn{display:none;background:none;border:1px solid rgba(255,255,255,.3);color:white;border-radius:5px;padding:5px 10px;font-size:18px;cursor:pointer;line-height:1}
+#mob-menu{display:none;position:fixed;top:52px;right:0;left:0;background:var(--navy);z-index:999;border-bottom:2px solid var(--blue);flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+#mob-menu.open{display:flex}
+#mob-menu button,#mob-menu a{padding:14px 20px;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.08);color:white;font-size:13px;font-weight:600;text-align:left;cursor:pointer;display:flex;align-items:center;gap:10px}
+#mob-menu button:hover,#mob-menu a:hover{background:rgba(255,255,255,.08)}
+#mob-menu .mob-menu-section{padding:6px 16px;font-size:9px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:2px;text-transform:uppercase;border-bottom:none}
+@media (max-width: 768px) {
+  #mob-menu-btn{display:block}
+  .top-controls{gap:6px}
+  .labels-btn,.report-btn-top,.save-btn,.load-btn,.help-btn{display:none!important}
+  .labels-drop-wrap{display:none!important}
+}
+@media (min-width: 769px) {
+  #mob-menu-btn{display:none!important}
+  #mob-menu{display:none!important}
+}
+
 /* == MOBILE (<=768px) == */
 @media (max-width: 768px) {
   #topbar{padding:0 12px;gap:8px;height:52px}
@@ -251,7 +271,12 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
   .logo-sub{display:none}
   .region-btn{padding:4px 8px;font-size:10px}
   .sheet-select{font-size:10px;min-width:100px;max-width:130px;padding:4px 6px}
-  .labels-btn,.report-btn-top,.save-btn,.load-btn{display:none}
+  .top-controls{gap:4px;flex-wrap:wrap;justify-content:flex-end}
+  .labels-btn,.report-btn-top,.save-btn,.load-btn,.help-btn,.report-btn-top{padding:4px 7px;font-size:10px}
+  #sheetSelect{min-width:90px;max-width:120px;font-size:10px}
+  .region-btn{padding:4px 7px;font-size:10px}
+  .logo-text{font-size:12px}
+  .logo-sub{display:none}
   #main{flex-direction:column;height:calc(100vh - 52px - 52px)}
   #inv-panel{display:none;width:100%;flex:1}
   #inv-panel.mob-active{display:flex}
@@ -282,7 +307,8 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
       <div class="logo-sub" id="logoSub">POWER DISTRO LOAD SHEET</div>
     </div>
   </div>
-  <div class="top-controls">
+  <button id="mob-menu-btn" onclick="toggleMobMenu()">&#9776;</button>
+    <div class="top-controls">
     <div class="region-toggle">
       <button class="region-btn active" id="btnUS" onclick="setRegion('US')">US 208V</button>
       <button class="region-btn" id="btnROW" onclick="setRegion('ROW')">ROW 230V</button>
@@ -308,7 +334,7 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
     <button class="save-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
     <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
-    <button class="report-btn-top" style="background:#5b2c8a;border-color:#5b2c8a" onclick="openDistroDesigner()">&#9889; Distro Designer</button>
+    <button class="report-btn-top" style="background:#5b2c8a;border-color:#5b2c8a" onclick="openDistroDesigner()">&#9889; Distro Designer></button>
   </div>
 </header>
 
@@ -978,11 +1004,11 @@ function renderDistro() {
       : '';
     var remainNote = '<small style="font-size:9px;font-weight:400;display:block;margin-top:1px">'+remaining.toFixed(1)+'A left</small>';
     phHtml += '<div class="gs-phase ph' + p + '">' +
-      '<div class="gs-ph-label gs-ph' + p + '">Phase ' + p + '<br><small style="font-size:10px;font-weight:400;color:var(--muted)">Ways ' + wayNums.join(',') + '</small></div>' +
-      '<div class="gs-total gs-ph' + p + '">' + total.toFixed(2) + 'A' + fixedNote + '</div>' +
-      '<div class="gs-status ' + statusCls + '">' + statusTxt + remainNote + '</div></div>';
+      '<div class="gs-ph-label gs-ph' + p + '">Ph' + p + ' ' + remainNote + '</div>' +
+      '<div class="gs-total gs-ph' + p + '">' + total.toFixed(2) + 'A</div>' +
+      '<div class="gs-status ' + statusCls + '">' + statusTxt + '</div></div>';
   }
-  gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:.6">' + activeSheet + '</span></div>' + limRowHtml + phHtml;
+  gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:.6">' + activeSheet + '</span></div>' + limRowHtml + '<div class="gs-phases">' + phHtml + '</div>';
   summaryDiv.appendChild(gs);
   // Refresh designer flowchart if open
   if (document.getElementById('ddModal').style.display !== 'none') ddRender();
@@ -3452,6 +3478,26 @@ window.addEventListener('resize', function() {
   }
 });
 
+
+
+function toggleMobMenu() {
+  var m = document.getElementById('mob-menu');
+  m.classList.toggle('open');
+}
+function closeMobMenu() {
+  document.getElementById('mob-menu').classList.remove('open');
+}
+// Close menu when tapping outside
+document.addEventListener('click', function(e) {
+  var btn = document.getElementById('mob-menu-btn');
+  var menu = document.getElementById('mob-menu');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+// Sync region buttons in mob menu
+var _origSetRegion = typeof setRegion === 'function' ? setRegion : null;
+
 </script>
 <div class="pdf-overlay" id="pdfOverlay">
   <div class="pdf-modal">
@@ -3548,8 +3594,8 @@ window.addEventListener('resize', function() {
       </div>
 
       <div class="help-section">
-        <h3>&#9889; Distro Designer</h3>
-        <p>Click <strong>&#9889; Distro Designer</strong> to open the interactive power chain map. Use it to plan and visualise how multiple distros feed each other, and to see what equipment is assigned to each one.</p>
+        <h3>&#9889; Distro Designer></h3>
+        <p>Click <strong>&#9889; Distro Designer></strong> to open the interactive power chain map. Use it to plan and visualise how multiple distros feed each other, and to see what equipment is assigned to each one.</p>
 
         <p><strong>Adding distros &amp; creating sheets:</strong> Click a distro type in the left panel — 72-Way, 48-Way, 18-Way, <strong>SocaSwitch ER</strong>, Distro Box, Generator, or Custom. Each distro type (except Generator) automatically creates a matching calculator sheet with the correct bank, way, and phase limit configuration. The first designer distro removes the three default sheets to avoid confusion; they return automatically if you remove all designer distros.</p>
         <p>The <strong>SocaSwitch ER</strong> is a 6-outlet unit fed via Socapex. Adding one automatically switches the active connector type to Socapex, ready to draw the feed connection. Its calculator sheet has a single bank (A) with 6 ways — one per outlet — and a 16A per-outlet limit.</p>
@@ -3599,7 +3645,7 @@ window.addEventListener('resize', function() {
           <li><strong>Avery 6737</strong> — Individual equipment labels, A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One per unit showing name, ID, placement, and address.</li>
         </ul>
         <p>Voltage warnings (<span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> / <span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span>) appear on all label types for flagged items.</p>
-        <p>Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels and the flight case page. Print with margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Upload a logo via <strong>&#128444; Logo></strong> — it appears on all labels and the flight case page. Print with margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
@@ -3617,8 +3663,8 @@ window.addEventListener('resize', function() {
 
       <div class="help-section">
         <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Fully portable and reloadable on any device.</p>
-        <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
+        <p><strong>&#128190; Save></strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Fully portable and reloadable on any device.</p>
+        <p><strong>&#128194; Load></strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
         <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation.</p>
       </div>
 
@@ -3645,6 +3691,23 @@ window.addEventListener('resize', function() {
   <button onclick="mobTab('add')" id="mob-add" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px">
     <span style="font-size:18px">&#43;</span><span>Add</span>
   </button>
+</div>
+
+<div id="mob-menu">
+  <div class="mob-menu-section">Region</div>
+  <button onclick="setRegion('US');closeMobMenu()" id="mobBtnUS">&#127482;&#127480; US 208V</button>
+  <button onclick="setRegion('ROW');closeMobMenu()" id="mobBtnROW">&#127757; ROW 230V</button>
+  <div class="mob-menu-section">Labels</div>
+  <button onclick="openLabels('5163');closeMobMenu()">&#128424; Avery 5163 &mdash; Distro Labels (Letter)</button>
+  <button onclick="openLabels('L7173');closeMobMenu()">&#128424; Avery L7173 &mdash; Distro Labels (A4)</button>
+  <button onclick="openEquipmentLabels();closeMobMenu()">&#128218; Avery 6737 &mdash; Equipment Labels</button>
+  <div class="mob-menu-section">Actions</div>
+  <button onclick="openReport();closeMobMenu()">&#128438; Equipment Report</button>
+  <button onclick="openDistroDesigner();closeMobMenu()">&#9889; Distro Designer</button>
+  <button onclick="saveToFile();closeMobMenu()">&#128190; Save Show File</button>
+  <button onclick="loadFromFile();closeMobMenu()">&#128194; Load Show File</button>
+  <button onclick="triggerLogoUpload();closeMobMenu()">&#128444; Upload Logo</button>
+  <button onclick="openHelp();closeMobMenu()">&#63; Help</button>
 </div>
 </body>
 </html>
