@@ -243,18 +243,15 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-/* ── MOBILE LAYOUT ─────────────────────────────────────────── */
+/* == MOBILE (<=768px) == */
 @media (max-width: 768px) {
   #topbar{padding:0 12px;gap:8px;height:52px}
   .logo-bolt-img{width:28px;height:28px}
-  .logo-text{font-size:13px;letter-spacing:0.5px}
+  .logo-text{font-size:13px;letter-spacing:.5px}
   .logo-sub{display:none}
-  .top-controls{gap:6px}
   .region-btn{padding:4px 8px;font-size:10px}
   .sheet-select{font-size:10px;min-width:100px;max-width:130px;padding:4px 6px}
   .labels-btn,.report-btn-top,.save-btn,.load-btn{display:none}
-
-  /* Main becomes single full-height column */
   #main{flex-direction:column;height:calc(100vh - 52px - 52px)}
   #inv-panel{display:none;width:100%;flex:1}
   #inv-panel.mob-active{display:flex}
@@ -262,45 +259,15 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
   #distro-panel.mob-active{display:flex}
   #add-panel{display:none;width:100%;flex:1}
   #add-panel.mob-active{display:flex}
-
-  /* Mobile tab bar */
-  #mob-tabs{display:flex;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);height:52px;flex-shrink:0}
-  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px;transition:color .15s}
-  .mob-tab svg{opacity:.5;transition:opacity .15s}
-  .mob-tab.active{color:var(--yellow, #FFD700)}
-  .mob-tab.active svg{opacity:1}
-  .mob-tab-icon{font-size:18px;line-height:1}
-
-  /* Distro grid wrapping on mobile */
-  .banks-3{grid-template-columns:repeat(2,1fr)}
-  .banks-8{grid-template-columns:repeat(2,1fr)}
-  .banks-12{grid-template-columns:repeat(2,1fr)}
-
-  /* Way rows larger touch targets */
+  #mob-tabs{display:flex}
+  .banks-3,.banks-8,.banks-12{grid-template-columns:repeat(2,1fr)}
   .way-add-btn{min-width:36px;min-height:36px;font-size:16px}
-  .way-label{min-width:40px;font-size:10px}
   .way-row{min-height:40px}
-
-  /* Add panel full width */
-  .add-form{padding:12px}
-  .sub-slot-btns{flex-wrap:wrap}
-  .sub-slot-btn{flex:1;min-width:80px}
-
-  /* Sheet title compact */
   .sheet-title h2{font-size:15px}
   .sheet-title{padding:8px 12px}
-
-  /* Grand summary compact */
-  .grand-summary{font-size:11px}
-  .gs-phase{padding:8px 10px}
-
-  /* Fixed outlets wrap */
-  #distro-scroll .fo-grid{flex-wrap:wrap}
-
-  /* Bank cards full width */
-  .bank-card{border-radius:6px}
+  .sub-slot-btns{flex-wrap:wrap}
+  .sub-slot-btn{flex:1;min-width:80px}
 }
-
 @media (min-width: 769px) {
   #mob-tabs{display:none}
 }
@@ -434,7 +401,7 @@ var SHEETS = {
   '72-Way (400A)': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'],    limit:400, altLimit:0}
 };
 
-// Fixed physical outlets per distro type -- accessible from both script blocks
+// Fixed physical outlets per distro type — accessible from both script blocks
 var DD_FIXED_OUTLETS = {
   '72way': [
     {label:'32A 1\u03c6', count:6, color:'#3498db', ph:1},
@@ -448,7 +415,7 @@ var DD_FIXED_OUTLETS = {
   ],
 };
 
-// Resolve outlet config for any sheet -- by designer node type OR sheet name pattern
+// Resolve outlet config for any sheet — by designer node type OR sheet name pattern
 function getFixedOutlets(sheetName) {
   // Check designer nodes first
   for (var ni = 0; ni < dd.nodes.length; ni++) {
@@ -485,7 +452,7 @@ function eqVoltWarn(name) {
   return null;
 }
 
-// -- STARTUP --------------------------------------------------
+// ── STARTUP ──────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
   fetch(APPS_SCRIPT_URL)
     .then(function(r) { return r.json(); })
@@ -527,7 +494,7 @@ function init() {
   }
 }
 
-// -- DATA -----------------------------------------------------
+// ── DATA ─────────────────────────────────────────────────────
 function buildEqSections() {
   eqMap = {}; eqSections = [];
   for (var i = 0; i < INVENTORY.length; i++) {
@@ -592,7 +559,7 @@ function initDistroData() {
   }
 }
 
-// -- INVENTORY -------------------------------------------------
+// ── INVENTORY ─────────────────────────────────────────────────
 function renderInventory(items) {
   var div = document.getElementById('invList');
   div.innerHTML = '';
@@ -614,8 +581,8 @@ function renderInventory(items) {
     el.className = 'inv-item';
     var nameDiv = document.createElement('div'); nameDiv.className = 'inv-name'; nameDiv.textContent = name;
     // Voltage-only badge
-    if (v120) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '120V only -- always flagged regardless of region'; vb.textContent = '120V'; nameDiv.appendChild(vb); }
-    if (v240) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '240V only -- not suitable for US (208V)'; vb.textContent = '240V'; nameDiv.appendChild(vb); }
+    if (v120) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '120V only — always flagged regardless of region'; vb.textContent = '120V'; nameDiv.appendChild(vb); }
+    if (v240) { var vb = document.createElement('span'); vb.className = 'volt-badge'; vb.title = '240V only — not suitable for US (208V)'; vb.textContent = '240V'; nameDiv.appendChild(vb); }
     var wDiv = document.createElement('div');
     wDiv.className = tbc ? 'tbc-badge' : 'inv-watts';
     wDiv.textContent = tbc ? 'TBC' : bat ? 'CO\u2082' : watts + 'W';
@@ -669,7 +636,7 @@ function buildEqDropdown() {
   updateAddPreview();
 }
 
-// -- SHEET TABS -----------------------------------------------
+// ── SHEET TABS ───────────────────────────────────────────────
 function buildSheetTabs() {
   var sel = document.getElementById('sheetSelect');
   sel.innerHTML = '';
@@ -691,7 +658,7 @@ function switchSheet(name) {
   renderDistro();
 }
 
-// -- REGION ---------------------------------------------------
+// ── REGION ───────────────────────────────────────────────────
 function setFixedSlot(sheet, key, field, val) {
   if (!distroData[sheet].fixedSlots) distroData[sheet].fixedSlots = {};
   if (!distroData[sheet].fixedSlots[key]) distroData[sheet].fixedSlots[key] = {watts:0, eq:''};
@@ -740,7 +707,7 @@ function setRegion(r) {
   renderDistro();
 }
 
-// -- DISTRO RENDER --------------------------------------------
+// ── DISTRO RENDER ────────────────────────────────────────────
 function renderDistro() {
   var titleDiv = document.getElementById('distro-title');
   var panel = document.getElementById('distro-scroll');
@@ -810,7 +777,7 @@ function renderDistro() {
           var vw = eqVoltWarn(slots[sr].eq);
           if (!vw && slots[sr].v120only) vw = '120V';
           if (!vw && slots[sr].v240only && region === 'US') vw = '240V';
-          if (vw) { var wb = document.createElement('span'); wb.className = 'volt-warn'; wb.title = vw + ' only -- check compatibility with current region'; wb.textContent = '\u26a0 ' + vw + ' only'; row.appendChild(wb); }
+          if (vw) { var wb = document.createElement('span'); wb.className = 'volt-warn'; wb.title = vw + ' only — check compatibility with current region'; wb.textContent = '\u26a0 ' + vw + ' only'; row.appendChild(wb); }
           row.appendChild(amEl);
           row.onclick = (function(b, ww, s) { return function() { selectTarget(b, ww, s); }; })(bi, w, sr);
           itemsDiv.appendChild(row);
@@ -834,7 +801,7 @@ function renderDistro() {
     phaseRow.appendChild(bankCard);
   }
 
-  // -- FIXED OUTLETS -- own section below the bank grid ---------
+  // ── FIXED OUTLETS — own section below the bank grid ─────────
   var foAll = getFixedOutlets(activeSheet);
 
   if (foAll.length) {
@@ -914,7 +881,7 @@ function renderDistro() {
 
           var fo3Sel = document.createElement('select');
           fo3Sel.className = 'fo-3ph-select';
-          fo3Sel.innerHTML = '<option value="">-- link to distro sheet --</option>' +
+          fo3Sel.innerHTML = '<option value="">— link to distro sheet —</option>' +
             Object.keys(SHEETS).filter(function(s){ return s !== activeSheet; }).map(function(s){
               return '<option value="'+s+'"'+(s===fo3Connected?' selected':'')+'>'+s+'</option>';
             }).join('');
@@ -945,7 +912,7 @@ function renderDistro() {
     panel.appendChild(foSection);
   }
 
-  // Grand Summary -- include fixed outlet loads
+  // Grand Summary — include fixed outlet loads
   var gs = document.createElement('div');
   gs.className = 'grand-summary';
   var lims = limits[activeSheet] || limit;
@@ -989,7 +956,7 @@ function renderDistro() {
       }
     });
 
-    // 3-phase outlet deductions -- only when connected to a linked sheet
+    // 3-phase outlet deductions — only when connected to a linked sheet
     var fixed3phLoad = 0;
     foGS.filter(function(o){ return o.ph===3; }).forEach(function(outlet) {
       for (var fi = 1; fi <= outlet.count; fi++) {
@@ -1021,7 +988,7 @@ function renderDistro() {
   if (document.getElementById('ddModal').style.display !== 'none') ddRender();
 }
 
-// -- TARGET SELECTION -----------------------------------------
+// ── TARGET SELECTION ─────────────────────────────────────────
 function selectTarget(bi, wayNum, subRow) {
   var cfg = SHEETS[activeSheet];
   var bankLetter = cfg.banks[bi];
@@ -1054,7 +1021,7 @@ function selectTarget(bi, wayNum, subRow) {
     document.getElementById('writeBtn').textContent = 'Update Device Information';
     document.getElementById('writeStatus').innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center">Editing existing slot \u2014 click Update to save changes</div>';
   } else {
-    // Empty slot -- reset form
+    // Empty slot — reset form
     document.getElementById('addEqSel').selectedIndex = 0;
     document.getElementById('addQty').value = 1;
     document.getElementById('unitFields').innerHTML = '';
@@ -1071,7 +1038,7 @@ function selSlot(idx, btn) {
   for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', i === idx);
 }
 
-// -- ADD PREVIEW ----------------------------------------------
+// ── ADD PREVIEW ──────────────────────────────────────────────
 function updateAddPreview() {
   var name = document.getElementById('addEqSel').value;
   var qty = parseInt(document.getElementById('addQty').value) || 1;
@@ -1080,8 +1047,8 @@ function updateAddPreview() {
   document.getElementById('previewAmpVal').textContent = a ? (a * qty).toFixed(2) : '\u2014';
 }
 
-// -- WRITE ----------------------------------------------------
-// -- FLIGHT CASE INTEGRATION ----------------------------------
+// ── WRITE ────────────────────────────────────────────────────
+// ── FLIGHT CASE INTEGRATION ──────────────────────────────────
 var flightCaseRows = []; // shared with flightcase.html via localStorage
 
 function toggleFcCount() {
@@ -1132,7 +1099,7 @@ function writeToSheet() {
   var name = document.getElementById('addEqSel').value;
   var qty = parseInt(document.getElementById('addQty').value) || 1;
 
-  // -- Fixed outlet path --
+  // ── Fixed outlet path ──
   if (selectedFoKey && !selectedTarget) {
     if (!distroData[activeSheet].fixedSlots) distroData[activeSheet].fixedSlots = {};
     var w = eqWatts(name);
@@ -1223,11 +1190,11 @@ function clearTarget() {
   renderDistro();
 }
 
-// -- LABELS ---------------------------------------------------
-// -- PDF IMPORT ------------------------------------------------
+// ── LABELS ───────────────────────────────────────────────────
+// ── PDF IMPORT ────────────────────────────────────────────────
 var pdfItems = []; // parsed items from PDF
 
-// -- PDF IMPORT ------------------------------------------------
+// ── PDF IMPORT ────────────────────────────────────────────────
 var pdfItems = [];
 
 function triggerPdfImport() {
@@ -1314,8 +1281,8 @@ var STOP_WORDS = {
 // Junk patterns to reject entire lines
 var JUNK_PATTERNS = [
   /^[\d\s\.\-\/\,\(\)\*\+\=\:\;\'\"]+$/,  // pure numbers/punctuation
-  /^\d+["'?]?$/,                            // dimension like 10' or 0"
-  /^[a-z]{1,2}$/i,                         // 1-2 char abbreviations
+  /^\d+["'°]?$/,                            // dimension like 10' or 0"
+  /^[a-z]{1,2}$/i,                         // 1–2 char abbreviations
   /^(page|total|date|ref|description|unit|watts|amps|qty|quantity|item|no\.|copyright|confidential)/i,
   /^v\d+$/i,                               // version numbers like "V3"
   /^\d+["x\*\/]\d+/,                      // dimension ratios like "104x208"
@@ -1330,7 +1297,7 @@ function isJunkLine(s) {
   for (var i = 0; i < JUNK_PATTERNS.length; i++) {
     if (JUNK_PATTERNS[i].test(s)) return true;
   }
-  // All-uppercase 1-4 char codes (e.g. ROE, CB5, GT)
+  // All-uppercase 1–4 char codes (e.g. ROE, CB5, GT)
   if (/^[A-Z0-9]{1,4}$/.test(s)) return true;
   // Single-word stop words
   if (STOP_WORDS[s.toLowerCase()]) return true;
@@ -1376,7 +1343,7 @@ function extractEquipment(text) {
     return { match: bestScore >= 0.72 ? bestMatch : null, score: bestScore, partials: partials };
   }
 
-  // Helper: push or merge into found[] -- qty always stays 0 (user must enter)
+  // Helper: push or merge into found[] — qty always stays 0 (user must enter)
   function addItem(name, matchResult) {
     var dedupeKey = matchResult.match
       ? ('match:' + matchResult.match.toLowerCase())
@@ -1396,7 +1363,7 @@ function extractEquipment(text) {
   }
 
   lines.forEach(function(line) {
-    // Strip tab-separated columns -- just take the longest non-numeric token group as the name
+    // Strip tab-separated columns — just take the longest non-numeric token group as the name
     var cols = line.split('\t').map(function(c) { return c.trim(); }).filter(Boolean);
     var name = cols.length >= 2
       ? cols.filter(function(c) { return !/^\d+$/.test(c); }).join(' ') || cols[0]
@@ -1405,7 +1372,7 @@ function extractEquipment(text) {
     // Strip leading list markers and trailing numbers/punctuation
     name = name
       .replace(/^[\d]+\s*[.\)\-]\s*/, '')
-      .replace(/^[?\-\*]\s*/, '')
+      .replace(/^[•\-\*]\s*/, '')
       .replace(/\s+\d+$/, '')         // trailing number (CAD label index)
       .replace(/\s*[xX\*]\s*\d+$/, '') // trailing "x6"
       .replace(/\s*\(\d+\)$/, '')      // trailing "(6)"
@@ -1491,7 +1458,7 @@ function fuzzyScore(a, b, aToks, bToks, bNorm) {
 
   if (wa.length === 0 || wb.length === 0) return 0;
 
-  // Penalise very short single-token queries -- too ambiguous
+  // Penalise very short single-token queries — too ambiguous
   if (wa.length === 1 && wa[0].length <= 4) return 0;
 
   // Expand with synonyms for both sides
@@ -1531,7 +1498,7 @@ function buildInventoryOptions(selectedName, partials) {
 
   var html = '';
   if (!selectedName) {
-    html += '<option value="">-- choose inventory item --</option>';
+    html += '<option value="">— choose inventory item —</option>';
   }
 
   // Best matches group (partials, excluding selected)
@@ -1765,7 +1732,7 @@ function closeHelp() {
   document.getElementById('helpOverlay').classList.remove('open');
 }
 
-// -- LOGO UPLOAD ----------------------------------------------
+// ── LOGO UPLOAD ──────────────────────────────────────────────
 function triggerLogoUpload() {
   document.getElementById('logoInput').click();
 }
@@ -1823,7 +1790,7 @@ function openLabels(labelSize) {
         for (var ii = 0; ii < items.length; ii++) {
           var units = items[ii].units || [];
           var uid = (units[0] && units[0].id) ? ' <span class="uid">[' + units[0].id + ']</span>' : '';
-          // Voltage warning tag -- read live from eqMap so it's always current
+          // Voltage warning tag — read live from eqMap so it's always current
           var vw = eqVoltWarn(items[ii].eq) || '';
           if (!vw && items[ii].v120only) vw = '120V ONLY';
           if (!vw && items[ii].v240only && region === 'US') vw = '240V ONLY';
@@ -1891,69 +1858,7 @@ function openLabels(labelSize) {
     + '@media print { .no-print { display:none; } }';
 
   var sizeName = labelSize === 'L7173' ? 'Avery L7173 (A4)' : 'Avery 5163 (Letter)';
-  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels \u2014 ' + sizeName + '</title><style>' + css + '
-/* -- MOBILE LAYOUT ------------------------------------------- */
-@media (max-width: 768px) {
-  #topbar{padding:0 12px;gap:8px;height:52px}
-  .logo-bolt-img{width:28px;height:28px}
-  .logo-text{font-size:13px;letter-spacing:0.5px}
-  .logo-sub{display:none}
-  .top-controls{gap:6px}
-  .region-btn{padding:4px 8px;font-size:10px}
-  .sheet-select{font-size:10px;min-width:100px;max-width:130px;padding:4px 6px}
-  .labels-btn,.report-btn-top,.save-btn,.load-btn{display:none}
-
-  /* Main becomes single full-height column */
-  #main{flex-direction:column;height:calc(100vh - 52px - 52px)}
-  #inv-panel{display:none;width:100%;flex:1}
-  #inv-panel.mob-active{display:flex}
-  #distro-panel{display:none;flex:1;width:100%}
-  #distro-panel.mob-active{display:flex}
-  #add-panel{display:none;width:100%;flex:1}
-  #add-panel.mob-active{display:flex}
-
-  /* Mobile tab bar */
-  #mob-tabs{display:flex;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);height:52px;flex-shrink:0}
-  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px;transition:color .15s}
-  .mob-tab svg{opacity:.5;transition:opacity .15s}
-  .mob-tab.active{color:var(--yellow, #FFD700)}
-  .mob-tab.active svg{opacity:1}
-  .mob-tab-icon{font-size:18px;line-height:1}
-
-  /* Distro grid wrapping on mobile */
-  .banks-3{grid-template-columns:repeat(2,1fr)}
-  .banks-8{grid-template-columns:repeat(2,1fr)}
-  .banks-12{grid-template-columns:repeat(2,1fr)}
-
-  /* Way rows larger touch targets */
-  .way-add-btn{min-width:36px;min-height:36px;font-size:16px}
-  .way-label{min-width:40px;font-size:10px}
-  .way-row{min-height:40px}
-
-  /* Add panel full width */
-  .add-form{padding:12px}
-  .sub-slot-btns{flex-wrap:wrap}
-  .sub-slot-btn{flex:1;min-width:80px}
-
-  /* Sheet title compact */
-  .sheet-title h2{font-size:15px}
-  .sheet-title{padding:8px 12px}
-
-  /* Grand summary compact */
-  .grand-summary{font-size:11px}
-  .gs-phase{padding:8px 10px}
-
-  /* Fixed outlets wrap */
-  #distro-scroll .fo-grid{flex-wrap:wrap}
-
-  /* Bank cards full width */
-  .bank-card{border-radius:6px}
-}
-
-@media (min-width: 769px) {
-  #mob-tabs{display:none}
-}
-</style></head><body>'
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels \u2014 ' + sizeName + '</title><style>' + css + '</style></head><body>'
     + '<div class="page"><div class="label-grid">' + labelsHtml + '</div></div>'
     + '<div class="no-print">'
     + '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>'
@@ -1966,7 +1871,7 @@ function openLabels(labelSize) {
   win.focus();
 }
 
-// -- REPORT ---------------------------------------------------
+// ── REPORT ───────────────────────────────────────────────────
 function closeUnitFields() {
   // Push to flight cases NOW - after unit details have been entered
   var fcCb = document.getElementById('addToFlightCase');
@@ -1999,7 +1904,7 @@ function closeUnitFields() {
   }
 }
 
-// -- SAVE / LOAD / SHARE --------------------------------------
+// ── SAVE / LOAD / SHARE ──────────────────────────────────────
 function getShowState() {
   return {
     version: 1,
@@ -2153,7 +2058,7 @@ function openReport() {
 
   var warnRows = rows.filter(function(r){ return r.voltWarn; });
   var warnBanner = warnRows.length
-    ? '<div style="background:#FFD700;color:#000;padding:7px 12px;border-radius:4px;font-weight:700;font-size:9pt;margin-bottom:12px">? VOLTAGE WARNINGS: ' + warnRows.length + ' item' + (warnRows.length > 1 ? 's' : '') + ' flagged as incompatible with current region (' + (region === 'US' ? 'US 208V' : 'ROW 230V') + ') -- check before powering on</div>'
+    ? '<div style="background:#FFD700;color:#000;padding:7px 12px;border-radius:4px;font-weight:700;font-size:9pt;margin-bottom:12px">⚠ VOLTAGE WARNINGS: ' + warnRows.length + ' item' + (warnRows.length > 1 ? 's' : '') + ' flagged as incompatible with current region (' + (region === 'US' ? 'US 208V' : 'ROW 230V') + ') — check before powering on</div>'
     : '';
 
   var now = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
@@ -2196,69 +2101,7 @@ function openReport() {
     '.no-print{position:fixed;bottom:20px;right:20px;display:flex;gap:8px;z-index:99}' +
     '@media print{.no-print{display:none}}' +
     '@media print{body{font-size:8.5pt}.header{margin-bottom:10px}thead{display:table-header-group}}' +
-    '
-/* -- MOBILE LAYOUT ------------------------------------------- */
-@media (max-width: 768px) {
-  #topbar{padding:0 12px;gap:8px;height:52px}
-  .logo-bolt-img{width:28px;height:28px}
-  .logo-text{font-size:13px;letter-spacing:0.5px}
-  .logo-sub{display:none}
-  .top-controls{gap:6px}
-  .region-btn{padding:4px 8px;font-size:10px}
-  .sheet-select{font-size:10px;min-width:100px;max-width:130px;padding:4px 6px}
-  .labels-btn,.report-btn-top,.save-btn,.load-btn{display:none}
-
-  /* Main becomes single full-height column */
-  #main{flex-direction:column;height:calc(100vh - 52px - 52px)}
-  #inv-panel{display:none;width:100%;flex:1}
-  #inv-panel.mob-active{display:flex}
-  #distro-panel{display:none;flex:1;width:100%}
-  #distro-panel.mob-active{display:flex}
-  #add-panel{display:none;width:100%;flex:1}
-  #add-panel.mob-active{display:flex}
-
-  /* Mobile tab bar */
-  #mob-tabs{display:flex;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);height:52px;flex-shrink:0}
-  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px;transition:color .15s}
-  .mob-tab svg{opacity:.5;transition:opacity .15s}
-  .mob-tab.active{color:var(--yellow, #FFD700)}
-  .mob-tab.active svg{opacity:1}
-  .mob-tab-icon{font-size:18px;line-height:1}
-
-  /* Distro grid wrapping on mobile */
-  .banks-3{grid-template-columns:repeat(2,1fr)}
-  .banks-8{grid-template-columns:repeat(2,1fr)}
-  .banks-12{grid-template-columns:repeat(2,1fr)}
-
-  /* Way rows larger touch targets */
-  .way-add-btn{min-width:36px;min-height:36px;font-size:16px}
-  .way-label{min-width:40px;font-size:10px}
-  .way-row{min-height:40px}
-
-  /* Add panel full width */
-  .add-form{padding:12px}
-  .sub-slot-btns{flex-wrap:wrap}
-  .sub-slot-btn{flex:1;min-width:80px}
-
-  /* Sheet title compact */
-  .sheet-title h2{font-size:15px}
-  .sheet-title{padding:8px 12px}
-
-  /* Grand summary compact */
-  .grand-summary{font-size:11px}
-  .gs-phase{padding:8px 10px}
-
-  /* Fixed outlets wrap */
-  #distro-scroll .fo-grid{flex-wrap:wrap}
-
-  /* Bank cards full width */
-  .bank-card{border-radius:6px}
-}
-
-@media (min-width: 769px) {
-  #mob-tabs{display:none}
-}
-</style></head><body>' +
+    '</style></head><body>' +
     '<div class="header">' +
       '<div><h1>ER PRODUCTIONS</h1><div class="sub">Power Distro Equipment Report &nbsp;&bull;&nbsp; ' + (region === 'US' ? 'US 208V' : 'ROW 230V') + '</div></div>' +
       '<div class="meta">Printed: ' + now + '<br>Total items: ' + rows.length + '</div>' +
@@ -2327,7 +2170,7 @@ function openEquipmentLabels() {
     var item = labelItems[li];
     labelsHtml += '<div class="eq-label">' +
       (logoDataURL ? '<img src="' + logoDataURL + '" style="height:10px;max-width:30px;object-fit:contain;margin-bottom:1mm">' : '') +
-      (item.voltWarn ? '<div style="display:inline-block;background:#FFD700;color:#000;font-size:6pt;font-weight:900;padding:1pt 4pt;border-radius:2pt;margin-bottom:1mm;letter-spacing:0.3px">? ' + item.voltWarn + '</div>' : '') +
+      (item.voltWarn ? '<div style="display:inline-block;background:#FFD700;color:#000;font-size:6pt;font-weight:900;padding:1pt 4pt;border-radius:2pt;margin-bottom:1mm;letter-spacing:0.3px">⚠ ' + item.voltWarn + '</div>' : '') +
       '<div class="eq-label-name">' + item.eq + '</div>' +
       (item.unitId ? '<div class="eq-label-row"><span class="eq-label-key">ID</span><span class="eq-label-val">' + item.unitId + '</span></div>' : '') +
       (item.placement ? '<div class="eq-label-row"><span class="eq-label-key">POS</span><span class="eq-label-val">' + item.placement + '</span></div>' : '') +
@@ -2350,69 +2193,7 @@ function openEquipmentLabels() {
     '.no-print { position:fixed; bottom:16px; right:16px; display:flex; gap:8px; z-index:99; }' +
     '@media print { .no-print { display:none; } }';
 
-  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Equipment Labels \u2014 Avery 6737</title><style>' + css + '
-/* -- MOBILE LAYOUT ------------------------------------------- */
-@media (max-width: 768px) {
-  #topbar{padding:0 12px;gap:8px;height:52px}
-  .logo-bolt-img{width:28px;height:28px}
-  .logo-text{font-size:13px;letter-spacing:0.5px}
-  .logo-sub{display:none}
-  .top-controls{gap:6px}
-  .region-btn{padding:4px 8px;font-size:10px}
-  .sheet-select{font-size:10px;min-width:100px;max-width:130px;padding:4px 6px}
-  .labels-btn,.report-btn-top,.save-btn,.load-btn{display:none}
-
-  /* Main becomes single full-height column */
-  #main{flex-direction:column;height:calc(100vh - 52px - 52px)}
-  #inv-panel{display:none;width:100%;flex:1}
-  #inv-panel.mob-active{display:flex}
-  #distro-panel{display:none;flex:1;width:100%}
-  #distro-panel.mob-active{display:flex}
-  #add-panel{display:none;width:100%;flex:1}
-  #add-panel.mob-active{display:flex}
-
-  /* Mobile tab bar */
-  #mob-tabs{display:flex;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);height:52px;flex-shrink:0}
-  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px;transition:color .15s}
-  .mob-tab svg{opacity:.5;transition:opacity .15s}
-  .mob-tab.active{color:var(--yellow, #FFD700)}
-  .mob-tab.active svg{opacity:1}
-  .mob-tab-icon{font-size:18px;line-height:1}
-
-  /* Distro grid wrapping on mobile */
-  .banks-3{grid-template-columns:repeat(2,1fr)}
-  .banks-8{grid-template-columns:repeat(2,1fr)}
-  .banks-12{grid-template-columns:repeat(2,1fr)}
-
-  /* Way rows larger touch targets */
-  .way-add-btn{min-width:36px;min-height:36px;font-size:16px}
-  .way-label{min-width:40px;font-size:10px}
-  .way-row{min-height:40px}
-
-  /* Add panel full width */
-  .add-form{padding:12px}
-  .sub-slot-btns{flex-wrap:wrap}
-  .sub-slot-btn{flex:1;min-width:80px}
-
-  /* Sheet title compact */
-  .sheet-title h2{font-size:15px}
-  .sheet-title{padding:8px 12px}
-
-  /* Grand summary compact */
-  .grand-summary{font-size:11px}
-  .gs-phase{padding:8px 10px}
-
-  /* Fixed outlets wrap */
-  #distro-scroll .fo-grid{flex-wrap:wrap}
-
-  /* Bank cards full width */
-  .bank-card{border-radius:6px}
-}
-
-@media (min-width: 769px) {
-  #mob-tabs{display:none}
-}
-</style></head><body>' +
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Equipment Labels \u2014 Avery 6737</title><style>' + css + '</style></head><body>' +
     '<div class="page"><div class="label-grid">' + labelsHtml + '</div></div>' +
     '<div class="no-print">' +
     '<button onclick="window.close()" style="padding:8px 18px;border:1px solid #ccc;border-radius:5px;background:white;font-size:13px;font-weight:600;cursor:pointer">\u2715 Close</button>' +
@@ -2532,72 +2313,10 @@ function closeLabels() {
 .dd-jump-btn:hover{background:#2471a3}
 .dd-del-btn{width:100%;padding:5px;background:#7b2222;border:1px solid #c0392b;color:#fff;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;margin-top:4px}
 .dd-del-btn:hover{background:#c0392b}
-
-/* ── MOBILE LAYOUT ─────────────────────────────────────────── */
-@media (max-width: 768px) {
-  #topbar{padding:0 12px;gap:8px;height:52px}
-  .logo-bolt-img{width:28px;height:28px}
-  .logo-text{font-size:13px;letter-spacing:0.5px}
-  .logo-sub{display:none}
-  .top-controls{gap:6px}
-  .region-btn{padding:4px 8px;font-size:10px}
-  .sheet-select{font-size:10px;min-width:100px;max-width:130px;padding:4px 6px}
-  .labels-btn,.report-btn-top,.save-btn,.load-btn{display:none}
-
-  /* Main becomes single full-height column */
-  #main{flex-direction:column;height:calc(100vh - 52px - 52px)}
-  #inv-panel{display:none;width:100%;flex:1}
-  #inv-panel.mob-active{display:flex}
-  #distro-panel{display:none;flex:1;width:100%}
-  #distro-panel.mob-active{display:flex}
-  #add-panel{display:none;width:100%;flex:1}
-  #add-panel.mob-active{display:flex}
-
-  /* Mobile tab bar */
-  #mob-tabs{display:flex;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);height:52px;flex-shrink:0}
-  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px;transition:color .15s}
-  .mob-tab svg{opacity:.5;transition:opacity .15s}
-  .mob-tab.active{color:var(--yellow, #FFD700)}
-  .mob-tab.active svg{opacity:1}
-  .mob-tab-icon{font-size:18px;line-height:1}
-
-  /* Distro grid wrapping on mobile */
-  .banks-3{grid-template-columns:repeat(2,1fr)}
-  .banks-8{grid-template-columns:repeat(2,1fr)}
-  .banks-12{grid-template-columns:repeat(2,1fr)}
-
-  /* Way rows larger touch targets */
-  .way-add-btn{min-width:36px;min-height:36px;font-size:16px}
-  .way-label{min-width:40px;font-size:10px}
-  .way-row{min-height:40px}
-
-  /* Add panel full width */
-  .add-form{padding:12px}
-  .sub-slot-btns{flex-wrap:wrap}
-  .sub-slot-btn{flex:1;min-width:80px}
-
-  /* Sheet title compact */
-  .sheet-title h2{font-size:15px}
-  .sheet-title{padding:8px 12px}
-
-  /* Grand summary compact */
-  .grand-summary{font-size:11px}
-  .gs-phase{padding:8px 10px}
-
-  /* Fixed outlets wrap */
-  #distro-scroll .fo-grid{flex-wrap:wrap}
-
-  /* Bank cards full width */
-  .bank-card{border-radius:6px}
-}
-
-@media (min-width: 769px) {
-  #mob-tabs{display:none}
-}
 </style>
 
 <script>
-// -- DISTRO DESIGNER ------------------------------------------
+// ── DISTRO DESIGNER ──────────────────────────────────────────
 var dd = {
   nodes: [],
   conns: [],
@@ -2619,10 +2338,10 @@ var dd = {
 };
 
 var DD_DISTRO_TYPES = [
-  {key:'72way',    label:'72-Way (400A)',    color:'#7b2222', sub:'12-bank . 6-way . 400A'},
-  {key:'48way',    label:'48-Way (63A)',     color:'#5b2c8a', sub:'8-bank . 6-way . 63A'},
-  {key:'18way',    label:'18-Way (32A)',     color:'#1f4e79', sub:'3-bank . 6-way . 32A'},
-  {key:'socaswitch', label:'SocaSwitch ER', color:'#8b5e00', sub:'1-bank . 6-outlet . Socapex in'},
+  {key:'72way',    label:'72-Way (400A)',    color:'#7b2222', sub:'12-bank · 6-way · 400A'},
+  {key:'48way',    label:'48-Way (63A)',     color:'#5b2c8a', sub:'8-bank · 6-way · 63A'},
+  {key:'18way',    label:'18-Way (32A)',     color:'#1f4e79', sub:'3-bank · 6-way · 32A'},
+  {key:'socaswitch', label:'SocaSwitch ER', color:'#8b5e00', sub:'1-bank · 6-outlet · Socapex in'},
   {key:'dist',     label:'Distribution Box', color:'#37612b', sub:'Custom distro'},
   {key:'gen',      label:'Generator / Mains', color:'#333',  sub:'Power source'},
   {key:'custom',   label:'Custom Unit',     color:'#0e7c7b', sub:'Label as needed'},
@@ -2651,7 +2370,7 @@ var DD_SHEET_CONFIGS = {
 // Called after any add / rename / delete.
 function ddSyncSheets() {
   // Build the set of sheets the designer wants
-  var desired = {}; // sheetName -> cfg
+  var desired = {}; // sheetName → cfg
   dd.nodes.forEach(function(node) {
     var cfg = DD_SHEET_CONFIGS[node.type];
     if (!cfg) return;
@@ -2750,7 +2469,7 @@ function ddFitAll() {
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   dd.nodes.forEach(function(n) {
     minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
-    // Account for equipment cards below -- rough estimate
+    // Account for equipment cards below — rough estimate
     var eqCount = n.sheetKey ? Object.keys(distroData[n.sheetKey] || {}).length * 3 : 0;
     maxX = Math.max(maxX, n.x + n.w);
     maxY = Math.max(maxY, n.y + n.h + (eqCount > 0 ? 200 : 0));
@@ -2864,7 +2583,7 @@ function ddAddDistroOfType(dt) {
   };
   dd.nodes.push(node);
 
-  // SocaSwitch connects via Socapex -- auto-select that connector type
+  // SocaSwitch connects via Socapex — auto-select that connector type
   if (dt.key === 'socaswitch') {
     dd.connType = 'socapex';
     ddBuildConnTypes();
@@ -3002,12 +2721,12 @@ function ddRenderProps() {
     // Build parent sheet + bank selectors for SocaSwitch
     var socaHtml = '';
     if (isSoca) {
-      var sheetOpts = '<option value="">-- choose distro --</option>';
+      var sheetOpts = '<option value="">— choose distro —</option>';
       Object.keys(SHEETS).forEach(function(k) {
         sheetOpts += '<option value="' + ddEsc(k) + '"' + (node.parentSheet===k?' selected':'') + '>' + ddEsc(k) + '</option>';
       });
       // Build bank options from parentSheet config
-      var bankOpts = '<option value="">-- choose bank --</option>';
+      var bankOpts = '<option value="">— choose bank —</option>';
       if (node.parentSheet && SHEETS[node.parentSheet]) {
         SHEETS[node.parentSheet].banks.forEach(function(b) {
           bankOpts += '<option value="' + b + '"' + (node.parentBank===b?' selected':'') + '>Bank ' + b + '</option>';
@@ -3021,7 +2740,7 @@ function ddRenderProps() {
             '<select class="dd-prop-select" onchange="ddSetSocaParent(' + node.id + ',\'bank\',this.value)">' + bankOpts + '</select></div>'
           : '') +
         (node.parentSheet && node.parentBank
-          ? '<div style="font-size:9px;color:#fff;background:#8b5e00;padding:4px 6px;border-radius:3px;margin-bottom:6px">&#9889; Fed via Socapex from ' + ddEsc(node.parentSheet) + ' -- Bank ' + ddEsc(node.parentBank) + '</div>'
+          ? '<div style="font-size:9px;color:#fff;background:#8b5e00;padding:4px 6px;border-radius:3px;margin-bottom:6px">&#9889; Fed via Socapex from ' + ddEsc(node.parentSheet) + ' — Bank ' + ddEsc(node.parentBank) + '</div>'
           : '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px">Select a parent distro and bank above</div>');
     }
 
@@ -3035,7 +2754,7 @@ function ddRenderProps() {
       '<input class="dd-prop-input" placeholder="e.g. Stage left" value="' + ddEsc(node.note||'') + '" onchange="ddUpdateNode(' + node.id + ',\'note\',this.value)"></div>' +
       socaHtml +
       (hasCfg
-        ? '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px;font-weight:700">? CALCULATOR SHEET: ' + ddEsc(node.sheetKey || node.label) + '</div>' +
+        ? '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px;font-weight:700">⚡ CALCULATOR SHEET: ' + ddEsc(node.sheetKey || node.label) + '</div>' +
           '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + ddEsc(node.sheetKey || node.label) + '\')">&#8594; Open in Calculator</button>'
         : (!isSoca ? '<div style="font-size:9px;color:#4a7a9b;padding:3px 0 6px">No calculator sheet (source unit)</div>' : '')
       ) +
@@ -3198,7 +2917,7 @@ function ddRender() {
 
   var ns = 'http://www.w3.org/2000/svg';
 
-  // -- Draw Socapex feed lines for SocaSwitch nodes -------------
+  // ── Draw Socapex feed lines for SocaSwitch nodes ─────────────
   dd.nodes.forEach(function(node) {
     if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentBank) return;
     var parentNode = dd.nodes.find(function(n){ return n.sheetKey === node.parentSheet; });
@@ -3232,7 +2951,7 @@ function ddRender() {
     connLayer.appendChild(lt);
   });
 
-  // -- Draw distro-to-distro connections ------------------------
+  // ── Draw distro-to-distro connections ────────────────────────
   dd.conns.forEach(function(conn) {
     var from = dd.nodes.find(function(n){return n.id===conn.from;});
     var to   = dd.nodes.find(function(n){return n.id===conn.to;});
@@ -3284,11 +3003,11 @@ function ddRender() {
     }
   });
 
-  // -- Phase colours for equipment items ------------------------
+  // ── Phase colours for equipment items ────────────────────────
   var PH_ITEM = ['','#5b1a6b','#8b3a10','#0a5a5a'];
   var PH_ITEM_LT = ['','rgba(125,60,152,0.18)','rgba(192,98,42,0.18)','rgba(14,124,123,0.18)'];
 
-  // -- Draw distro nodes + their equipment flowchart -------------
+  // ── Draw distro nodes + their equipment flowchart ─────────────
   dd.nodes.forEach(function(node) {
     var isSel = dd.selected && dd.selected.type==='node' && dd.selected.id===node.id;
     var isConnSrc = dd.connecting && dd.connFrom === node.id;
@@ -3321,7 +3040,7 @@ function ddRender() {
       }
     }
 
-    // -- DISTRO NODE BOX --------------------------------------
+    // ── DISTRO NODE BOX ──────────────────────────────────────
     var g = document.createElementNS(ns, 'g');
     g.style.cursor = dd.connecting ? 'crosshair' : 'grab';
     g.addEventListener('mousedown', (function(nid){ return function(e){ ddNodeMouseDown(e,nid); }; })(node.id));
@@ -3371,7 +3090,7 @@ function ddRender() {
     nameTxt.setAttribute('text-anchor', 'middle'); nameTxt.setAttribute('font-size', '12');
     nameTxt.setAttribute('font-weight', '800'); nameTxt.setAttribute('fill', '#ffffff');
     nameTxt.setAttribute('font-family', 'sans-serif');
-    nameTxt.textContent = node.label.length > 18 ? node.label.substring(0,17)+'?' : node.label;
+    nameTxt.textContent = node.label.length > 18 ? node.label.substring(0,17)+'…' : node.label;
     g.appendChild(nameTxt);
 
     // Note / parent output
@@ -3386,7 +3105,7 @@ function ddRender() {
       noteTxt.setAttribute('text-anchor', 'middle'); noteTxt.setAttribute('font-size', '9');
       noteTxt.setAttribute('fill', node.type==='socaswitch' && (!node.parentSheet||!node.parentBank) ? '#e74c3c' : 'rgba(255,255,255,0.65)');
       noteTxt.setAttribute('font-family', 'sans-serif');
-      noteTxt.textContent = noteText.length > 22 ? noteText.substring(0,21)+'?' : noteText;
+      noteTxt.textContent = noteText.length > 22 ? noteText.substring(0,21)+'…' : noteText;
       g.appendChild(noteTxt);
     }
 
@@ -3396,7 +3115,7 @@ function ddRender() {
       countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
       countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
       countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
-      countBadge.textContent = eqItems.length ? '? '+eqItems.length : '?';
+      countBadge.textContent = eqItems.length ? '⚡ '+eqItems.length : '⚡';
       g.appendChild(countBadge);
     }
 
@@ -3412,7 +3131,7 @@ function ddRender() {
 
     nodeLayer.appendChild(g);
 
-    // -- FIXED OUTLETS (72-way / 48-way) ----------------------
+    // ── FIXED OUTLETS (72-way / 48-way) ──────────────────────
     var fixedOutlets = DD_FIXED_OUTLETS[node.type] || [];
     if (fixedOutlets.length) {
       var OUT_W = 72, OUT_H = 28, OUT_GAP = 8;
@@ -3504,7 +3223,7 @@ function ddRender() {
       node._outletRowH = outRowH; // store for equipment offset
     }
 
-    // -- EQUIPMENT FLOWCHART ITEMS -----------------------------
+    // ── EQUIPMENT FLOWCHART ITEMS ─────────────────────────────
     if (eqItems.length === 0) return;
 
     var EQ_W = 150, EQ_H = 36, EQ_GAP_X = 16, EQ_GAP_Y = 50;
@@ -3597,8 +3316,8 @@ function ddRender() {
 
       // Equipment name
       var eqTxt = document.createElementNS(ns, 'text');
-      var eqLabel = (item.qty > 1 ? item.qty+'x ' : '') + item.eq;
-      if (eqLabel.length > 20) eqLabel = eqLabel.substring(0,19)+'?';
+      var eqLabel = (item.qty > 1 ? item.qty+'× ' : '') + item.eq;
+      if (eqLabel.length > 20) eqLabel = eqLabel.substring(0,19)+'…';
       eqTxt.setAttribute('x', ex+9); eqTxt.setAttribute('y', ey+26);
       eqTxt.setAttribute('font-size', '10'); eqTxt.setAttribute('font-weight', '700');
       eqTxt.setAttribute('fill', '#c0d8f0'); eqTxt.setAttribute('font-family', 'sans-serif');
@@ -3610,7 +3329,7 @@ function ddRender() {
       hint.setAttribute('x', ex+EQ_W-6); hint.setAttribute('y', ey+14);
       hint.setAttribute('text-anchor', 'end'); hint.setAttribute('font-size', '8');
       hint.setAttribute('fill', 'rgba(255,255,255,0.3)'); hint.setAttribute('font-family', 'monospace');
-      hint.textContent = '->';
+      hint.textContent = '→';
       eg.appendChild(hint);
 
       nodeLayer.appendChild(eg);
@@ -3702,37 +3421,23 @@ function ddExport() {
   a.download = 'ER-Distro-Map.svg'; a.click();
 }
 
-// -- MOBILE TAB SWITCHING -------------------------------------
-function mobTab(tab) {
-  var panels = {
-    'inv':    document.getElementById('inv-panel'),
-    'distro': document.getElementById('distro-panel'),
-    'add':    document.getElementById('add-panel')
-  };
-  var tabs = {
-    'inv':    document.getElementById('mob-inv'),
-    'distro': document.getElementById('mob-distro'),
-    'add':    document.getElementById('mob-add')
-  };
-  Object.keys(panels).forEach(function(k) {
-    panels[k].classList.toggle('mob-active', k === tab);
-    if (tabs[k]) tabs[k].classList.toggle('active', k === tab);
-  });
-  // If switching to add, make sure panel is visible
-  if (tab === 'add') {
-    var ap = document.getElementById('add-panel');
-    ap.style.display = 'flex';
-  }
-}
 
-// On mobile, initialise with distro active
+function mobTab(tab) {
+  var ids = {inv:'inv-panel', distro:'distro-panel', add:'add-panel'};
+  var btnIds = {inv:'mob-inv', distro:'mob-distro', add:'mob-add'};
+  Object.keys(ids).forEach(function(k) {
+    var el = document.getElementById(ids[k]);
+    var btn = document.getElementById(btnIds[k]);
+    if (el) el.classList.toggle('mob-active', k === tab);
+    if (btn) btn.style.color = k === tab ? '#FFD700' : 'rgba(255,255,255,.5)';
+  });
+}
 function initMobile() {
   if (window.innerWidth <= 768) {
     mobTab('distro');
-    // Make way + buttons switch to add tab on mobile
     document.addEventListener('click', function(e) {
       if (e.target.classList.contains('way-add-btn') && window.innerWidth <= 768) {
-        mobTab('add');
+        setTimeout(function(){ mobTab('add'); }, 50);
       }
     });
   }
@@ -3740,9 +3445,9 @@ function initMobile() {
 window.addEventListener('load', initMobile);
 window.addEventListener('resize', function() {
   if (window.innerWidth > 768) {
-    // Reset mobile classes on desktop
     ['inv-panel','distro-panel','add-panel'].forEach(function(id) {
-      document.getElementById(id).classList.remove('mob-active');
+      var el = document.getElementById(id);
+      if (el) el.classList.remove('mob-active');
     });
   }
 });
@@ -3930,20 +3635,16 @@ window.addEventListener('resize', function() {
 </div>
 
 
-<div id="mob-tabs">
-  <button class="mob-tab active" onclick="mobTab('distro')" id="mob-distro">
-    <span class="mob-tab-icon">&#9889;</span>
-    <span>Distro</span>
+<div id="mob-tabs" style="display:none;background:var(--navy);border-top:1px solid rgba(255,255,255,.15);height:52px;flex-shrink:0">
+  <button onclick="mobTab('distro')" id="mob-distro" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#FFD700;font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px">
+    <span style="font-size:18px">&#9889;</span><span>Distro</span>
   </button>
-  <button class="mob-tab" onclick="mobTab('inv')" id="mob-inv">
-    <span class="mob-tab-icon">&#128269;</span>
-    <span>Inventory</span>
+  <button onclick="mobTab('inv')" id="mob-inv" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px">
+    <span style="font-size:18px">&#128269;</span><span>Inventory</span>
   </button>
-  <button class="mob-tab" onclick="mobTab('add')" id="mob-add">
-    <span class="mob-tab-icon">&#43;</span>
-    <span>Add</span>
+  <button onclick="mobTab('add')" id="mob-add" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:none;background:none;gap:3px">
+    <span style="font-size:18px">&#43;</span><span>Add</span>
   </button>
 </div>
-
 </body>
 </html>
