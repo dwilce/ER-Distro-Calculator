@@ -55,7 +55,24 @@ body{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 .inv-name{flex:1;font-size:12px;font-weight:500}
 .inv-watts{font-size:11px;color:var(--muted);min-width:36px;text-align:right}
 .inv-amps{font-size:11px;font-weight:600;color:var(--navy3);min-width:40px;text-align:right}
-.tbc-badge{font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-lt);padding:1px 5px;border-radius:3px}
+.fixed-outlets-section{margin:12px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.fo-title{background:var(--navy2);color:white;font-size:11px;font-weight:700;padding:7px 12px;letter-spacing:0.5px}
+.fo-group-hdr{padding:6px 12px;font-size:10px;font-weight:700;color:var(--muted);background:var(--faint);border-bottom:1px solid var(--border);letter-spacing:0.3px}
+.fo-grid{display:flex;flex-wrap:wrap;gap:8px;padding:10px}
+.fo-card{border:1.5px solid;border-radius:6px;overflow:hidden;min-width:140px;flex:1;max-width:180px;background:white}
+.fo-card-hdr{padding:4px 8px;font-size:10px;font-weight:700}
+.fo-input{width:100%;padding:4px 7px;border:none;border-bottom:1px solid var(--border);font-size:11px;box-sizing:border-box;background:#fafafa}
+.fo-input:focus{outline:none;background:white}
+.fo-watts-row{display:flex;align-items:center;gap:6px;padding:4px 7px}
+.fo-watts{width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;font-size:11px}
+.fo-amps{font-size:11px;font-weight:700}
+.fo-3ph-card{border:1.5px solid;border-radius:6px;overflow:hidden;min-width:160px;flex:1;max-width:220px;background:white}
+.fo-3ph-hdr{padding:4px 8px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.fo-3ph-body{padding:6px 8px}
+.fo-3ph-label{font-size:11px;color:var(--navy)}
+.fo-3ph-deduct{font-size:10px;color:var(--muted);margin-top:2px}
+.fo-3ph-select{width:100%;padding:3px 4px;font-size:10px;border:1px solid var(--border);border-radius:3px;background:white;box-sizing:border-box}
+.fo-way-label{font-size:8px!important;line-height:1.1!important}
 .volt-badge{font-size:9px;font-weight:700;color:#fff;background:#c0392b;padding:1px 5px;border-radius:3px;white-space:nowrap}
 .volt-warn{font-size:9px;font-weight:700;color:#c0392b;background:#fde8e8;padding:1px 5px;border-radius:3px;white-space:nowrap;margin-left:3px}
 #distro-panel{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
@@ -347,6 +364,34 @@ var SHEETS = {
   '48-Way (63A)':  {ways:6, banks:['A','B','C','D','E','F','G','H'],                    limit:63,  altLimit:125},
   '72-Way (400A)': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'],    limit:400, altLimit:0}
 };
+
+// Fixed physical outlets per distro type — accessible from both script blocks
+var DD_FIXED_OUTLETS = {
+  '72way': [
+    {label:'32A 1\u03c6', count:6, color:'#3498db', ph:1},
+    {label:'32A 3\u03c6', count:1, color:'#e67e22', ph:3},
+    {label:'63A 3\u03c6', count:1, color:'#27ae60', ph:3},
+    {label:'125A 3\u03c6', count:1, color:'#e74c3c', ph:3},
+  ],
+  '48way': [
+    {label:'16A 1\u03c6', count:3, color:'#3498db', ph:1},
+    {label:'32A 3\u03c6', count:1, color:'#e67e22', ph:3},
+  ],
+};
+
+// Resolve outlet config for any sheet — by designer node type OR sheet name pattern
+function getFixedOutlets(sheetName) {
+  // Check designer nodes first
+  for (var ni = 0; ni < dd.nodes.length; ni++) {
+    if (dd.nodes[ni].sheetKey === sheetName) {
+      return DD_FIXED_OUTLETS[dd.nodes[ni].type] || [];
+    }
+  }
+  // Fall back to sheet name pattern for default sheets
+  if (sheetName.indexOf('72') >= 0) return DD_FIXED_OUTLETS['72way'] || [];
+  if (sheetName.indexOf('48') >= 0) return DD_FIXED_OUTLETS['48way'] || [];
+  return [];
+}
 var PH_DK = ['','#7d3c98','#c0622a','#0e7c7b'];
 var PH_LT = ['','#f4ecfd','#fdf0e6','#e0f5f5'];
 var region = 'US';
@@ -472,6 +517,9 @@ function initDistroData() {
         }
       }
     }
+    // Initialise fixed outlet data if not present
+    if (!distroData[sName].fixedSlots) distroData[sName].fixedSlots = {};
+    if (!distroData[sName].threePhasePorts) distroData[sName].threePhasePorts = {};
   }
 }
 
@@ -575,6 +623,38 @@ function switchSheet(name) {
 }
 
 // ── REGION ───────────────────────────────────────────────────
+function setFixedSlot(sheet, key, field, val) {
+  if (!distroData[sheet].fixedSlots) distroData[sheet].fixedSlots = {};
+  if (!distroData[sheet].fixedSlots[key]) distroData[sheet].fixedSlots[key] = {watts:0, eq:''};
+  if (field === 'watts') distroData[sheet].fixedSlots[key].watts = parseFloat(val) || 0;
+  else distroData[sheet].fixedSlots[key][field] = val;
+  renderDistro();
+}
+
+function setThreePhasePort(sheet, key, val) {
+  if (!distroData[sheet].threePhasePorts) distroData[sheet].threePhasePorts = {};
+  if (!distroData[sheet].threePhasePorts[key]) distroData[sheet].threePhasePorts[key] = {};
+  distroData[sheet].threePhasePorts[key].connected = val;
+  renderDistro();
+}
+
+function foSelectOutlet(key, outlet) {
+  // Store the selected fixed outlet key so the add panel can write to it
+  selectedFoKey = key;
+  selectedFoOutlet = outlet;
+  selectedTarget = null;
+  // Pre-fill the add panel with existing data
+  var slot = ((distroData[activeSheet].fixedSlots)||{})[key] || {};
+  document.getElementById('addEqSel').value = slot.eq || '';
+  document.getElementById('addQty').value = 1;
+  // Show a label in the panel
+  var lbl = outlet.label + ' #' + (key.split('_').pop());
+  document.getElementById('targetLabel').textContent = lbl + ' (Fixed Outlet)';
+  document.getElementById('addPanel').classList.add('active');
+  updateAddPreview();
+}
+var selectedFoKey = null, selectedFoOutlet = null;
+
 function toggleLimit() {
   var cfg = SHEETS[activeSheet];
   if (!cfg || !cfg.altLimit) return;
@@ -681,7 +761,116 @@ function renderDistro() {
     phaseRow.appendChild(bankCard);
   }
 
-  // Grand Summary
+  // ── FIXED OUTLETS — own section below the bank grid ─────────
+  var foAll = getFixedOutlets(activeSheet);
+
+  if (foAll.length) {
+    var foSection = document.createElement('div');
+    foSection.style.cssText = 'margin-top:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden';
+
+    var foSecHdr = document.createElement('div');
+    foSecHdr.style.cssText = 'background:#444;color:#fff;font-size:11px;font-weight:700;padding:7px 12px;letter-spacing:0.5px';
+    foSecHdr.textContent = '\u2907 Fixed Outlets';
+    foSection.appendChild(foSecHdr);
+
+    var foGrid = document.createElement('div');
+    foGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;padding:10px';
+
+    foAll.forEach(function(outlet) {
+      for (var i = 1; i <= outlet.count; i++) {
+        var foKey = outlet.label.replace(/\s/g,'_') + '_' + i;
+
+        if (outlet.ph === 1) {
+          var fo1ph = ((i-1)%3)+1;
+          var foSlot = ((distroData[activeSheet].fixedSlots)||{})[foKey] || null;
+          var foA = foSlot && foSlot.watts > 1 ? toAmps(foSlot.watts) : null;
+
+          var foCard1 = document.createElement('div');
+          foCard1.style.cssText = 'border:1.5px solid '+outlet.color+';border-radius:6px;overflow:hidden;min-width:130px;flex:1;max-width:170px;background:white';
+
+          var foCard1Hdr = document.createElement('div');
+          foCard1Hdr.style.cssText = 'background:'+outlet.color+';color:#000;font-size:10px;font-weight:700;padding:4px 8px;display:flex;align-items:center;justify-content:space-between';
+          foCard1Hdr.innerHTML = '<span>'+outlet.label+' #'+i+'</span><span style="font-size:9px;font-weight:400;opacity:.7">Ph'+fo1ph+'</span>';
+          foCard1.appendChild(foCard1Hdr);
+
+          var foCard1Body = document.createElement('div');
+          foCard1Body.style.cssText = 'padding:6px 8px';
+
+          if (foSlot && foSlot.eq) {
+            var foCard1Eq = document.createElement('div');
+            foCard1Eq.style.cssText = 'font-size:11px;font-weight:600;color:var(--navy);margin-bottom:3px;cursor:pointer';
+            foCard1Eq.textContent = foSlot.eq;
+            foCard1Eq.onclick = (function(k,o){ return function(){ foSelectOutlet(k,o); }; })(foKey, outlet);
+            foCard1Body.appendChild(foCard1Eq);
+            var foCard1A = document.createElement('div');
+            foCard1A.style.cssText = 'font-size:10px;font-weight:700;color:'+outlet.color;
+            foCard1A.textContent = foA ? foA.toFixed(2)+'A' : '\u2014';
+            foCard1Body.appendChild(foCard1A);
+          } else {
+            var foCard1Empty = document.createElement('div');
+            foCard1Empty.style.cssText = 'font-size:10px;color:var(--muted);font-style:italic;margin-bottom:4px';
+            foCard1Empty.textContent = 'Unassigned';
+            foCard1Body.appendChild(foCard1Empty);
+          }
+
+          var foCard1Btn = document.createElement('button');
+          foCard1Btn.className = 'way-add-btn';
+          foCard1Btn.style.cssText = 'width:100%;margin-top:4px;border-radius:3px';
+          foCard1Btn.textContent = foSlot && foSlot.eq ? 'Change' : '+ Assign';
+          foCard1Btn.onclick = (function(k,o){ return function(){ foSelectOutlet(k,o); }; })(foKey, outlet);
+          foCard1Body.appendChild(foCard1Btn);
+
+          foCard1.appendChild(foCard1Body);
+          foGrid.appendChild(foCard1);
+
+        } else {
+          var fo3Tpp = ((distroData[activeSheet].threePhasePorts)||{})[foKey] || {};
+          var fo3Rated = parseInt(outlet.label);
+          var fo3Connected = fo3Tpp.connected || '';
+
+          var foCard3 = document.createElement('div');
+          foCard3.style.cssText = 'border:1.5px solid '+outlet.color+';border-radius:6px;overflow:hidden;min-width:180px;flex:1;max-width:240px;background:white';
+
+          var foCard3Hdr = document.createElement('div');
+          foCard3Hdr.style.cssText = 'background:'+outlet.color+';color:#fff;font-size:10px;font-weight:700;padding:4px 8px;display:flex;align-items:center;justify-content:space-between';
+          foCard3Hdr.innerHTML = '<span>'+outlet.label+' 3&phi;</span><span style="font-size:9px;opacity:.8">\u2212'+fo3Rated+'A each phase</span>';
+          foCard3.appendChild(foCard3Hdr);
+
+          var foCard3Body = document.createElement('div');
+          foCard3Body.style.cssText = 'padding:6px 8px';
+
+          var fo3Sel = document.createElement('select');
+          fo3Sel.className = 'fo-3ph-select';
+          fo3Sel.innerHTML = '<option value="">— link to distro sheet —</option>' +
+            Object.keys(SHEETS).filter(function(s){ return s !== activeSheet; }).map(function(s){
+              return '<option value="'+s+'"'+(s===fo3Connected?' selected':'')+'>'+s+'</option>';
+            }).join('');
+          fo3Sel.onchange = (function(k){ return function(){ setThreePhasePort(activeSheet, k, this.value); }; })(foKey);
+          foCard3Body.appendChild(fo3Sel);
+
+          var fo3Reserve = document.createElement('div');
+          fo3Reserve.style.cssText = 'font-size:9px;color:'+outlet.color+';margin-top:4px;font-weight:700';
+          fo3Reserve.textContent = 'Reserves '+fo3Rated+'A \xd7 3 phases = '+(fo3Rated*3)+'A total';
+          foCard3Body.appendChild(fo3Reserve);
+
+          if (fo3Connected) {
+            var fo3Link = document.createElement('div');
+            fo3Link.style.cssText = 'font-size:9px;color:#555;font-style:italic;margin-top:2px';
+            fo3Link.textContent = '\u2192 ' + fo3Connected;
+            foCard3Body.appendChild(fo3Link);
+          }
+
+          foCard3.appendChild(foCard3Body);
+          foGrid.appendChild(foCard3);
+        }
+      }
+    });
+
+    foSection.appendChild(foGrid);
+    panel.appendChild(foSection);
+  }
+
+  // Grand Summary — include fixed outlet loads
   var gs = document.createElement('div');
   gs.className = 'grand-summary';
   var lims = limits[activeSheet] || limit;
@@ -710,14 +899,44 @@ function renderDistro() {
         }
       }
     }
+
+    // Add 1-phase fixed outlet loads on the correct phase
+    var foGS = getFixedOutlets(activeSheet);
+    var fixed1phLoad = 0;
+    foGS.filter(function(o){ return o.ph===1; }).forEach(function(outlet) {
+      for (var fi = 1; fi <= outlet.count; fi++) {
+        var ph1 = ((fi-1)%3)+1;
+        if (ph1 === p) {
+          var key1 = outlet.label.replace(/\s/g,'_') + '_' + fi;
+          var s1 = (distroData[activeSheet].fixedSlots || {})[key1] || {};
+          if (s1.watts > 1) fixed1phLoad += toAmps(s1.watts);
+        }
+      }
+    });
+
+    // 3-phase outlet deductions (always full rated amps on every phase)
+    var fixed3phLoad = 0;
+    foGS.filter(function(o){ return o.ph===3; }).forEach(function(outlet) {
+      for (var fi = 1; fi <= outlet.count; fi++) {
+        fixed3phLoad += parseInt(outlet.label);
+      }
+    });
+
+    var wayTotal = total;
+    total += fixed1phLoad + fixed3phLoad;
+    var remaining = lims - total;
     var over = total >= lims;
     var warn = !over && total >= lims * 0.8;
     var statusCls = over ? 'status-over' : warn ? 'status-warn' : 'status-ok';
     var statusTxt = over ? '\u26a0 OVER' : warn ? '\u26a0 ' + Math.round(total/lims*100) + '%' : '\u2713 OK';
+    var fixedNote = (fixed1phLoad || fixed3phLoad)
+      ? '<small style="font-size:9px;font-weight:400;color:var(--muted);display:block">Ways: '+wayTotal.toFixed(1)+'A'+(fixed1phLoad?' + 1\u03c6 outlets: '+fixed1phLoad.toFixed(1)+'A':'')+(fixed3phLoad?' + 3\u03c6 reserved: '+fixed3phLoad+'A':'')+'</small>'
+      : '';
+    var remainNote = '<small style="font-size:9px;font-weight:400;display:block;margin-top:1px">'+remaining.toFixed(1)+'A left</small>';
     phHtml += '<div class="gs-phase ph' + p + '">' +
       '<div class="gs-ph-label gs-ph' + p + '">Phase ' + p + '<br><small style="font-size:10px;font-weight:400;color:var(--muted)">Ways ' + wayNums.join(',') + '</small></div>' +
-      '<div class="gs-total gs-ph' + p + '">' + total.toFixed(2) + 'A</div>' +
-      '<div class="gs-status ' + statusCls + '">' + statusTxt + '</div></div>';
+      '<div class="gs-total gs-ph' + p + '">' + total.toFixed(2) + 'A' + fixedNote + '</div>' +
+      '<div class="gs-status ' + statusCls + '">' + statusTxt + remainNote + '</div></div>';
   }
   gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:.6">' + activeSheet + '</span></div>' + limRowHtml + phHtml;
   panel.appendChild(gs);
@@ -833,9 +1052,22 @@ function pushToFlightCases(eqName, qty, caseCount, bi, wayNum, subRow) {
 }
 
 function writeToSheet() {
-  if (!selectedTarget) return;
   var name = document.getElementById('addEqSel').value;
   var qty = parseInt(document.getElementById('addQty').value) || 1;
+
+  // ── Fixed outlet path ──
+  if (selectedFoKey && !selectedTarget) {
+    if (!distroData[activeSheet].fixedSlots) distroData[activeSheet].fixedSlots = {};
+    var w = eqWatts(name);
+    distroData[activeSheet].fixedSlots[selectedFoKey] = {eq: name, watts: w, qty: qty};
+    document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + (selectedFoOutlet ? selectedFoOutlet.label : '') + ' outlet</div>';
+    document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
+    selectedFoKey = null; selectedFoOutlet = null;
+    renderDistro();
+    return;
+  }
+
+  if (!selectedTarget) return;
   var bi = selectedTarget.bi, wayNum = selectedTarget.wayNum, subRow = selectedTarget.subRow;
   var w = eqWatts(name);
   var e = eqMap[name] || {};
@@ -845,7 +1077,6 @@ function writeToSheet() {
   var fcCb = document.getElementById('addToFlightCase');
   var bankLabel = SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow);
   if (fcCb && fcCb.checked) {
-    // Show pending message - flight cases pushed on Update & Clear after unit details filled
     document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + bankLabel + '</div><div style="font-size:11px;color:var(--amber);margin-top:4px;font-weight:600">&#128230; Fill unit details below then click Update &amp; Clear to add to Flight Case Labels</div>';
   } else {
     document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + bankLabel + '</div>';
@@ -2092,7 +2323,6 @@ var DD_SHEET_CONFIGS = {
   'custom':{ways:6, banks:['A','B','C'],        limit:32,  altLimit:0},
 };
 
-// Sync SHEETS and distroData from the current designer node set.
 // Called after any add / rename / delete.
 function ddSyncSheets() {
   // Build the set of sheets the designer wants
@@ -2857,17 +3087,110 @@ function ddRender() {
 
     nodeLayer.appendChild(g);
 
+    // ── FIXED OUTLETS (72-way / 48-way) ──────────────────────
+    var fixedOutlets = DD_FIXED_OUTLETS[node.type] || [];
+    if (fixedOutlets.length) {
+      var OUT_W = 72, OUT_H = 28, OUT_GAP = 8;
+      var outTotalW = fixedOutlets.reduce(function(s, o){ return s + OUT_W + OUT_GAP; }, 0) - OUT_GAP;
+      var outStartX = node.x + node.w/2 - outTotalW/2;
+      var outY = node.y + node.h + 18;
+
+      // Dashed line from node bottom
+      var outTrunk = document.createElementNS(ns, 'line');
+      outTrunk.setAttribute('x1', node.x + node.w/2); outTrunk.setAttribute('y1', node.y + node.h);
+      outTrunk.setAttribute('x2', node.x + node.w/2); outTrunk.setAttribute('y2', outY - 2);
+      outTrunk.setAttribute('stroke', 'rgba(255,255,255,0.12)');
+      outTrunk.setAttribute('stroke-width', '1'); outTrunk.setAttribute('stroke-dasharray', '3 3');
+      connLayer.appendChild(outTrunk);
+
+      // Section label
+      var secLbl = document.createElementNS(ns, 'text');
+      secLbl.setAttribute('x', node.x + node.w/2); secLbl.setAttribute('y', outY - 5);
+      secLbl.setAttribute('text-anchor', 'middle'); secLbl.setAttribute('font-size', '7');
+      secLbl.setAttribute('fill', 'rgba(255,255,255,0.3)'); secLbl.setAttribute('font-family', 'monospace');
+      secLbl.setAttribute('letter-spacing', '1'); secLbl.textContent = 'FIXED OUTLETS';
+      nodeLayer.appendChild(secLbl);
+
+      var ox = outStartX;
+      fixedOutlets.forEach(function(outlet) {
+        var og = document.createElementNS(ns, 'g');
+
+        var obg = document.createElementNS(ns, 'rect');
+        obg.setAttribute('x', ox); obg.setAttribute('y', outY);
+        obg.setAttribute('width', OUT_W); obg.setAttribute('height', OUT_H);
+        obg.setAttribute('rx', 4); obg.setAttribute('fill', outlet.color);
+        obg.setAttribute('fill-opacity', '0.18');
+        obg.setAttribute('stroke', outlet.color); obg.setAttribute('stroke-width', '1.2');
+        og.appendChild(obg);
+
+        // Count bubble
+        if (outlet.count > 1) {
+          var cb = document.createElementNS(ns, 'rect');
+          cb.setAttribute('x', ox+4); cb.setAttribute('y', outY+4);
+          cb.setAttribute('width', 14); cb.setAttribute('height', 14);
+          cb.setAttribute('rx', 7); cb.setAttribute('fill', outlet.color);
+          og.appendChild(cb);
+          var ct = document.createElementNS(ns, 'text');
+          ct.setAttribute('x', ox+11); ct.setAttribute('y', outY+14);
+          ct.setAttribute('text-anchor', 'middle'); ct.setAttribute('font-size', '9');
+          ct.setAttribute('font-weight', '900'); ct.setAttribute('fill', '#000');
+          ct.setAttribute('font-family', 'monospace'); ct.textContent = outlet.count;
+          og.appendChild(ct);
+        }
+
+        var olt = document.createElementNS(ns, 'text');
+        olt.setAttribute('x', ox + OUT_W/2 + (outlet.count>1?4:0)); olt.setAttribute('y', outY+18);
+        olt.setAttribute('text-anchor', 'middle'); olt.setAttribute('font-size', '10');
+        olt.setAttribute('font-weight', '800'); olt.setAttribute('fill', outlet.color);
+        olt.setAttribute('font-family', 'sans-serif'); olt.textContent = outlet.label;
+        og.appendChild(olt);
+
+        // Phase label
+        var plt = document.createElementNS(ns, 'text');
+        plt.setAttribute('x', ox + OUT_W - 4); plt.setAttribute('y', outY + OUT_H - 3);
+        plt.setAttribute('text-anchor', 'end'); plt.setAttribute('font-size', '7');
+        plt.setAttribute('fill', outlet.color); plt.setAttribute('fill-opacity', '0.7');
+        plt.setAttribute('font-family', 'monospace');
+        plt.textContent = outlet.ph === 3 ? '3\u03c6' : '1\u03c6';
+        og.appendChild(plt);
+
+        // For 3-phase outlets, show connected label below badge
+        if (outlet.ph === 3) {
+          var key3f = outlet.label.replace(/\s/g,'_') + '_1';
+          var tppData = node.sheetKey && distroData[node.sheetKey] && distroData[node.sheetKey].threePhasePorts;
+          var connLabel = tppData && tppData[key3f] ? tppData[key3f].connected : '';
+          if (connLabel) {
+            var clt = document.createElementNS(ns, 'text');
+            clt.setAttribute('x', ox + OUT_W/2); clt.setAttribute('y', outY + OUT_H + 9);
+            clt.setAttribute('text-anchor', 'middle'); clt.setAttribute('font-size', '8');
+            clt.setAttribute('fill', outlet.color); clt.setAttribute('font-family', 'sans-serif');
+            clt.textContent = connLabel.length > 12 ? connLabel.substring(0,11)+'\u2026' : connLabel;
+            og.appendChild(clt);
+          }
+        }
+
+        nodeLayer.appendChild(og);
+        ox += OUT_W + OUT_GAP;
+      });
+
+      // Push equipment children down past the outlets row
+      var outRowH = OUT_H + 28;
+      var origNodeH = node.h;
+      node._outletRowH = outRowH; // store for equipment offset
+    }
+
     // ── EQUIPMENT FLOWCHART ITEMS ─────────────────────────────
     if (eqItems.length === 0) return;
 
     var EQ_W = 150, EQ_H = 36, EQ_GAP_X = 16, EQ_GAP_Y = 50;
-    var cols = Math.min(eqItems.length, 4);  // max 4 columns
+    var cols = Math.min(eqItems.length, 4);
     var rows = Math.ceil(eqItems.length / cols);
     var gridW = cols * (EQ_W + EQ_GAP_X) - EQ_GAP_X;
+    var extraY = node._outletRowH || 0;
+    node._outletRowH = 0; // reset after use
 
-    // Grid starts centred under the distro node
     var gridStartX = node.x + node.w/2 - gridW/2;
-    var gridStartY = node.y + node.h + EQ_GAP_Y;
+    var gridStartY = node.y + node.h + EQ_GAP_Y + extraY;
 
     // Vertical trunk line from distro bottom to grid top
     var trunkX = node.x + node.w/2;
