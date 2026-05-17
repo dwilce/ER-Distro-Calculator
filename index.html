@@ -1916,6 +1916,7 @@ function closeUnitFields() {
     btns[i].classList.remove('active','filled');
     if (i === 0) btns[i].classList.add('active');
   }
+  if (window.innerWidth <= 768) mTab('distro');
 }
 
 // ── SAVE / LOAD / SHARE ──────────────────────────────────────
@@ -2239,6 +2240,7 @@ function closeLabels() {
 }
 
 // ── MOBILE ──────────────────────────────────────────────────────
+var _menuJustOpened = false;
 function mTab(name) {
   var map = {distro:'distro-panel', inv:'inv-panel', add:'add-panel'};
   var tmap= {distro:'mt-d', inv:'mt-i', add:'mt-a'};
@@ -2254,19 +2256,36 @@ function mTab(name) {
   if (add)  add.style.display  = (name==='add') ? 'none' : 'flex';
   mClose();
 }
-function mobMenu(e) { e.stopPropagation(); document.getElementById('mob-menu').classList.toggle('open'); }
-function mClose() { var m=document.getElementById('mob-menu'); if(m) m.classList.remove('open'); }
+function mobMenu(e) {
+  var m = document.getElementById('mob-menu');
+  if (!m) return;
+  if (m.classList.contains('open')) {
+    m.classList.remove('open');
+  } else {
+    m.classList.add('open');
+    _menuJustOpened = true;
+  }
+}
+function mClose() {
+  var m = document.getElementById('mob-menu');
+  if (m) m.classList.remove('open');
+}
 document.addEventListener('click', function(e) {
-  var m=document.getElementById('mob-menu'), b=document.getElementById('mob-bar');
-  if (m && m.classList.contains('open') && !m.contains(e.target) && b && !b.contains(e.target)) m.classList.remove('open');
+  if (_menuJustOpened) { _menuJustOpened = false; return; }
+  var m = document.getElementById('mob-menu');
+  if (m && m.classList.contains('open') && !m.contains(e.target)) {
+    m.classList.remove('open');
+  }
 });
 document.addEventListener('click', function(e) {
-  if (window.innerWidth<=768 && e.target.classList.contains('way-add-btn')) setTimeout(function(){mTab('add');},30);
+  if (window.innerWidth <= 768 && e.target.classList.contains('way-add-btn')) {
+    setTimeout(function(){ mTab('add'); }, 30);
+  }
 });
-if (document.readyState==='loading') {
-  document.addEventListener('DOMContentLoaded', function(){ if(window.innerWidth<=768) mTab('distro'); });
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function(){ if (window.innerWidth <= 768) mTab('distro'); });
 } else {
-  if (window.innerWidth<=768) mTab('distro');
+  if (window.innerWidth <= 768) mTab('distro');
 }
 </script>
 
