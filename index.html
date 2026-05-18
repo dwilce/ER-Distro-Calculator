@@ -424,6 +424,11 @@ var DD_FIXED_OUTLETS = {
     {label:'63A 3\u03c6', count:1, color:'#27ae60', ph:3},
     {label:'125A 3\u03c6', count:1, color:'#e74c3c', ph:3},
   ],
+  'pdr': [
+    {label:'32A 1φ', count:3, color:'#3498db', ph:1},
+    {label:'32A 3φ', count:3, color:'#e67e22', ph:3},
+    {label:'16A 1φ', count:10, color:'#27ae60', ph:1},
+  ],
   '48way': [
     {label:'16A 1\u03c6', count:3, color:'#3498db', ph:1},
     {label:'32A 3\u03c6', count:1, color:'#e67e22', ph:3},
@@ -439,6 +444,7 @@ function getFixedOutlets(sheetName) {
     }
   }
   // Fall back to sheet name pattern for default sheets
+  if (sheetName.indexOf('PDR') >= 0 || sheetName.indexOf('pdr') >= 0) return DD_FIXED_OUTLETS['pdr'] || [];
   if (sheetName.indexOf('72') >= 0) return DD_FIXED_OUTLETS['72way'] || [];
   if (sheetName.indexOf('48') >= 0) return DD_FIXED_OUTLETS['48way'] || [];
   return [];
@@ -745,6 +751,11 @@ function renderDistro() {
     '<div class="region-cell">' + (region === 'US' ? 'US 208V' : 'ROW 230V') + '</div>';
   titleDiv.appendChild(titleEl);
 
+  // PDR has no bank grid - all outputs are fixed outlets
+  var isPDR = false;
+  dd.nodes.forEach(function(n){ if (n.sheetKey === activeSheet && n.type === 'pdr') isPDR = true; });
+  if (!isPDR && activeSheet.indexOf('PDR') < 0) {
+
   var bankColClass = nBanks <= 3 ? 'banks-3' : nBanks <= 8 ? 'banks-8' : 'banks-12';
   var phaseRow = document.createElement('div');
   phaseRow.className = 'phase-row ' + bankColClass;
@@ -815,6 +826,8 @@ function renderDistro() {
     }
     phaseRow.appendChild(bankCard);
   }
+
+  } // end !isPDR bank grid
 
   // ── FIXED OUTLETS — own section below the bank grid ─────────
   var foAll = getFixedOutlets(activeSheet);
@@ -1833,6 +1846,43 @@ function openLabels(labelSize) {
       + '</div><table class="way-table"><tbody>' + wayRowsHtml + '</tbody></table></div>';
   }
 
+  // ── Fixed outlet labels ─────────────────────────────────────
+  var foAllLabels = getFixedOutlets(activeSheet);
+  if (foAllLabels.length) {
+    var foRowsHtml = '';
+    foAllLabels.forEach(function(outlet) {
+      for (var i = 1; i <= outlet.count; i++) {
+        var key = outlet.label.replace(/\s/g,'_') + '_' + i;
+        var ph = outlet.ph === 1 ? ((i-1)%3)+1 : 0;
+        var phCol = ph ? phColors[ph] : outlet.color;
+        var outLabel = outlet.label + ' #' + i;
+        var content = '';
+        if (outlet.ph === 1) {
+          var fslot = ((distroData[activeSheet].fixedSlots)||{})[key] || {};
+          content = fslot.eq
+            ? '<span class="eq">' + (fslot.qty > 1 ? fslot.qty + '\u00d7' : '') + fslot.eq + '</span>'
+            : '<span class="empty">\u2014</span>';
+        } else {
+          var tport = ((distroData[activeSheet].threePhasePorts)||{})[key] || {};
+          content = tport.connected
+            ? '<span class="eq">\u2192 ' + tport.connected + '</span>'
+            : '<span class="empty">\u2014</span>';
+        }
+        foRowsHtml += '<tr><td class="way-num" style="color:' + outlet.color + '">'
+          + outLabel.replace(' ','<br>') + '</td>'
+          + '<td class="way-content">'
+          + (outlet.ph === 3 ? '<span style="display:inline-block;background:' + outlet.color + ';color:#fff;font-size:5pt;font-weight:900;padding:0.5pt 3pt;border-radius:2pt;margin-right:3pt;vertical-align:middle">3\u03c6</span>' : '')
+          + content + '</td></tr>';
+      }
+    });
+    labelsHtml += '<div class="label"><div class="lbl-hdr" style="background:#444">'
+      + (logoDataURL ? '<img src="' + logoDataURL + '" style="height:18px;max-width:36px;object-fit:contain;flex-shrink:0;margin-right:4px">' : '')
+      + '<span class="lbl-bank" style="font-size:11pt">FIXED</span>'
+      + '<span class="lbl-distro">' + activeSheet + '</span>'
+      + '<span class="lbl-region">' + regionStr + '</span>'
+      + '</div><table class="way-table"><tbody>' + foRowsHtml + '</tbody></table></div>';
+  }
+
   // Paper/grid settings per label size
   var pageSize, gridCols, gridRows, labelW, labelH, marginTop, marginSide, colGap, rowGap, fontSize, wayFontSize;
   if (labelSize === 'L7173') {
@@ -2424,6 +2474,8 @@ var DD_DISTRO_TYPES = [
   {key:'dist',     label:'Distribution Box', color:'#37612b', sub:'Custom distro'},
   {key:'gen',      label:'Generator / Mains', color:'#333',  sub:'Power source'},
   {key:'custom',   label:'Custom Unit',     color:'#0e7c7b', sub:'Label as needed'},
+  {key:'pdr',      label:'PDR',              color:'#6d2077', sub:'32/63A 3ph in · mixed outputs'},
+  {key:'lasearray',label:'1Ph Lasearray',    color:'#1a6b3c', sub:'32A 1ph in · 8x Powercon out'},
 ];
 
 var DD_CONN_TYPES = [
@@ -2442,6 +2494,8 @@ var DD_SHEET_CONFIGS = {
   '18way': {ways:6, banks:['A','B','C'],                                      limit:32,  altLimit:0},
   'dist':      {ways:6, banks:['A','B','C'],   limit:32,  altLimit:0},
   'socaswitch': null,
+  'pdr':       {ways:6, banks:['A'], limit:32, altLimit:63},
+  'lasearray': {ways:8, banks:['A'], limit:32, altLimit:0},
   'gen':   null,
   'custom':{ways:6, banks:['A','B','C'],        limit:32,  altLimit:0},
 };
@@ -2658,7 +2712,8 @@ function ddAddDistroOfType(dt) {
     note: '',
     sheetKey: cfg ? name : null,
     parentSheet: null,   // SocaSwitch: which distro sheet feeds it
-    parentBank: null     // SocaSwitch: which bank (e.g. "A") feeds it via Socapex
+    parentBank: null,    // SocaSwitch: which bank (e.g. "A") feeds it via Socapex
+    inputRating: null    // PDR: '32A' or '63A' input selection
   };
   dd.nodes.push(node);
 
@@ -2797,6 +2852,21 @@ function ddRenderProps() {
     var hasCfg = !!DD_SHEET_CONFIGS[node.type];
     var isSoca = node.type === 'socaswitch';
 
+    // Build PDR input selector
+    var pdrHtml = '';
+    if (node.type === 'pdr') {
+      var rating = node.inputRating || '63A';
+      pdrHtml =
+        '<div class="dd-prop-row"><div class="dd-prop-label">INPUT RATING</div>' +
+        '<select class="dd-prop-select" onchange="ddSetPdrInput(' + node.id + ',this.value)">' +
+          '<option value="32A"' + (rating==='32A'?' selected':'') + '>32A 3&#966; Input</option>' +
+          '<option value="63A"' + (rating==='63A'?' selected':'') + '>63A 3&#966; Input</option>' +
+        '</select></div>' +
+        '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px">Input: ' + rating + ' 3&#966; &mdash; ' +
+        (rating==='32A' ? 'Phase limit 32A' : 'Phase limit 63A') + '</div>' +
+        '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + ddEsc(node.sheetKey || node.label) + '\')">&#8594; Open in Calculator</button>';
+    }
+
     // Build parent sheet + bank selectors for SocaSwitch
     var socaHtml = '';
     if (isSoca) {
@@ -2831,6 +2901,7 @@ function ddRenderProps() {
       '<input type="color" value="' + node.color + '" style="width:100%;height:26px;border:1px solid #1a3a57;border-radius:3px;background:#0d1f35;cursor:pointer" onchange="ddUpdateNode(' + node.id + ',\'color\',this.value)"></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">NOTE</div>' +
       '<input class="dd-prop-input" placeholder="e.g. Stage left" value="' + ddEsc(node.note||'') + '" onchange="ddUpdateNode(' + node.id + ',\'note\',this.value)"></div>' +
+      pdrHtml +
       socaHtml +
       (hasCfg
         ? '<div style="font-size:9px;color:#FFD700;padding:3px 0 6px;font-weight:700">⚡ CALCULATOR SHEET: ' + ddEsc(node.sheetKey || node.label) + '</div>' +
@@ -2893,6 +2964,14 @@ function ddUpdateConn(id, key, val) {
     if (ct) { conn.color = ct.color; conn.marker = ct.marker; conn.label = ct.label; }
   }
   conn[key] = val;
+  ddRender();
+  ddRenderProps();
+}
+
+function ddSetPdrInput(nodeId, val) {
+  var node = dd.nodes.find(function(n){return n.id===nodeId;});
+  if (!node) return;
+  node.inputRating = val;
   ddRender();
   ddRenderProps();
 }
@@ -3173,7 +3252,11 @@ function ddRender() {
     g.appendChild(nameTxt);
 
     // Note / parent output
-    var noteText = node.type === 'socaswitch'
+    var noteText = node.type === 'pdr'
+      ? ((node.inputRating || '63A') + ' 3φ Input')
+      : node.type === 'lasearray'
+      ? '32A 1φ → 8× Powercon'
+      : node.type === 'socaswitch'
       ? (node.parentSheet && node.parentBank
           ? 'Socapex \u2190 Bank ' + node.parentBank
           : 'No feed assigned')
@@ -3643,13 +3726,14 @@ function ddExport() {
       <div class="help-section">
         <h3>&#9889; Getting Started</h3>
         <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Switch between distro sheets using the <strong>dropdown selector</strong> next to the region toggle.</p>
-        <p>By default the calculator includes three standard sheets (18-Way, 48-Way, 72-Way). If you open the <strong>Distro Designer</strong> and add your own distros, these defaults are replaced by your custom sheets — and restored automatically if you remove all designer distros.</p>
+        <p>By default the calculator includes three standard sheets (18-Way, 48-Way, 72-Way). Opening the <strong>Distro Designer</strong> and adding your own distros replaces these with your custom rig — they restore automatically if you remove all designer distros.</p>
+        <p>On mobile, use the bottom tab bar to switch between <strong>Distro</strong>, <strong>Inventory</strong>, and <strong>Add Equipment</strong> panels. The &#9776; menu gives access to Labels, Reports, Designer, Save/Load, and Help.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128266; Assigning Equipment</h3>
         <ol>
-          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) — the Add Equipment panel on the right activates</li>
+          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) — the Add Equipment panel activates</li>
           <li>Optionally tick <strong>Add to Flight Case Labels</strong> and set the number of cases</li>
           <li>Select equipment from the dropdown and set the quantity</li>
           <li>Choose a <strong>Sub-slot</strong> for multiple items on one output (Master + up to 3 subs)</li>
@@ -3658,6 +3742,7 @@ function ddExport() {
           <li>Click <strong>Update &amp; Clear</strong> — saves unit details, pushes to Flight Case Labels if ticked, and resets the panel</li>
         </ol>
         <p><strong>Editing:</strong> Click any populated output to reload it into the panel. Make changes and click Update &amp; Clear to save.</p>
+        <p><strong>Fixed outlets</strong> (on 48-Way, 72-Way, PDR, and Lasearray) appear in their own section below the bank grid. Click <strong>+ Assign</strong> on any 1-phase fixed outlet to assign equipment to it. 3-phase outlets link to another distro sheet via the dropdown — their full rated amps are reserved on all 3 phases once linked.</p>
       </div>
 
       <div class="help-section">
@@ -3668,7 +3753,7 @@ function ddExport() {
           <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match. Open the dropdown to pick from <em>Best matches</em> or <em>All inventory</em>.</li>
           <li>Click <strong>&#10005;</strong> on any row to remove unwanted lines.</li>
         </ul>
-        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set. Quantities are never auto-detected as this proved unreliable across PDF types.</p>
+        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set.</p>
         <p>Once matches and quantities look right: tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, set quantity, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
       </div>
 
@@ -3676,60 +3761,63 @@ function ddExport() {
         <h3>&#9889; Distro Designer</h3>
         <p>Click <strong>&#9889; Distro Designer</strong> to open the interactive power chain map. Use it to plan and visualise how multiple distros feed each other, and to see what equipment is assigned to each one.</p>
 
-        <p><strong>Adding distros &amp; creating sheets:</strong> Click a distro type in the left panel — 72-Way, 48-Way, 18-Way, <strong>SocaSwitch ER</strong>, Distro Box, Generator, or Custom. Each distro type (except Generator) automatically creates a matching calculator sheet with the correct bank, way, and phase limit configuration. The first designer distro removes the three default sheets to avoid confusion; they return automatically if you remove all designer distros.</p>
-        <p>The <strong>SocaSwitch ER</strong> is a 6-outlet unit fed via Socapex. Adding one automatically switches the active connector type to Socapex, ready to draw the feed connection. Its calculator sheet has a single bank (A) with 6 ways — one per outlet — and a 16A per-outlet limit.</p>
-
-        <p><strong>Flowchart view:</strong> Once equipment is assigned in the calculator, the designer shows it as a live flowchart beneath each distro node — a trunk line drops from the distro box, a horizontal bus spans across, and individual equipment cards hang below showing the output label (e.g. A1), quantity, and equipment name. Cards are colour-coded by phase (purple Ph1, orange Ph2, teal Ph3). Click any equipment card to jump straight to that distro sheet in the calculator. The flowchart updates instantly whenever you assign or remove equipment.</p>
-
-        <p><strong>Connecting distros:</strong> Click &#128279; Connect, click the source distro, then the destination. An arrow is drawn showing power flow direction. Choose the connector type from the left panel before connecting — CAM Lock (gold), 125A (red), 63A CEE (green), 32A CEE (blue), Socapex (white). Click a connection line to select it and change its type, label, or delete it.</p>
-
-        <p><strong>Other controls:</strong></p>
+        <p><strong>Distro types available:</strong></p>
         <ul>
-          <li><strong>Drag</strong> any distro node to reposition it on the canvas</li>
-          <li><strong>Auto Layout</strong> — arranges nodes into a top-down power flow tree</li>
-          <li><strong>Properties panel</strong> (right) — rename the distro (also renames the calculator sheet), change colour, add a location note, or jump to the calculator sheet</li>
-          <li><strong>&#128465; Delete Distro</strong> — removes the node and its calculator sheet</li>
-          <li><strong>&#128465; Clear All</strong> — removes all designer distros and restores default sheets</li>
-          <li><strong>Export SVG</strong> — saves the full diagram as a vector file for documentation</li>
+          <li><strong>72-Way (400A)</strong> — 12 banks, 6 ways, 400A limit. Fixed outlets: 6&times;32A 1&#966;, 1&times;32A 3&#966;, 1&times;63A 3&#966;, 1&times;125A 3&#966;</li>
+          <li><strong>48-Way (63A)</strong> — 8 banks, 6 ways, 63A/125A switchable. Fixed outlets: 3&times;16A 1&#966;, 1&times;32A 3&#966;</li>
+          <li><strong>18-Way (32A)</strong> — 3 banks, 6 ways, 32A limit</li>
+          <li><strong>SocaSwitch ER</strong> — 6-outlet Socapex-fed unit. Links to a bank on a parent distro; that bank's equipment shows as its children in the flowchart</li>
+          <li><strong>PDR</strong> — No bank grid. Fixed outlets: 3&times;32A 1&#966;, 3&times;32A 3&#966;, 10&times;16A 1&#966;. Select 32A or 63A input in Properties</li>
+          <li><strong>1Ph Lasearray</strong> — 1 bank, 8 ways (Powercon), 32A single-phase limit</li>
+          <li><strong>Distribution Box</strong> — Custom distro with 3 banks, 6 ways</li>
+          <li><strong>Generator / Mains</strong> — Power source node, no calculator sheet</li>
+          <li><strong>Custom Unit</strong> — Freely labelled node</li>
         </ul>
+
+        <p><strong>Flowchart view:</strong> Assigned equipment appears as cards beneath each distro node, colour-coded by phase. Fixed outlets appear as coloured badges between the node and the equipment cards. Click any equipment card to jump to that sheet in the calculator.</p>
+
+        <p><strong>Connecting distros:</strong> Click &#128279; Connect, click the source then the destination. Choose the connector type before connecting — CAM Lock (gold), 125A (red), 63A CEE (green), 32A CEE (blue), Socapex (white). Click a connection to edit or delete it.</p>
+
+        <p><strong>Controls:</strong> Drag nodes to reposition. <strong>Auto Layout</strong> arranges everything into a clean top-down tree accounting for actual node heights. <strong>+/&#8722;</strong> and scroll wheel to zoom. <strong>&#9974; Fit All</strong> fits everything to screen. <strong>Export SVG</strong> saves the diagram for documentation.</p>
+
+        <p><strong>Properties panel</strong> (right side when a node is selected) — rename the distro, change colour, add a location note, set SocaSwitch parent bank, set PDR input rating, or jump to the calculator sheet. <strong>&#128465; Delete Distro</strong> removes the node and its sheet.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128202; Grand Summary</h3>
-        <p>The Grand Summary at the bottom of each distro sheet shows total load per phase:</p>
+        <p>The Grand Summary bar at the bottom of each distro sheet shows total load per phase in a compact single row:</p>
         <ul>
           <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
           <li><span class="help-badge warn">&#9888; 84%</span> — 80–99% of limit — approaching capacity</li>
           <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
         </ul>
-        <p>For the <strong>48-Way</strong>, click the <strong>63A | 125A</strong> toggle in the Grand Summary to switch between phase limits.</p>
+        <p>Where fixed outlets are present, the summary shows a breakdown: ways load + 1&#966; outlet load + 3&#966; reserved = total. Remaining headroom is shown in amps. For <strong>48-Way</strong> and <strong>PDR</strong>, click the phase limit toggle to switch between 63A and 125A (or 32A and 63A for PDR).</p>
       </div>
 
       <div class="help-section">
         <h3>&#9888; Voltage Warnings</h3>
-        <p>Items in the inventory can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to set this up, then tick the checkbox for any item that only works on a specific voltage.</p>
+        <p>Items in the inventory can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to set this up.</p>
         <ul>
           <li><strong>120V Only</strong> — always flagged with a <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> badge regardless of region.</li>
           <li><strong>240V Only</strong> — flagged with <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span> when region is set to US (208V).</li>
         </ul>
-        <p>Warnings appear on the distro sheet next to the equipment name, on all label types, and in the Equipment Report as a dedicated VOLTAGE column with a highlighted row.</p>
+        <p>Warnings appear on the distro sheet, on all label types, and in the Equipment Report.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128424; Printing Labels</h3>
         <p>Click <strong>Labels &#9660;</strong> to choose a label format:</p>
         <ul>
-          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;. One label per bank showing all outputs, equipment, and unit IDs.</li>
-          <li><strong>Avery L7173</strong> — Same as 5163 but A4, 99.1&times;57mm.</li>
-          <li><strong>Avery 6737</strong> — Individual equipment labels, A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. One per unit showing name, ID, placement, and address.</li>
+          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;</li>
+          <li><strong>Avery L7173</strong> — Same layout, A4, 99.1&times;57mm</li>
+          <li><strong>Avery 6737</strong> — Individual equipment labels, A4, 65 per sheet (3&times;13), 38.1&times;21.2mm. Shows unit name, ID, placement, and address.</li>
         </ul>
-        <p>Voltage warnings (<span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> / <span style="background:#FFD700;color:#000;padding:0 3px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span>) appear on all label types for flagged items.</p>
-        <p>Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels and the flight case page. Print with margins <strong>None</strong>, background graphics <strong>on</strong>.</p>
+        <p>Distro labels include a <strong>Fixed Outlets</strong> card after the bank labels, showing all assigned 1-phase equipment and linked 3-phase sheets. Voltage warning badges appear on all label types. Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels. Print with margins <strong>None</strong> and background graphics <strong>on</strong>.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128230; Flight Case Labels</h3>
-        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — Avery 5126 format (177&times;127mm, 2 per A4 sheet) with rounded trim corners.</p>
+        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — Avery 5126 format (177&times;127mm, 2 per A4 sheet).</p>
         <p><strong>Layout:</strong> Top third = coloured tour name band with logo. Middle = description. Bottom = location (left) and box number with total (right).</p>
         <p><strong>Header styles:</strong> Solid, Left/Right Split, Diagonal Stripes, or Top/Bottom Split — each supports a two-colour picker.</p>
         <p><strong>Auto-populate:</strong> Tick <strong>Add to Flight Case Labels</strong> when assigning equipment, fill in unit details, then click Update &amp; Clear — rows are created automatically. Box numbers auto-increment.</p>
@@ -3737,14 +3825,14 @@ function ddExport() {
 
       <div class="help-section">
         <h3>&#128438; Equipment Report</h3>
-        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets, showing distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. A summary banner highlights any voltage mismatches at the top, and a dedicated <strong>Voltage Warnings</strong> count appears in the summary row.</p>
+        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets — distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. Fixed outlet assignments are included. A summary banner highlights any voltage mismatches at the top.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, and logo. Fully portable and reloadable on any device.</p>
+        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, fixed outlet data, and logo.</p>
         <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
-        <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation.</p>
+        <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation before closing.</p>
       </div>
 
       <div class="help-section">
