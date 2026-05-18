@@ -1826,6 +1826,8 @@ function assignFromPdf() {
   var wayNum = parseInt(document.getElementById('pdfWay').value);
   var subRow = parseInt(document.getElementById('pdfSub').value);
   var qtyPerSlot = parseInt(document.getElementById('pdfQty').value) || 1;
+  var pdfPlacement = document.getElementById('pdfPlacement').value.trim();
+  var pdfAddress = document.getElementById('pdfAddress').value.trim();
 
   selected.forEach(function(sel) {
     var item = sel.item;
@@ -1836,7 +1838,18 @@ function assignFromPdf() {
     if (toAssign <= 0) return;
 
     if (!distroData[sheetName]) return;
-    distroData[sheetName][bi][wayNum][subRow] = {eq: eqName, watts: w, qty: toAssign, units: [], v120only: eObj.v120only||false, v240only: eObj.v240only||false};
+
+    // Build units array with placement/address if provided
+    var units = [];
+    for (var ui = 0; ui < toAssign; ui++) {
+      units.push({
+        id: '',
+        placement: pdfPlacement,
+        address: pdfAddress
+      });
+    }
+
+    distroData[sheetName][bi][wayNum][subRow] = {eq: eqName, watts: w, qty: toAssign, units: units, v120only: eObj.v120only||false, v240only: eObj.v240only||false};
 
     var label = bankLetter + wayNum + (subRow > 0 ? '.' + subRow : '');
     item.assigned.push(label + '(' + toAssign + ')');
@@ -3821,6 +3834,14 @@ function ddExport() {
             <div class="pdf-field">
               <label>Quantity</label>
               <input type="number" id="pdfQty" value="1" min="1" max="99">
+            </div>
+            <div class="pdf-field">
+              <label>Placement <span style="font-size:9px;color:var(--muted);font-weight:400">(optional)</span></label>
+              <input type="text" id="pdfPlacement" placeholder="e.g. Stage Left" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px">
+            </div>
+            <div class="pdf-field">
+              <label>Address / Patch <span style="font-size:9px;color:var(--muted);font-weight:400">(optional)</span></label>
+              <input type="text" id="pdfAddress" placeholder="e.g. DMX 1.001" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px">
             </div>
             <button class="pdf-assign-btn" onclick="assignFromPdf()">&#43; Assign Selected</button>
           </div>
