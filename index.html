@@ -1919,7 +1919,10 @@ function openLabels(labelSize) {
   for (var bi = 0; bi < banks.length; bi++) {
     var bankLetter = banks[bi];
     var ph = phaseOfBank(bi);
-    var bgColor = phColors[ph];
+    var bcEntry = (bankColors[activeSheet] && bankColors[activeSheet][bankLetter]) || null;
+    var bgColor = bcEntry ? bankSwatchStyle(bcEntry) : phColors[ph];
+    // Use dark text on white/light backgrounds
+    var hdrTextColor = bcEntry && bcEntry.color === '#ffffff' ? '#000' : 'white';
     var wayRowsHtml = '';
     for (var w = 1; w <= ways; w++) {
       var wph = phaseOf(w);
@@ -1952,7 +1955,7 @@ function openLabels(labelSize) {
       }
       wayRowsHtml += '<tr><td class="way-num" style="color:' + phColors[wph] + '">' + bankLetter + w + '</td><td class="way-content">' + contentHtml + '</td></tr>';
     }
-    labelsHtml += '<div class="label"><div class="lbl-hdr" style="background:' + bgColor + '">'
+    labelsHtml += '<div class="label"><div class="lbl-hdr" style="background:' + bgColor + ';color:' + hdrTextColor + '">'
       + (logoDataURL ? '<img src="' + logoDataURL + '" style="height:18px;max-width:36px;object-fit:contain;flex-shrink:0;margin-right:4px">' : '')
       + '<span class="lbl-bank">BANK ' + bankLetter + '</span>'
       + '<span class="lbl-distro">' + activeSheet + '</span>'
@@ -2022,7 +2025,7 @@ function openLabels(labelSize) {
     + '.page { padding:' + marginTop + ' ' + marginSide + ' 0 ' + marginSide + '; }'
     + '.label-grid { display:grid; grid-template-columns:' + gridCols + '; grid-template-rows:' + gridRows + '; column-gap:' + colGap + '; row-gap:' + rowGap + '; }'
     + '.label { overflow:hidden; border:0.5px solid #ccc; display:flex; flex-direction:column; box-sizing:border-box; }'
-    + '.lbl-hdr { display:flex; justify-content:space-between; align-items:center; padding:4pt 6pt; color:white; flex-shrink:0; }'
+    + '.lbl-hdr { display:flex; justify-content:space-between; align-items:center; padding:4pt 6pt; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
     + '.lbl-bank { font-size:' + (labelSize === 'L7173' ? '16pt' : '13pt') + '; font-weight:900; }'
     + '.lbl-distro { font-size:' + fontSize + '; font-weight:700; opacity:0.9; }'
     + '.lbl-region { font-size:' + fontSize + '; opacity:0.8; }'
