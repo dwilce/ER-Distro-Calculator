@@ -244,12 +244,7 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
 /* ═══ MOBILE ≤768px ══════════════════════════════════════════ */
-#mob-bar  { display:none }
 #mob-tabs { display:none }
-#mob-menu { display:none; position:fixed; top:52px; left:0; right:0; bottom:0;
-            background:var(--navy); z-index:9999; overflow-y:auto;
-            flex-direction:column; border-top:2px solid #2471a3 }
-#mob-menu.open { display:flex !important }
 #mob-menu .m-sec { padding:8px 16px 4px; font-size:9px; font-weight:700;
   color:rgba(255,255,255,.4); letter-spacing:2px; text-transform:uppercase }
 #mob-menu .m-btn { padding:14px 20px; background:none; border:none;
@@ -259,9 +254,6 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 @media (max-width: 768px) {
   #topbar { padding:0 10px; height:52px; gap:8px }
   .logo-text { font-size:12px } .logo-sub { display:none }
-  #mob-bar { display:flex !important; align-items:center; background:none;
-             border:1px solid rgba(255,255,255,.3); color:#fff; border-radius:5px;
-             padding:5px 11px; font-size:20px; cursor:pointer; margin-left:4px }
   .top-controls > .labels-btn, .top-controls > .report-btn-top,
   .top-controls > .save-btn,   .top-controls > .load-btn,
   .top-controls > .help-btn,   .top-controls > .labels-drop-wrap { display:none !important }
@@ -282,8 +274,17 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
   .way-row { min-height:38px }
 }
 @media (min-width: 769px) {
-  #mob-tabs,#mob-bar,#mob-menu { display:none !important }
-}
+  #mob-tabs,}
+
+/* Hamburger - always visible on mobile */
+#mob-bar { display:none; background:none; border:1px solid rgba(255,255,255,.3); 
+           color:#fff; border-radius:5px; padding:5px 11px; font-size:20px; 
+           cursor:pointer; line-height:1; margin-left:auto }
+@media (max-width: 768px) { #mob-bar { display:block !important } }
+@media (min-width: 769px) { #mob-bar { display:none !important } }
+
+#mob-menu .m-sec { padding:8px 16px 4px; font-size:9px; font-weight:700;
+  color:rgba(255,255,255,.4); letter-spacing:2px; text-transform:uppercase }
 </style>
 </head>
 <body>
@@ -323,7 +324,7 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
     <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
     <button class="report-btn-top" style="background:#5b2c8a;border-color:#5b2c8a" onclick="openDistroDesigner()">&#9889; Distro Designer</button>
   </div>
-  <button id="mob-bar" onclick="mobMenu(event)">&#9776;</button>
+  <button id="mob-bar" onclick="mobMenu()">&#9776;</button>
 </header>
 
 <main id="main">
@@ -2256,25 +2257,39 @@ function mTab(name) {
   if (add)  add.style.display  = (name==='add') ? 'none' : 'flex';
   mClose();
 }
-function mobMenu(e) {
+function mobMenu() {
   var m = document.getElementById('mob-menu');
   if (!m) return;
-  if (m.classList.contains('open')) {
-    m.classList.remove('open');
+  var isOpen = m.getAttribute('data-open') === '1';
+  if (isOpen) {
+    m.setAttribute('data-open', '0');
+    m.style.display = 'none';
   } else {
-    m.classList.add('open');
-    _menuJustOpened = true;
+    document.body.appendChild(m);
+    m.setAttribute('data-open', '1');
+    m.style.position = 'fixed';
+    m.style.top = '52px';
+    m.style.left = '0';
+    m.style.right = '0';
+    m.style.bottom = '0';
+    m.style.zIndex = '2147483647';
+    m.style.background = '#0d2137';
+    m.style.overflowY = 'auto';
+    m.style.display = 'flex';
+    m.style.flexDirection = 'column';
+    m.style.borderTop = '3px solid #FFD700';
   }
 }
 function mClose() {
   var m = document.getElementById('mob-menu');
-  if (m) m.classList.remove('open');
+  if (m) { m.setAttribute('data-open','0'); m.style.display = 'none'; }
 }
 document.addEventListener('click', function(e) {
-  if (_menuJustOpened) { _menuJustOpened = false; return; }
   var m = document.getElementById('mob-menu');
-  if (m && m.classList.contains('open') && !m.contains(e.target)) {
-    m.classList.remove('open');
+  var b = document.getElementById('mob-bar');
+  if (m && m.getAttribute('data-open')==='1' && b && !m.contains(e.target) && !b.contains(e.target)) {
+    m.setAttribute('data-open','0');
+    m.style.display = 'none';
   }
 });
 document.addEventListener('click', function(e) {
@@ -3751,7 +3766,7 @@ function ddExport() {
   <button class="m-tab"    id="mt-a" onclick="mTab('add')">   <span class="mi">&#43;</span><span>Add</span></button>
   <button class="m-tab"    id="mt-b" onclick="mTab('distro')" style="display:none"><span class="mi">&#8592;</span><span>Back</span></button>
 </div>
-<div id="mob-menu">
+<div id="mob-menu" style="display:none;flex-direction:column;position:fixed;top:52px;left:0;right:0;bottom:0;z-index:99999;background:#0d2137;overflow-y:auto;border-top:2px solid #2471a3">
   <div class="m-sec">Region</div>
   <button class="m-btn" onclick="setRegion('US');mClose()">&#127482;&#127480; US 208V</button>
   <button class="m-btn" onclick="setRegion('ROW');mClose()">&#127757; ROW 230V</button>
