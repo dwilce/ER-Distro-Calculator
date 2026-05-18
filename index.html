@@ -79,6 +79,20 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 .fo-3ph-body{padding:6px 8px}
 .fo-3ph-label{font-size:11px;color:var(--navy)}
 .fo-3ph-deduct{font-size:10px;color:var(--muted);margin-top:2px}
+
+.bank-swatch-btn{width:16px;height:16px;border-radius:3px;border:1.5px solid rgba(255,255,255,.5);cursor:pointer;flex-shrink:0;display:inline-block;vertical-align:middle}
+.bank-swatch-btn:hover{border-color:#fff}
+.bank-swatch-panel{display:none;position:fixed;background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.25);padding:6px;z-index:9999;width:160px}
+.bank-swatch-panel.open{display:block}
+.bank-swatch-style-row{display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #eee}
+.bank-swatch-style-opt{width:26px;height:20px;border-radius:3px;border:2px solid #ccc;cursor:pointer;flex:1}
+.bank-swatch-style-opt:hover,.bank-swatch-style-opt.sel{border-color:#333}
+.bank-swatch-clabel{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin:4px 0 3px}
+.bank-swatch-opts{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:4px}
+.bank-swatch-opt{width:22px;height:22px;border-radius:3px;border:1px solid rgba(0,0,0,.2);cursor:pointer}
+.bank-swatch-opt:hover{transform:scale(1.15);border-color:#333}
+.bank-swatch-opt.sel{border:2px solid #fff;box-shadow:0 0 0 1px #333}
+
 .fo-3ph-select{width:100%;padding:3px 4px;font-size:10px;border:1px solid var(--border);border-radius:3px;background:white;box-sizing:border-box}
 .fo-way-label{font-size:8px!important;line-height:1.1!important}
 .volt-badge{font-size:9px;font-weight:700;color:#fff;background:#c0392b;padding:1px 5px;border-radius:3px;white-space:nowrap}
@@ -449,6 +463,8 @@ function getFixedOutlets(sheetName) {
   if (sheetName.indexOf('48') >= 0) return DD_FIXED_OUTLETS['48way'] || [];
   return [];
 }
+var bankColors = {}; // sheet -> bankLetter -> color
+var BANK_COLOURS = ['#7d3c98','#c0622a','#0e7c7b','#2980b9','#27ae60','#e67e22','#c0392b','#e91e63','#3f51b5','#8e44ad','#1abc9c','#2c3e50','#808080','#ffffff','#000000'];
 var PH_DK = ['','#7d3c98','#c0622a','#0e7c7b'];
 var PH_LT = ['','#f4ecfd','#fdf0e6','#e0f5f5'];
 var region = 'US';
@@ -711,6 +727,92 @@ function foSelectOutlet(key, outlet) {
 }
 var selectedFoKey = null, selectedFoOutlet = null;
 
+
+function bankSwatchStyle(bc) {
+  var c1 = (bc && bc.color) || '#1a3a57';
+  var c2 = (bc && bc.color2) || '#7d3c98';
+  var sty = (bc && bc.style) || 'solid';
+  if (sty === 'split')   return 'linear-gradient(to right,' + c1 + ' 50%,' + c2 + ' 50%)';
+  if (sty === 'chevron') return 'repeating-linear-gradient(105deg,' + c1 + ' 0px,' + c1 + ' 8px,' + c2 + ' 8px,' + c2 + ' 16px)';
+  if (sty === 'hsplit')  return 'linear-gradient(to bottom,' + c1 + ' 50%,' + c2 + ' 50%)';
+  return c1;
+}
+
+function toggleBankSwatch(e, sheet, bank) {
+  e.stopPropagation();
+  var swId = 'bsw_' + sheet.replace(/[^a-z0-9]/gi,'_') + '_' + bank;
+  var panel = document.getElementById(swId + '_panel');
+  if (!panel) return;
+  var isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.bank-swatch-panel.open').forEach(function(p){ p.classList.remove('open'); });
+  if (!isOpen) {
+    panel.classList.add('open');
+    var btn = document.getElementById(swId + '_btn');
+    var rect = btn.getBoundingClientRect();
+    panel.style.top = (rect.bottom + 4) + 'px';
+    panel.style.left = Math.min(rect.left, window.innerWidth - 168) + 'px';
+    // Rebuild panel content with current values
+    var bc = (bankColors[sheet] && bankColors[sheet][bank]) || {};
+    var c1 = bc.color || '#1a3a57';
+    var c2 = bc.color2 || '#7d3c98';
+    var sty = bc.style || 'solid';
+    var styleRow = '<div class="bank-swatch-style-row">' +
+      ['solid','split','chevron','hsplit'].map(function(s) {
+        var bg = s==='solid' ? c1 :
+                 s==='split' ? 'linear-gradient(to right,'+c1+' 50%,'+c2+' 50%)' :
+                 s==='chevron' ? 'repeating-linear-gradient(105deg,'+c1+' 0,'+c1+' 8px,'+c2+' 8px,'+c2+' 16px)' :
+                 'linear-gradient(to bottom,'+c1+' 50%,'+c2+' 50%)';
+        return '<div class="bank-swatch-style-opt' + (s===sty?' sel':'') + '" style="background:' + bg + '" ' +
+          'onclick="setBankStyle(event,\'' + sheet + '\',\'' + bank + '\',\'' + s + '\')" title="' + s + '"></div>';
+      }).join('') + '</div>';
+    var mkOpts = function(selCol, colNum) {
+      return BANK_COLOURS.map(function(c) {
+        return '<div class="bank-swatch-opt' + (c===selCol?' sel':'') + '" style="background:' + c + '" ' +
+          'onclick="setBankColor(event,\'' + sheet + '\',\'' + bank + '\',\'' + c + '\',' + colNum + ')"></div>';
+      }).join('') +
+      '<div class="bank-swatch-opt" style="background:linear-gradient(135deg,#7d3c98 33%,#c0622a 33%,#c0622a 66%,#0e7c7b 66%)" ' +
+        'title="Reset" onclick="setBankColor(event,\'' + sheet + '\',\'' + bank + '\',null,0)">↺</div>';
+    };
+    panel.innerHTML = styleRow +
+      '<div class="bank-swatch-clabel">Colour 1</div><div class="bank-swatch-opts">' + mkOpts(c1,1) + '</div>' +
+      '<div class="bank-swatch-clabel">Colour 2</div><div class="bank-swatch-opts">' + mkOpts(c2,2) + '</div>';
+  }
+}
+
+function setBankStyle(e, sheet, bank, style) {
+  e.stopPropagation();
+  if (!bankColors[sheet]) bankColors[sheet] = {};
+  if (!bankColors[sheet][bank]) bankColors[sheet][bank] = {};
+  bankColors[sheet][bank].style = style;
+  renderDistro();
+  // Reopen to refresh
+  var swId = 'bsw_' + sheet.replace(/[^a-z0-9]/gi,'_') + '_' + bank;
+  var panel = document.getElementById(swId + '_panel');
+  if (panel) panel.classList.remove('open');
+}
+
+function setBankColor(e, sheet, bank, color, colNum) {
+  e.stopPropagation();
+  if (color === null) {
+    if (bankColors[sheet]) delete bankColors[sheet][bank];
+  } else {
+    if (!bankColors[sheet]) bankColors[sheet] = {};
+    if (!bankColors[sheet][bank]) bankColors[sheet][bank] = {};
+    if (colNum === 2) bankColors[sheet][bank].color2 = color;
+    else bankColors[sheet][bank].color = color;
+  }
+  var swId = 'bsw_' + sheet.replace(/[^a-z0-9]/gi,'_') + '_' + bank;
+  var panel = document.getElementById(swId + '_panel');
+  if (panel) panel.classList.remove('open');
+  renderDistro();
+}
+// Close swatch panels on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.classList.contains('bank-swatch-btn') && !e.target.classList.contains('bank-swatch-opt')) {
+    document.querySelectorAll('.bank-swatch-panel.open').forEach(function(p){ p.classList.remove('open'); });
+  }
+});
+
 function toggleLimit() {
   var cfg = SHEETS[activeSheet];
   if (!cfg || !cfg.altLimit) return;
@@ -768,19 +870,31 @@ function renderDistro() {
     bankCard.className = 'bank-card';
     var hdr = document.createElement('div');
     hdr.className = 'bank-hdr';
-    hdr.style.background = PH_DK[ph];
-    hdr.innerHTML = '<span>Bank ' + bankLetter + '</span>';
+    var bcEntry = (bankColors[activeSheet] && bankColors[activeSheet][bankLetter]) ? bankColors[activeSheet][bankLetter] : null;
+    var bColorRaw = bcEntry ? (bcEntry.color || PH_DK[ph]) : PH_DK[ph];
+    var bColor = bcEntry ? bankSwatchStyle(bcEntry) : PH_DK[ph];
+    hdr.style.background = bColor;
+    var swId = 'bsw_' + activeSheet.replace(/[^a-z0-9]/gi,'_') + '_' + bankLetter;
+    hdr.innerHTML = '<span>Bank ' + bankLetter + '</span>' +
+      '<div style="position:relative;display:inline-block">' +
+        '<div class="bank-swatch-btn" id="' + swId + '_btn" style="background:' + bColor + ';width:20px;height:14px;border-radius:2px" ' +
+          'onclick="toggleBankSwatch(event,\'' + activeSheet + '\',\'' + bankLetter + '\')" title="Change bank colour"></div>' +
+        '<div class="bank-swatch-panel" id="' + swId + '_panel">' +
+          BANK_COLOURS.map(function(c){ return '<div class="bank-swatch-opt' + (c===bColor?' sel':'') + '" style="background:' + c + '" onclick="setBankColor(event,\'' + activeSheet + '\',\'' + bankLetter + '\',\'' + c + '\')"></div>'; }).join('') +
+          '<div class="bank-swatch-opt" style="background:linear-gradient(135deg,#7d3c98 50%,#c0622a 50%)" title="Reset to phase colour" onclick="setBankColor(event,\'' + activeSheet + '\',\'' + bankLetter + '\',null)">↺</div>' +
+        '</div>' +
+      '</div>';
     bankCard.appendChild(hdr);
 
     for (var w = 1; w <= ways; w++) {
       var wph = phaseOf(w);
       var wayEl = document.createElement('div');
       wayEl.className = 'way-row';
-      wayEl.style.background = PH_LT[wph];
+      
 
       var lbl = document.createElement('div');
       lbl.className = 'way-label';
-      lbl.style.background = PH_DK[wph];
+      lbl.style.background = "#1a3a57";
       lbl.textContent = bankLetter + w;
       wayEl.appendChild(lbl);
 
@@ -1976,6 +2090,7 @@ function getShowState() {
     version: 1,
     activeSheet: activeSheet,
     region: region,
+    bankColors: bankColors,
     limits: limits,
     distroData: distroData,
     logoDataURL: logoDataURL || null,
@@ -1990,6 +2105,7 @@ function applyShowState(state) {
   }
   activeSheet = state.activeSheet || activeSheet;
   region = state.region || region;
+  if (state.bankColors) bankColors = state.bankColors;
   limits = state.limits || limits;
   distroData = state.distroData || distroData;
   if (state.logoDataURL) {
@@ -3863,7 +3979,6 @@ function ddExport() {
   <button class="m-btn" onclick="openLabels('L7173');mClose()">&#128424; Avery L7173 — Distro Labels (A4)</button>
   <button class="m-btn" onclick="openEquipmentLabels();mClose()">&#128218; Avery 6737 — Equipment Labels</button>
   <div class="m-sec">Actions</div>
-  <button class="m-btn" onclick="window.open('flightcase.html','_blank');mClose()">&#128230; Case Labels</button>
   <button class="m-btn" onclick="openReport();mClose()">&#128438; Equipment Report</button>
   <button class="m-btn" onclick="openDistroDesigner();mClose()">&#9889; Distro Designer</button>
   <button class="m-btn" onclick="triggerPdfImport();mClose()">&#128196; Import PDF</button>
