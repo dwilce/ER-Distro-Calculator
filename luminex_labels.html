@@ -429,6 +429,20 @@ function updateStripType(id, dtype) {
   save();
 }
 
+function duplicateStrip(id) {
+  var s = strips.find(function(x){ return x.id === id; });
+  if (!s) return;
+  var copy = JSON.parse(JSON.stringify(s));
+  copy.id = nextId++;
+  copy.device = s.device ? s.device + ' (copy)' : 'Copy';
+  copy.open = true;
+  var idx = strips.indexOf(s);
+  strips.splice(idx + 1, 0, copy);
+  renderEditor();
+  renderPreview();
+  save();
+}
+
 function deleteStrip(id) {
   strips = strips.filter(function(s){ return s.id !== id; });
   renderEditor();
@@ -491,6 +505,7 @@ function renderEditor() {
         '<input class="strip-name-input" placeholder="Device name (e.g. Luminex 16XT #1)" value="' + esc(strip.device) + '" ' +
           'onclick="event.stopPropagation()" oninput="updateStrip(' + strip.id + ',\'device\',this.value)">' +
         '<span class="strip-toggle">' + (strip.open ? '▲' : '▼') + '</span>' +
+        '<button class="strip-del" title="Duplicate strip" style="color:#00d4ff" onclick="event.stopPropagation();duplicateStrip(' + strip.id + ')">&#10064;</button>' +
         '<button class="strip-del" onclick="event.stopPropagation();deleteStrip(' + strip.id + ')">✕</button>' +
       '</div>' +
       (strip.open ? '<div class="strip-ports">' + portRows + '</div>' : '') +
