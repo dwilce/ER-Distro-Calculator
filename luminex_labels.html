@@ -334,16 +334,19 @@ main {
         <div class="config-item">
           <div class="config-label">Port Count</div>
           <select class="config-select" id="portCount" onchange="renderAll()">
+            <option value="1">1 Port</option>
+            <option value="4">4 Ports</option>
             <option value="8">8 Ports</option>
-            <option value="10">10 Ports</option>
-            <option value="12" selected>12 Ports</option>
+            <option value="10" selected>10 Ports</option>
           </select>
         </div>
         <div class="config-item">
           <div class="config-label">Device Type</div>
           <select class="config-select" id="deviceType" onchange="onDeviceTypeChange()">
-            <option value="gigacore">Gigacore (35mm)</option>
-            <option value="luminode" selected>Luminode (22mm)</option>
+            <option value="gigacore">Gigacore 16 (30mm)</option>
+            <option value="luminode12" selected>Luminode 12 (28mm)</option>
+            <option value="luminode4">Luminode 4 (28mm)</option>
+            <option value="dmx8">DMX8 (24.13mm)</option>
             <option value="custom">Custom</option>
           </select>
         </div>
@@ -432,9 +435,11 @@ function updatePrintCss() {
 }
 
 var DEVICE_TYPES = {
-  gigacore: { label: 'Gigacore', pitch: 35 },
-  luminode:  { label: 'Luminode',  pitch: 22 },
-  custom:    { label: 'Custom',    pitch: 25 }
+  gigacore:   { label: 'Gigacore 16',  pitch: 30 },
+  luminode12: { label: 'Luminode 12',  pitch: 28 },
+  luminode4:  { label: 'Luminode 4',   pitch: 28 },
+  dmx8:       { label: 'DMX8',         pitch: 24.13 },
+  custom:     { label: 'Custom',       pitch: 25 }
 };
 
 function getPitch(dtype) {
@@ -449,7 +454,7 @@ function onDeviceTypeChange() {
   var dtype = document.getElementById('deviceType').value;
   document.getElementById('customPitchWrap').style.display = dtype === 'custom' ? 'flex' : 'none';
   // Update placeholder
-  var ph = { gigacore:'e.g. Gigacore 16', luminode:'e.g. Luminode #1', custom:'e.g. Switch #1' };
+  var ph = { gigacore:'e.g. Gigacore 16 #1', luminode12:'e.g. Luminode 12 #1', luminode4:'e.g. Luminode 4 #1', dmx8:'e.g. DMX8 #1', custom:'e.g. Switch #1' };
   document.getElementById('defaultDevice').placeholder = ph[dtype] || 'Device name';
   renderAll();
 }
@@ -461,7 +466,7 @@ function makeStrip(portCount, device, dtype, pitch) {
   for (var i = 1; i <= portCount; i++) {
     ports.push({ line1: '', line2: '' });
   }
-  dtype = dtype || 'luminode';
+  dtype = dtype || 'luminode12';
   pitch = pitch || getPitch(dtype);
   return { id: nextId++, device: device || '', ports: ports, open: true, dtype: dtype, pitch: pitch };
 }
@@ -578,7 +583,7 @@ function renderPreview() {
   }
   area.innerHTML = strips.map(function(strip, si) {
     var deviceLabel = strip.device || ('Strip ' + (si+1));
-    var pitch = strip.pitch || getPitch(strip.dtype || 'luminode');
+    var pitch = strip.pitch || getPitch(strip.dtype || 'luminode12');
     var dpi = getPrinterDpi();
     var tw  = getTapeWidthMm();
     // Screen preview: convert mm to px at selected DPI
