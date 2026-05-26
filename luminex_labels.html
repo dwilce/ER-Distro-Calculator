@@ -192,8 +192,17 @@ main {
   padding: 40px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 24px;
+  min-width: 0;
+}
+
+#previewArea {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: flex-start;
+  min-width: max-content;
 }
 
 .preview-label {
