@@ -273,6 +273,8 @@ main {
 .tape-port-line1.empty { color: #ccc; }
 
 /* ── PRINT STYLES ─────────────────────────────────────────── */
+#printStyle { }  /* dynamic - written by JS */
+
 @media print {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
@@ -294,23 +296,18 @@ main {
   }
 
   .tape {
-    height: 12mm;
     box-shadow: none;
-    border: 0.3mm solid #888;
+    border: 0.3mm solid #555;
   }
-
-  /* Port width set inline per strip pitch */
-  .tape-port { height: 12mm; }
-  .tape-port-num { font-size: 4pt; }
-  .tape-port-line1 { font-size: 5pt; }
-  .tape-port-line2 { font-size: 4pt; }
+  /* tape height, port height, font sizes set dynamically via #printStyle */
 
   @page {
     size: auto;
-    margin: 3mm;
+    margin: 2mm 3mm;
   }
 }
 </style>
+<style id="printStyle"></style>
 </head>
 <body>
 
@@ -359,13 +356,41 @@ main {
           <input class="config-input" id="defaultDevice" placeholder="e.g. Luminode #1" oninput="renderAll()">
         </div>
       </div>
+      <div class="config-row" style="margin-top:8px">
+        <div class="config-item">
+          <div class="config-label">Tape Width</div>
+          <select class="config-select" id="tapeWidth" onchange="updatePrintCss()">
+            <option value="6">6mm</option>
+            <option value="9">9mm</option>
+            <option value="12" selected>12mm</option>
+            <option value="18">18mm</option>
+            <option value="24">24mm</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <div class="config-label">Printer DPI</div>
+          <select class="config-select" id="printerDpi" onchange="renderAll()">
+            <option value="180" selected>180 dpi (PT-P710BT)</option>
+            <option value="360">360 dpi (PT-P950NW)</option>
+            <option value="96">96 dpi (screen / test)</option>
+          </select>
+        </div>
+      </div>
       <button class="add-strip-btn" onclick="addStrip()">&#43; Add Strip</button>
     </div>
     <div id="stripList"></div>
   </div>
 
   <div id="preview">
-    <div class="preview-label">&#9632; Live Preview — 12mm Tape</div>
+    <div class="preview-label" id="prevLabel">&#9632; Live Preview — 12mm tape @ 180 dpi</div>
+    <div id="printGuide" style="background:#1a2235;border:1px solid #263045;border-radius:6px;padding:10px 14px;margin-bottom:8px;max-width:600px;font-size:11px;line-height:1.6;color:#8899aa">
+      <strong style="color:#00d4ff;letter-spacing:1px;font-size:10px">PRINT SETUP (one-time)</strong><br>
+      1. Open <strong style="color:#e8edf5">Devices &amp; Printers</strong> → right-click your P-touch → <strong style="color:#e8edf5">Printing preferences</strong><br>
+      2. Set paper size to match your tape width (e.g. <strong style="color:#e8edf5">12mm</strong>), length = <strong style="color:#e8edf5">Auto</strong><br>
+      3. When printing: select your P-touch, set <strong style="color:#e8edf5">Margins → None</strong>, enable <strong style="color:#e8edf5">Background graphics</strong><br>
+      4. Match the <strong style="color:#00d4ff">Tape Width</strong> and <strong style="color:#00d4ff">Printer DPI</strong> selectors to your printer<br>
+      <span style="color:#6b7a92;font-size:10px">PT-P710BT = 180dpi · PT-P950NW = 360dpi · PT-P900W = 360dpi · PT-D600 = 180dpi</span>
+    </div>
     <div id="previewArea"></div>
   </div>
 </main>
@@ -373,6 +398,38 @@ main {
 <script>
 var strips = [];
 var nextId = 1;
+
+// ── pt conversion helpers ──────────────────────────────────────
+// 1pt = 1/72 inch
+function mmToPt(mm) { return mm * 72 / 25.4; }
+function mmToPx(mm, dpi) { return mm * dpi / 25.4; }
+
+function getTapeWidthMm() { return parseFloat(document.getElementById('tapeWidth').value) || 12; }
+function getPrinterDpi()  { return parseFloat(document.getElementById('printerDpi').value) || 180; }
+
+function updatePrintCss() {
+  var tw = getTapeWidthMm();
+  var twPt = mmToPt(tw).toFixed(2);
+  // Font scale: proportional to tape width
+  var f1pt = (tw * 0.55).toFixed(1);  // ~6.6pt on 12mm
+  var f2pt = (tw * 0.38).toFixed(1);  // ~4.6pt on 12mm
+  var fnPt = (tw * 0.28).toFixed(1);  // port number
+  var style = document.getElementById('printStyle');
+  if (style) {
+    style.textContent =
+      '@media print {' +
+      '  .tape { height:' + twPt + 'pt !important; }' +
+      '  .tape-port { height:' + twPt + 'pt !important; }' +
+      '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
+      '  .tape-port-line1 { font-size:' + f1pt + 'pt !important; }' +
+      '  .tape-port-line2 { font-size:' + f2pt + 'pt !important; }' +
+      '  .tape-device-name { display:none !important; }' +
+      '}';
+  }
+  // Update preview label
+  var lbl = document.querySelector('.preview-label');
+  if (lbl) lbl.textContent = '▪ Live Preview — ' + tw + 'mm tape @ ' + getPrinterDpi() + ' dpi';
+}
 
 var DEVICE_TYPES = {
   gigacore: { label: 'Gigacore', pitch: 35 },
@@ -522,14 +579,18 @@ function renderPreview() {
   area.innerHTML = strips.map(function(strip, si) {
     var deviceLabel = strip.device || ('Strip ' + (si+1));
     var pitch = strip.pitch || getPitch(strip.dtype || 'luminode');
-    var pxW = Math.round(pitch * 3.7795);
-    // Font size scales with pitch
-    var fs1 = Math.max(9, Math.min(14, Math.round(pitch * 0.40))) + 'px';
-    var fs2 = Math.max(7, Math.min(11, Math.round(pitch * 0.30))) + 'px';
+    var dpi = getPrinterDpi();
+    var tw  = getTapeWidthMm();
+    // Screen preview: convert mm to px at selected DPI
+    var pxW  = Math.round(mmToPx(pitch, dpi));
+    var pxH  = Math.round(mmToPx(tw, dpi));
+    // Font sizes in px for preview, pts for print (handled via updatePrintCss)
+    var fs1 = Math.max(8, Math.round(tw * 0.55 * dpi / 72)) + 'px';
+    var fs2 = Math.max(6, Math.round(tw * 0.38 * dpi / 72)) + 'px';
     var portBoxes = strip.ports.map(function(port, pi) {
       var l1 = port.line1 || '';
       var l2 = port.line2 || '';
-      return '<div class="tape-port" style="width:' + pxW + 'px;min-width:' + pxW + 'px">' +
+      return '<div class="tape-port" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
         '<div class="tape-port-num">' + (pi+1) + '</div>' +
         '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1 + '">' + esc(l1||'·') + '</div>' +
         (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2 + '">' + esc(l2) + '</div>' : '') +
@@ -537,7 +598,7 @@ function renderPreview() {
     }).join('');
     return '<div class="tape-wrap">' +
       '<div class="tape-device-name">' + esc(deviceLabel) + ' — ' + strip.ports.length + ' ports</div>' +
-      '<div class="tape">' +
+      '<div class="tape" style="height:' + pxH + 'px">' +
         '<div class="tape-ports">' + portBoxes + '</div>' +
       '</div>' +
     '</div>';
@@ -596,6 +657,7 @@ if (!strips.length) {
 }
 renderEditor();
 renderPreview();
+updatePrintCss();
 </script>
 </body>
 </html>
