@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Port Labels — ER Productions</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+/* System fonts only - no external dependencies */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,7 +23,7 @@
 }
 
 body {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: 'Arial Narrow', 'Arial', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -65,7 +65,7 @@ header {
 .btn {
   padding: 7px 16px; border-radius: 4px; font-size: 12px;
   font-weight: 700; letter-spacing: .5px; cursor: pointer;
-  border: 1px solid transparent; font-family: 'Barlow Condensed', sans-serif;
+  border: 1px solid transparent; font-family: 'Arial Narrow', 'Arial', sans-serif;
   text-transform: uppercase; transition: all .15s;
 }
 .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
@@ -115,7 +115,7 @@ main {
 .config-select, .config-input {
   background: var(--card); border: 1px solid var(--border);
   color: var(--text); padding: 6px 8px; border-radius: 4px;
-  font-size: 12px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; font-family: 'Arial Narrow', 'Arial', sans-serif;
   font-weight: 600; width: 100%;
 }
 .config-select:focus, .config-input:focus {
@@ -126,7 +126,7 @@ main {
   width: 100%; margin-top: 10px; padding: 8px;
   background: transparent; border: 1px dashed var(--border);
   color: var(--muted); border-radius: 4px; cursor: pointer;
-  font-size: 12px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; font-family: 'Arial Narrow', 'Arial', sans-serif;
   font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   transition: all .15s;
 }
@@ -152,11 +152,11 @@ main {
   width: 20px; height: 20px; border-radius: 50%;
   background: var(--accent); color: #000; font-size: 10px;
   font-weight: 800; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0; font-family: 'Consolas', 'Courier New', monospace;
 }
 .strip-name-input {
   flex: 1; background: transparent; border: none; color: var(--text);
-  font-size: 13px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700; font-family: 'Arial Narrow', 'Arial', sans-serif;
   letter-spacing: .5px;
 }
 .strip-name-input:focus { outline: none; }
@@ -171,14 +171,14 @@ main {
   gap: 4px; align-items: center;
 }
 .port-num {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
   font-size: 9px; font-weight: 700; color: var(--accent);
   text-align: center;
 }
 .port-inp {
   background: var(--bg); border: 1px solid var(--border);
   color: var(--text); padding: 3px 6px; border-radius: 3px;
-  font-size: 11px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-family: 'Arial Narrow', 'Arial', sans-serif;
   font-weight: 600; width: 100%; transition: border-color .1s;
 }
 .port-inp:focus { outline: none; border-color: var(--accent); background: #0d1525; }
@@ -206,7 +206,7 @@ main {
 }
 
 .preview-label {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: 'Arial Narrow', 'Arial', sans-serif;
   font-size: 11px; color: var(--muted); letter-spacing: 2px;
   text-transform: uppercase; align-self: flex-start;
 }
@@ -215,15 +215,14 @@ main {
 .tape-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .tape-device-name {
   font-size: 10px; color: #ccc; letter-spacing: 1px;
-  font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  font-family: 'Consolas', 'Courier New', monospace; font-weight: 700;
 }
 
 .tape {
-  background: white;
+  background: #ffffff;
   display: flex;
   flex-direction: row;
-  border: 1px solid #ccc;
-  /* 12mm tape height — approx 45px at 96dpi */
+  border: 0.5px solid #999;
   height: 45px;
   position: relative;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
@@ -248,27 +247,29 @@ main {
 .tape-port:last-child { border-right: none; }
 
 .tape-port-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 5px; font-weight: 800; color: #bbb;
+  font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-size: 5px; font-weight: 700; color: #aaa;
   position: absolute; top: 1px; right: 2px; line-height: 1;
 }
 
 .tape-port-line1 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; font-weight: 800; color: #111;
-  text-align: center; line-height: 1.15;
-  width: 100%; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-  padding: 0 2px;
-  margin-top: 2px;
-}
-.tape-port-line2 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 7px; font-weight: 500; color: #444;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 9px; font-weight: 700; color: #000;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
-  padding: 0 2px;
+  padding: 0 1px;
+  margin-top: 2px;
+  letter-spacing: -0.3px;
+}
+.tape-port-line2 {
+  font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-size: 7px; font-weight: 400; color: #222;
+  text-align: center; line-height: 1.1;
+  width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 1px;
+  letter-spacing: -0.2px;
 }
 .tape-port-line1.empty { color: #ccc; }
 
@@ -332,31 +333,30 @@ main {
       <h2>Strip Configuration</h2>
       <div class="config-row">
         <div class="config-item">
-          <div class="config-label">Port Count</div>
-          <select class="config-select" id="portCount" onchange="renderAll()">
-            <option value="1">1 Port</option>
-            <option value="4">4 Ports</option>
-            <option value="8">8 Ports</option>
-            <option value="10" selected>10 Ports</option>
-          </select>
-        </div>
-        <div class="config-item">
           <div class="config-label">Device Type</div>
           <select class="config-select" id="deviceType" onchange="onDeviceTypeChange()">
-            <option value="gigacore">Gigacore 16 (30mm)</option>
-            <option value="luminode12" selected>Luminode 12 (25mm)</option>
-            <option value="luminode4">Luminode 4 (31.75mm)</option>
-            <option value="dmx8">DMX8 (24.13mm)</option>
+            <option value="gigacore">Gigacore 16 (30mm · 10 ports)</option>
+            <option value="luminode12" selected>Luminode 12 (25mm · 12 ports)</option>
+            <option value="luminode4">Luminode 4 (31.75mm · 4 ports)</option>
+            <option value="dmx8">DMX8 (24.13mm · 8 ports)</option>
             <option value="custom">Custom</option>
           </select>
+        </div>
+        <div class="config-item" id="portCountDisplay">
+          <div class="config-label">Ports (auto)</div>
+          <input class="config-input" id="portCount" value="12" readonly style="opacity:0.5;background:#0d1525">
         </div>
         <div class="config-item" id="customPitchWrap" style="display:none">
           <div class="config-label">Pitch (mm)</div>
           <input class="config-input" id="customPitch" type="number" value="25" min="10" max="60" oninput="renderAll()">
         </div>
+        <div class="config-item" id="customPortWrap" style="display:none">
+          <div class="config-label">Port Count</div>
+          <input class="config-input" id="customPortCount" type="number" value="8" min="1" max="32" oninput="renderAll()">
+        </div>
         <div class="config-item">
           <div class="config-label">Device Name</div>
-          <input class="config-input" id="defaultDevice" placeholder="e.g. Luminode #1" oninput="renderAll()">
+          <input class="config-input" id="defaultDevice" placeholder="e.g. Luminode 12 #1" oninput="renderAll()">
         </div>
       </div>
       <div class="config-row" style="margin-top:8px">
@@ -413,10 +413,16 @@ function getPrinterDpi()  { return parseFloat(document.getElementById('printerDp
 function updatePrintCss() {
   var tw = getTapeWidthMm();
   var twPt = mmToPt(tw).toFixed(2);
-  // Font scale: proportional to tape width
-  var f1pt = (tw * 0.55).toFixed(1);  // ~6.6pt on 12mm
-  var f2pt = (tw * 0.38).toFixed(1);  // ~4.6pt on 12mm
-  var fnPt = (tw * 0.28).toFixed(1);  // port number
+
+  // For print, calculate per-strip in pt based on pitch of first strip (or default)
+  // Use a representative pitch - will be overridden inline anyway
+  var pitchPt = mmToPt(25); // default fallback
+  var maxByH  = tw * 0.46 * 72 / 25.4;
+  var maxByW  = pitchPt * 0.85 / 6.0;
+  var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
+  var f2pt    = (parseFloat(f1pt) * 0.72).toFixed(1);
+  var fnPt    = (parseFloat(f1pt) * 0.42).toFixed(1);
+
   var style = document.getElementById('printStyle');
   if (style) {
     style.textContent =
@@ -426,20 +432,20 @@ function updatePrintCss() {
       '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
       '  .tape-port-line1 { font-size:' + f1pt + 'pt !important; }' +
       '  .tape-port-line2 { font-size:' + f2pt + 'pt !important; }' +
-      '  .tape-device-name { display:none !important; }' +
+      '  .tape-device-name,.no-print { display:none !important; }' +
+      '  .tape-port-line1,.tape-port-line2 { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-0.3px; }  .tape-port-line1 { font-family:Consolas,\"Courier New\",monospace !important; font-weight:700 !important; color:#000 !important; }  .tape-port-line2 { font-family:\"Arial Narrow\",Arial,sans-serif !important; color:#111 !important; }  .tape { border:0.3mm solid #000 !important; box-shadow:none !important; background:#fff !important; }  .tape-port { border-right:0.2mm solid #888 !important; }' +
       '}';
   }
-  // Update preview label
   var lbl = document.querySelector('.preview-label');
-  if (lbl) lbl.textContent = '▪ Live Preview — ' + tw + 'mm tape @ ' + getPrinterDpi() + ' dpi';
+  if (lbl) lbl.textContent = '\u25aa Live Preview \u2014 ' + tw + 'mm tape @ ' + getPrinterDpi() + ' dpi';
 }
 
 var DEVICE_TYPES = {
-  gigacore:   { label: 'Gigacore 16',  pitch: 30 },
-  luminode12: { label: 'Luminode 12',  pitch: 25 },
-  luminode4:  { label: 'Luminode 4',   pitch: 31.75 },
-  dmx8:       { label: 'DMX8',         pitch: 24.13 },
-  custom:     { label: 'Custom',       pitch: 25 }
+  gigacore:   { label: 'Gigacore 16',  pitch: 30,    ports: 10 },
+  luminode12: { label: 'Luminode 12',  pitch: 25,    ports: 12 },
+  luminode4:  { label: 'Luminode 4',   pitch: 31.75, ports: 4  },
+  dmx8:       { label: 'DMX8',         pitch: 24.13, ports: 8  },
+  custom:     { label: 'Custom',       pitch: 25,    ports: 8  }
 };
 
 function getPitch(dtype) {
@@ -453,6 +459,16 @@ function getPitch(dtype) {
 function onDeviceTypeChange() {
   var dtype = document.getElementById('deviceType').value;
   document.getElementById('customPitchWrap').style.display = dtype === 'custom' ? 'flex' : 'none';
+  document.getElementById('customPortWrap').style.display  = dtype === 'custom' ? 'flex' : 'none';
+  // Auto-set port count for known types
+  var portDisp = document.getElementById('portCount');
+  var portCountDisp = document.getElementById('portCountDisplay');
+  if (dtype !== 'custom' && DEVICE_TYPES[dtype]) {
+    if (portDisp) { portDisp.value = DEVICE_TYPES[dtype].ports; portDisp.readOnly = true; portDisp.style.opacity='0.5'; }
+    if (portCountDisp) portCountDisp.style.display = 'flex';
+  } else {
+    if (portDisp) { portCountDisp.style.display = 'none'; }
+  }
   // Update placeholder
   var ph = { gigacore:'e.g. Gigacore 16 #1', luminode12:'e.g. Luminode 12 #1', luminode4:'e.g. Luminode 4 #1', dmx8:'e.g. DMX8 #1', custom:'e.g. Switch #1' };
   document.getElementById('defaultDevice').placeholder = ph[dtype] || 'Device name';
@@ -472,7 +488,8 @@ function makeStrip(portCount, device, dtype, pitch) {
 }
 
 function addStrip() {
-  var count   = parseInt(document.getElementById('portCount').value);
+  var dtype2  = document.getElementById('deviceType').value;
+  var count   = dtype2 === 'custom' ? (parseInt(document.getElementById('customPortCount').value)||8) : (DEVICE_TYPES[dtype2] ? DEVICE_TYPES[dtype2].ports : 8);
   var device  = document.getElementById('defaultDevice').value;
   var dtype   = document.getElementById('deviceType').value;
   var pitch   = getPitch(dtype);
@@ -589,16 +606,25 @@ function renderPreview() {
     // Screen preview: convert mm to px at selected DPI
     var pxW  = Math.round(mmToPx(pitch, dpi));
     var pxH  = Math.round(mmToPx(tw, dpi));
-    // Font sizes in px for preview, pts for print (handled via updatePrintCss)
-    var fs1 = Math.max(8, Math.round(tw * 0.55 * dpi / 72)) + 'px';
-    var fs2 = Math.max(6, Math.round(tw * 0.38 * dpi / 72)) + 'px';
+
+    // Font size constrained by BOTH width (pitch) and height (tape width)
+    // Consolas chars are approx 0.6em wide (monospace)
+    // Height: line1 gets ~48% of tape height, leave ~15% for port num, ~35% for line2
+    var maxByH  = Math.floor(pxH * 0.46);
+    var maxByW  = Math.floor(pxW * 0.85 / 6.0); // Consolas ~6px per char at 1px size
+    var fs1px   = Math.max(7, Math.min(maxByH, maxByW));
+    var fs2px   = Math.max(5, Math.round(fs1px * 0.72));
+    var fsNumPx = Math.max(4, Math.round(fs1px * 0.42));
+    var fs1 = fs1px + 'px';
+    var fs2 = fs2px + 'px';
+    var fsNum = fsNumPx + 'px';
     var portBoxes = strip.ports.map(function(port, pi) {
       var l1 = port.line1 || '';
       var l2 = port.line2 || '';
       return '<div class="tape-port" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
-        '<div class="tape-port-num">' + (pi+1) + '</div>' +
-        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1 + '">' + esc(l1||'·') + '</div>' +
-        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2 + '">' + esc(l2) + '</div>' : '') +
+        '<div class="tape-port-num" style="font-size:' + fsNum + '">' + (pi+1) + '</div>' +
+        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1 + ';max-width:' + (pxW-2) + 'px">' + esc(l1||'·') + '</div>' +
+        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2 + ';max-width:' + (pxW-2) + 'px">' + esc(l2) + '</div>' : '') +
       '</div>';
     }).join('');
     return '<div class="tape-wrap">' +
