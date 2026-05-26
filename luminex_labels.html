@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Port Labels — ER Productions</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0e1a;
+  --surface: #111827;
+  --card: #1a2235;
+  --border: #263045;
+  --accent: #00d4ff;
+  --accent2: #ff6b35;
+  --text: #e8edf5;
+  --muted: #6b7a92;
+  --green: #00e676;
+  --navy: #0d2137;
+}
+
+body {
+  font-family: 'Barlow Condensed', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ───────────────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.brand-name {
+  font-size: 15px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text);
+}
+.brand-sub { font-size: 10px; color: var(--muted); letter-spacing: 3px; }
+
+.top-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn {
+  padding: 7px 16px; border-radius: 4px; font-size: 12px;
+  font-weight: 700; letter-spacing: .5px; cursor: pointer;
+  border: 1px solid transparent; font-family: 'Barlow Condensed', sans-serif;
+  text-transform: uppercase; transition: all .15s;
+}
+.btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+.btn-primary:hover { background: #00b8d9; }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger { background: transparent; color: #ff4444; border-color: #ff4444; }
+.btn-danger:hover { background: #ff4444; color: white; }
+
+/* ── MAIN LAYOUT ──────────────────────────────────────────── */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  overflow: hidden;
+  height: calc(100vh - 56px);
+}
+
+/* ── EDITOR PANEL ─────────────────────────────────────────── */
+#editor {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ed-hdr {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ed-hdr h2 {
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+}
+
+.config-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+
+.config-item { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 70px; }
+.config-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+}
+.config-select, .config-input {
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 8px; border-radius: 4px;
+  font-size: 12px; font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; width: 100%;
+}
+.config-select:focus, .config-input:focus {
+  outline: none; border-color: var(--accent);
+}
+
+.add-strip-btn {
+  width: 100%; margin-top: 10px; padding: 8px;
+  background: transparent; border: 1px dashed var(--border);
+  color: var(--muted); border-radius: 4px; cursor: pointer;
+  font-size: 12px; font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  transition: all .15s;
+}
+.add-strip-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Strip list */
+#stripList {
+  flex: 1; overflow-y: auto; padding: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.strip-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden;
+}
+.strip-card-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: rgba(0,212,255,.06);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.strip-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: #000; font-size: 10px;
+  font-weight: 800; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-family: 'JetBrains Mono', monospace;
+}
+.strip-name-input {
+  flex: 1; background: transparent; border: none; color: var(--text);
+  font-size: 13px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: .5px;
+}
+.strip-name-input:focus { outline: none; }
+.strip-name-input::placeholder { color: var(--muted); font-weight: 400; }
+.strip-del { padding: 2px 6px; border-radius: 3px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; }
+.strip-del:hover { color: #ff4444; }
+.strip-toggle { font-size: 11px; color: var(--muted); }
+
+.strip-ports { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.port-row {
+  display: grid; grid-template-columns: 22px 1fr 1fr;
+  gap: 4px; align-items: center;
+}
+.port-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 700; color: var(--accent);
+  text-align: center;
+}
+.port-inp {
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: 3px 6px; border-radius: 3px;
+  font-size: 11px; font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; width: 100%; transition: border-color .1s;
+}
+.port-inp:focus { outline: none; border-color: var(--accent); background: #0d1525; }
+.port-inp::placeholder { color: #3a4a60; font-weight: 400; }
+.port-inp.line2 { font-size: 10px; color: var(--muted); }
+
+/* ── PREVIEW PANEL ────────────────────────────────────────── */
+#preview {
+  background: #888;
+  overflow: auto;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.preview-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; color: var(--muted); letter-spacing: 2px;
+  text-transform: uppercase; align-self: flex-start;
+}
+
+/* ── TAPE STRIP ───────────────────────────────────────────── */
+.tape-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.tape-device-name {
+  font-size: 10px; color: #ccc; letter-spacing: 1px;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700;
+}
+
+.tape {
+  background: white;
+  display: flex;
+  flex-direction: row;
+  border: 1px solid #ccc;
+  /* 12mm tape height — approx 45px at 96dpi */
+  height: 45px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+
+/* Left device label section */
+.tape-device {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a2235;
+  color: white;
+  min-width: 28px;
+  padding: 0 4px;
+  flex-shrink: 0;
+  border-right: 1.5px solid #333;
+}
+.tape-device-txt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px; font-weight: 800;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  max-height: 40px;
+}
+
+/* Port boxes */
+.tape-ports { display: flex; flex-direction: row; }
+
+.tape-port {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Width matches EtherCon socket face: ~12mm = 45px */
+  width: 45px;
+  height: 45px;
+  border-right: 0.8px solid #ddd;
+  padding: 2px 1px;
+  position: relative;
+  flex-shrink: 0;
+}
+.tape-port:last-child { border-right: none; }
+
+.tape-port-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6px; font-weight: 800; color: #999;
+  position: absolute; top: 2px; right: 3px; line-height: 1;
+}
+
+.tape-port-line1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7.5px; font-weight: 800; color: #111;
+  text-align: center; line-height: 1.1;
+  width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 2px;
+}
+.tape-port-line2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6px; font-weight: 400; color: #555;
+  text-align: center; line-height: 1.1;
+  width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 2px;
+}
+.tape-port-line1.empty { color: #ccc; }
+
+/* ── PRINT STYLES ─────────────────────────────────────────── */
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body { background: white; }
+  header, #editor, .preview-label, .tape-device-name { display: none !important; }
+
+  #preview {
+    background: white;
+    padding: 0;
+    overflow: visible;
+    display: block;
+    height: auto;
+  }
+  main { display: block; height: auto; overflow: visible; }
+
+  .tape-wrap {
+    page-break-inside: avoid;
+    margin-bottom: 4mm;
+  }
+
+  .tape {
+    height: 12mm;
+    box-shadow: none;
+    border: 0.3mm solid #888;
+  }
+
+  .tape-device { min-width: 8mm; }
+  /* Port width set inline per strip pitch */
+  .tape-port { height: 12mm; }
+  .tape-port-num { font-size: 4pt; }
+  .tape-port-line1 { font-size: 5pt; }
+  .tape-port-line2 { font-size: 4pt; }
+
+  @page {
+    size: auto;
+    margin: 3mm;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <div>
+      <div class="brand-name">Port Labels</div>
+      <div class="brand-sub">ER Productions · PT-P710BT · 12mm Tape</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="btn btn-ghost" onclick="clearAll()">&#128465; Clear All</button>
+    <button class="btn btn-primary" onclick="window.print()">&#128424; Print</button>
+    <button class="btn btn-ghost" onclick="window.close()">&#10005; Close</button>
+  </div>
+</header>
+
+<main>
+  <div id="editor">
+    <div class="ed-hdr">
+      <h2>Strip Configuration</h2>
+      <div class="config-row">
+        <div class="config-item">
+          <div class="config-label">Port Count</div>
+          <select class="config-select" id="portCount" onchange="renderAll()">
+            <option value="8">8 Ports</option>
+            <option value="10">10 Ports</option>
+            <option value="12" selected>12 Ports</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <div class="config-label">Device Type</div>
+          <select class="config-select" id="deviceType" onchange="onDeviceTypeChange()">
+            <option value="gigacore">Gigacore (35mm)</option>
+            <option value="luminode" selected>Luminode (22mm)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="config-item" id="customPitchWrap" style="display:none">
+          <div class="config-label">Pitch (mm)</div>
+          <input class="config-input" id="customPitch" type="number" value="25" min="10" max="60" oninput="renderAll()">
+        </div>
+        <div class="config-item">
+          <div class="config-label">Device Name</div>
+          <input class="config-input" id="defaultDevice" placeholder="e.g. Luminode #1" oninput="renderAll()">
+        </div>
+      </div>
+      <button class="add-strip-btn" onclick="addStrip()">&#43; Add Strip</button>
+    </div>
+    <div id="stripList"></div>
+  </div>
+
+  <div id="preview">
+    <div class="preview-label">&#9632; Live Preview — 12mm Tape</div>
+    <div id="previewArea"></div>
+  </div>
+</main>
+
+<script>
+var strips = [];
+var nextId = 1;
+
+var DEVICE_TYPES = {
+  gigacore: { label: 'Gigacore', pitch: 35 },
+  luminode:  { label: 'Luminode',  pitch: 22 },
+  custom:    { label: 'Custom',    pitch: 25 }
+};
+
+function getPitch(dtype) {
+  if (dtype === 'custom') {
+    var v = parseInt(document.getElementById('customPitch').value);
+    return isNaN(v) ? 25 : v;
+  }
+  return (DEVICE_TYPES[dtype] || DEVICE_TYPES.luminode).pitch;
+}
+
+function onDeviceTypeChange() {
+  var dtype = document.getElementById('deviceType').value;
+  document.getElementById('customPitchWrap').style.display = dtype === 'custom' ? 'flex' : 'none';
+  // Update placeholder
+  var ph = { gigacore:'e.g. Gigacore 16', luminode:'e.g. Luminode #1', custom:'e.g. Switch #1' };
+  document.getElementById('defaultDevice').placeholder = ph[dtype] || 'Device name';
+  renderAll();
+}
+
+function renderAll() { renderEditor(); renderPreview(); }
+
+function makeStrip(portCount, device, dtype, pitch) {
+  var ports = [];
+  for (var i = 1; i <= portCount; i++) {
+    ports.push({ line1: '', line2: '' });
+  }
+  dtype = dtype || 'luminode';
+  pitch = pitch || getPitch(dtype);
+  return { id: nextId++, device: device || '', ports: ports, open: true, dtype: dtype, pitch: pitch };
+}
+
+function addStrip() {
+  var count   = parseInt(document.getElementById('portCount').value);
+  var device  = document.getElementById('defaultDevice').value;
+  var dtype   = document.getElementById('deviceType').value;
+  var pitch   = getPitch(dtype);
+  strips.push(makeStrip(count, device, dtype, pitch));
+  renderEditor();
+  renderPreview();
+  save();
+}
+
+function updateStripType(id, dtype) {
+  var s = strips.find(function(x){ return x.id === id; });
+  if (!s) return;
+  s.dtype = dtype;
+  s.pitch = getPitch(dtype);
+  renderPreview();
+  save();
+}
+
+function deleteStrip(id) {
+  strips = strips.filter(function(s){ return s.id !== id; });
+  renderEditor();
+  renderPreview();
+  save();
+}
+
+function toggleStrip(id) {
+  var s = strips.find(function(x){ return x.id === id; });
+  if (s) s.open = !s.open;
+  renderEditor();
+}
+
+function updateStrip(id, field, val) {
+  var s = strips.find(function(x){ return x.id === id; });
+  if (!s) return;
+  s[field] = val;
+  renderPreview();
+  save();
+}
+
+function updatePort(stripId, portIdx, line, val) {
+  var s = strips.find(function(x){ return x.id === stripId; });
+  if (!s) return;
+  s.ports[portIdx][line] = val;
+  renderPreview();
+  save();
+}
+
+function clearAll() {
+  if (confirm('Clear all strips?')) {
+    strips = [];
+    renderEditor();
+    renderPreview();
+    save();
+  }
+}
+
+function renderEditor() {
+  var list = document.getElementById('stripList');
+  if (!strips.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:12px">No strips yet.<br>Click <strong>+ Add Strip</strong> above.</div>';
+    return;
+  }
+  list.innerHTML = strips.map(function(strip, si) {
+    var portRows = strip.ports.map(function(port, pi) {
+      return '<div class="port-row">' +
+        '<div class="port-num">' + (pi+1) + '</div>' +
+        '<input class="port-inp" placeholder="Line 1" value="' + esc(port.line1) + '" ' +
+          'oninput="updatePort(' + strip.id + ',' + pi + ',\'line1\',this.value)" ' +
+          'onkeydown="portNav(event,' + strip.id + ',' + pi + ',\'line1\')">' +
+        '<input class="port-inp line2" placeholder="e.g. IP / note" value="' + esc(port.line2) + '" ' +
+          'oninput="updatePort(' + strip.id + ',' + pi + ',\'line2\',this.value)" ' +
+          'onkeydown="portNav(event,' + strip.id + ',' + pi + ',\'line2\')">' +
+        '</div>';
+    }).join('');
+    return '<div class="strip-card">' +
+      '<div class="strip-card-hdr" onclick="toggleStrip(' + strip.id + ')">' +
+        '<div class="strip-num">' + (si+1) + '</div>' +
+        '<input class="strip-name-input" placeholder="Device name (e.g. Luminex 16XT #1)" value="' + esc(strip.device) + '" ' +
+          'onclick="event.stopPropagation()" oninput="updateStrip(' + strip.id + ',\'device\',this.value)">' +
+        '<span class="strip-toggle">' + (strip.open ? '▲' : '▼') + '</span>' +
+        '<button class="strip-del" onclick="event.stopPropagation();deleteStrip(' + strip.id + ')">✕</button>' +
+      '</div>' +
+      (strip.open ? '<div class="strip-ports">' + portRows + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function renderPreview() {
+  var area = document.getElementById('previewArea');
+  if (!strips.length) {
+    area.innerHTML = '<div style="color:#888;font-size:13px;text-align:center;margin-top:60px">Add a strip to see the preview</div>';
+    return;
+  }
+  area.innerHTML = strips.map(function(strip, si) {
+    var deviceLabel = strip.device || ('Strip ' + (si+1));
+    var pitch = strip.pitch || getPitch(strip.dtype || 'luminode');
+    var pxW = Math.round(pitch * 3.7795);
+    // Font size scales with pitch
+    var fs1 = Math.max(6, Math.min(10, Math.round(pitch * 0.26))) + 'px';
+    var fs2 = Math.max(5, Math.min(8,  Math.round(pitch * 0.20))) + 'px';
+    var portBoxes = strip.ports.map(function(port, pi) {
+      var l1 = port.line1 || '';
+      var l2 = port.line2 || '';
+      return '<div class="tape-port" style="width:' + pxW + 'px;min-width:' + pxW + 'px">' +
+        '<div class="tape-port-num">' + (pi+1) + '</div>' +
+        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1 + '">' + esc(l1||'·') + '</div>' +
+        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2 + '">' + esc(l2) + '</div>' : '') +
+      '</div>';
+    }).join('');
+    return '<div class="tape-wrap">' +
+      '<div class="tape-device-name">' + esc(deviceLabel) + ' — ' + strip.ports.length + ' ports</div>' +
+      '<div class="tape">' +
+        '<div class="tape-device"><div class="tape-device-txt">' + esc(deviceLabel) + '</div></div>' +
+        '<div class="tape-ports">' + portBoxes + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function portNav(e, stripId, portIdx, line) {
+  // Tab/Enter moves to next port line1
+  if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey && line === 'line2')) {
+    e.preventDefault();
+    var s = strips.find(function(x){ return x.id === stripId; });
+    if (!s) return;
+    var nextPortIdx = line === 'line1' ? portIdx : portIdx + 1;
+    var nextLine = line === 'line1' ? 'line2' : 'line1';
+    if (nextPortIdx >= s.ports.length) return;
+    // Find the input
+    var rows = document.querySelectorAll('.strip-card .port-row');
+    // Calculate global port row index
+    var offset = 0;
+    for (var i = 0; i < strips.length; i++) {
+      if (strips[i].id === stripId) break;
+      offset += strips[i].ports.length;
+    }
+    var targetRow = rows[offset + nextPortIdx];
+    if (targetRow) {
+      var inputs = targetRow.querySelectorAll('.port-inp');
+      var targetInput = nextLine === 'line1' ? inputs[0] : inputs[1];
+      if (targetInput) targetInput.focus();
+    }
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function save() {
+  try { localStorage.setItem('er_portlabels', JSON.stringify(strips)); } catch(e){}
+  try { localStorage.setItem('er_portlabels_nextid', nextId); } catch(e){}
+}
+
+function load() {
+  try {
+    var d = localStorage.getItem('er_portlabels');
+    if (d) strips = JSON.parse(d);
+    var nid = localStorage.getItem('er_portlabels_nextid');
+    if (nid) nextId = parseInt(nid);
+  } catch(e) {}
+}
+
+// ── Init ──────────────────────────────────────────────────────
+load();
+if (!strips.length) {
+  // Start with one default strip
+  strips.push(makeStrip(12, 'Luminex 16XT #1'));
+}
+renderEditor();
+renderPreview();
+</script>
+</body>
+</html>
