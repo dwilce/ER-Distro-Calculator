@@ -220,31 +220,6 @@ main {
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
 }
 
-/* Left device label section */
-.tape-device {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #1a2235;
-  color: white;
-  min-width: 28px;
-  padding: 0 4px;
-  flex-shrink: 0;
-  border-right: 1.5px solid #333;
-}
-.tape-device-txt {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 7px; font-weight: 800;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-  letter-spacing: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  max-height: 40px;
-}
-
 /* Port boxes */
 .tape-ports { display: flex; flex-direction: row; }
 
@@ -265,21 +240,22 @@ main {
 
 .tape-port-num {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 6px; font-weight: 800; color: #999;
-  position: absolute; top: 2px; right: 3px; line-height: 1;
+  font-size: 5px; font-weight: 800; color: #bbb;
+  position: absolute; top: 1px; right: 2px; line-height: 1;
 }
 
 .tape-port-line1 {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 7.5px; font-weight: 800; color: #111;
-  text-align: center; line-height: 1.1;
+  font-size: 9px; font-weight: 800; color: #111;
+  text-align: center; line-height: 1.15;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 2px;
+  margin-top: 2px;
 }
 .tape-port-line2 {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 6px; font-weight: 400; color: #555;
+  font-size: 7px; font-weight: 500; color: #444;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
@@ -314,7 +290,6 @@ main {
     border: 0.3mm solid #888;
   }
 
-  .tape-device { min-width: 8mm; }
   /* Port width set inline per strip pitch */
   .tape-port { height: 12mm; }
   .tape-port-num { font-size: 4pt; }
@@ -525,8 +500,8 @@ function renderPreview() {
     var pitch = strip.pitch || getPitch(strip.dtype || 'luminode');
     var pxW = Math.round(pitch * 3.7795);
     // Font size scales with pitch
-    var fs1 = Math.max(6, Math.min(10, Math.round(pitch * 0.26))) + 'px';
-    var fs2 = Math.max(5, Math.min(8,  Math.round(pitch * 0.20))) + 'px';
+    var fs1 = Math.max(9, Math.min(14, Math.round(pitch * 0.40))) + 'px';
+    var fs2 = Math.max(7, Math.min(11, Math.round(pitch * 0.30))) + 'px';
     var portBoxes = strip.ports.map(function(port, pi) {
       var l1 = port.line1 || '';
       var l2 = port.line2 || '';
@@ -539,7 +514,6 @@ function renderPreview() {
     return '<div class="tape-wrap">' +
       '<div class="tape-device-name">' + esc(deviceLabel) + ' — ' + strip.ports.length + ' ports</div>' +
       '<div class="tape">' +
-        '<div class="tape-device"><div class="tape-device-txt">' + esc(deviceLabel) + '</div></div>' +
         '<div class="tape-ports">' + portBoxes + '</div>' +
       '</div>' +
     '</div>';

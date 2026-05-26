@@ -2118,19 +2118,27 @@ function closeUnitFields() {
 // ── SAVE / LOAD / SHARE ──────────────────────────────────────
 function getShowState() {
   return {
-    version: 1,
+    version: 2,
     activeSheet: activeSheet,
     region: region,
     bankColors: bankColors,
     limits: limits,
     distroData: distroData,
     logoDataURL: logoDataURL || null,
-    savedAt: new Date().toISOString()
+    savedAt: new Date().toISOString(),
+    designer: {
+      nodes: dd.nodes,
+      conns: dd.conns,
+      nextId: dd.nextId,
+      scale: dd.scale,
+      panX: dd.panX,
+      panY: dd.panY
+    }
   };
 }
 
 function applyShowState(state) {
-  if (!state || state.version !== 1) {
+  if (!state || (state.version !== 1 && state.version !== 2)) {
     alert('Invalid or incompatible save file.');
     return false;
   }
@@ -2150,12 +2158,28 @@ function applyShowState(state) {
       }
     }
   }
+  // Restore Distro Designer
+  if (state.designer) {
+    dd.nodes  = state.designer.nodes  || [];
+    dd.conns  = state.designer.conns  || [];
+    dd.nextId = state.designer.nextId || 1;
+    dd.scale  = state.designer.scale  || 1;
+    dd.panX   = state.designer.panX   || 0;
+    dd.panY   = state.designer.panY   || 0;
+    // Rebuild SHEETS from designer nodes
+    if (dd.nodes.length) ddSyncSheets();
+  }
   // Sync region buttons
   document.getElementById('btnUS').classList.toggle('active', region === 'US');
   document.getElementById('btnROW').classList.toggle('active', region === 'ROW');
   // Sync sheet dropdown
+  buildSheetTabs();
+  // Make sure activeSheet exists
+  if (!SHEETS[activeSheet]) activeSheet = Object.keys(SHEETS)[0];
   var sel = document.getElementById('sheetSelect');
   if (sel) sel.value = activeSheet;
+  // Initialise any missing distroData entries for restored sheets
+  initDistroData();
   renderDistro();
   return true;
 }
