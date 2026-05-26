@@ -306,6 +306,7 @@ main {
 }
 </style>
 <style id="printStyle"></style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -319,6 +320,7 @@ main {
   </div>
   <div class="top-actions">
     <button class="btn btn-ghost" onclick="clearAll()">&#128465; Clear All</button>
+    <button class="btn btn-ghost" onclick="downloadLbx()" title="Open in P-touch Editor">&#128229; Download .lbx</button>
     <button class="btn btn-primary" onclick="window.print()">&#128424; Print</button>
     <button class="btn btn-ghost" onclick="window.close()">&#10005; Close</button>
   </div>
@@ -695,6 +697,167 @@ function load() {
     var nid = localStorage.getItem('er_portlabels_nextid');
     if (nid) nextId = parseInt(nid);
   } catch(e) {}
+}
+
+
+// ── LBX GENERATOR ────────────────────────────────────────────────
+// LBX = ZIP containing label.xml + prop.xml
+// Units in P-touch Editor are pt (1pt = 1/72 inch = 0.3528mm)
+function mmToPtLbx(mm) { return (mm * 72 / 25.4).toFixed(2); }
+
+function generateLbxXml(strip) {
+  var tw       = getTapeWidthMm();
+  var pitch    = strip.pitch || getPitch(strip.dtype || 'luminode12');
+  var nPorts   = strip.ports.length;
+  var totalMm  = nPorts * pitch + 8; // 4mm margin each end
+  var twPt     = mmToPtLbx(tw);
+  var totalPt  = mmToPtLbx(totalMm);
+  var pitchPt  = mmToPtLbx(pitch);
+  var marginPt = mmToPtLbx(4);
+
+  // Font sizes in pt
+  var maxByH  = tw * 0.46 * 72 / 25.4;
+  var maxByW  = pitch * 0.72 * 72 / 25.4 / 6.0;
+  var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
+  var f2pt    = (parseFloat(f1pt) * 0.72).toFixed(1);
+
+  // Build text objects for each port
+  var objects = '';
+  for (var i = 0; i < nPorts; i++) {
+    var port   = strip.ports[i];
+    var l1     = port.line1 || '';
+    var l2     = port.line2 || '';
+    var xPt    = (parseFloat(marginPt) + i * parseFloat(pitchPt)).toFixed(2);
+    // Port number label (small, top right of box)
+    var numX   = (parseFloat(xPt) + parseFloat(pitchPt) - 6).toFixed(2);
+    var numY   = '1.5';
+    objects += buildTextObj(String(i+1), numX, numY, pitchPt, '6', 'Arial', '400');
+    // Line 1
+    var y1 = (parseFloat(twPt) * 0.15).toFixed(2);
+    var h1 = (parseFloat(twPt) * 0.48).toFixed(2);
+    objects += buildTextObj(l1, xPt, y1, pitchPt, f1pt, 'Consolas', '700');
+    // Line 2 (if present)
+    if (l2) {
+      var y2 = (parseFloat(twPt) * 0.63).toFixed(2);
+      var h2 = (parseFloat(twPt) * 0.34).toFixed(2);
+      objects += buildTextObj(l2, xPt, y2, pitchPt, f2pt, 'Arial Narrow', '400');
+    }
+    // Vertical divider line between ports
+    if (i < nPorts - 1) {
+      var lineX = (parseFloat(xPt) + parseFloat(pitchPt)).toFixed(2);
+      objects += '<draw:line pt:objectID="div' + i + '" pt:locked="false">' +
+        '<pt:bounds x="' + lineX + 'pt" y="0pt" width="0.5pt" height="' + twPt + 'pt"/>' +
+        '<draw:lineStyle draw:lineColor="#888888" draw:lineWeight="0.5pt" draw:lineStyle="solid"/>' +
+        '</draw:line>';
+    }
+  }
+
+  // Paper: width=tape_height, height=tape_length (landscape orientation)
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<pt:document xmlns:pt="http://schemas.brother.info/ptouch/2007/lbx/main"' +
+    ' xmlns:style="http://schemas.brother.info/ptouch/2007/lbx/style"' +
+    ' xmlns:text="http://schemas.brother.info/ptouch/2007/lbx/text"' +
+    ' xmlns:draw="http://schemas.brother.info/ptouch/2007/lbx/draw"' +
+    ' version="1.1" generator="ER-Distro-Calculator">' +
+    '<pt:body currentSheet="Sheet 1">' +
+    '<style:sheet name="Sheet 1">' +
+    '<style:paper media="0"' +
+    ' width="' + twPt + 'pt"' +
+    ' height="' + totalPt + 'pt"' +
+    ' marginLeft="' + marginPt + 'pt"' +
+    ' marginTop="2pt"' +
+    ' marginRight="' + marginPt + 'pt"' +
+    ' marginBottom="2pt"' +
+    ' orientation="landscape"' +
+    ' autoLength="true"' +
+    ' monochromeDisplay="true"' +
+    ' paperColor="#FFFFFF"' +
+    ' paperInk="#000000"' +
+    ' split="1" format="" backgroundTheme="0"' +
+    ' printerID="30862" printerName="Brother PT-P710BT"/>' +
+    '<style:objectStyle x="' + marginPt + 'pt" y="2pt"' +
+    ' width="' + (parseFloat(totalPt) - parseFloat(marginPt)*2).toFixed(2) + 'pt"' +
+    ' height="' + (parseFloat(twPt) - 4).toFixed(2) + 'pt"' +
+    ' backColor="#FFFFFF" backPrintColorNumber="1"' +
+    ' ropCode="13" shadowEffect="false" objectName="Sheet 1"' +
+    ' expanded="true" printColorNumber="1"/>' +
+    '</style:sheet>' +
+    '<pt:objects>' +
+    objects +
+    '</pt:objects>' +
+    '</pt:body>' +
+    '</pt:document>';
+  return xml;
+}
+
+function buildTextObj(text, x, y, w, fontSize, font, weight) {
+  var objId = 'obj_' + Math.random().toString(36).substr(2,8);
+  var h = (parseFloat(fontSize) * 1.4).toFixed(2);
+  return '<text:text pt:objectID="' + objId + '" pt:locked="false">' +
+    '<pt:bounds x="' + x + 'pt" y="' + y + 'pt" width="' + w + 'pt" height="' + h + 'pt"/>' +
+    '<text:textControl verticalAlignment="center" shrinkToFit="true"/>' +
+    '<text:textStyle horizontalAlignment="center" verticalAlignment="center"' +
+    ' fontName="' + font + '" fontSize="' + fontSize + 'pt"' +
+    ' fontWeight="' + weight + '" fontItalic="false"' +
+    ' foreColor="#000000" backColor="none"' +
+    ' strikeThrough="false" underline="false"/>' +
+    '<text:data>' + escXml(text) + '</text:data>' +
+    '</text:text>';
+}
+
+function generatePropXml(strip) {
+  return '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<meta:properties xmlns:meta="http://schemas.brother.info/ptouch/2007/lbx/meta">' +
+    '<meta:appVersion>5.3.007</meta:appVersion>' +
+    '<meta:sheet>Sheet 1</meta:sheet>' +
+    '</meta:properties>';
+}
+
+function escXml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+async function downloadLbx() {
+  if (!strips.length) { alert('Add at least one strip first.'); return; }
+  if (typeof JSZip === 'undefined') { alert('JSZip not loaded — check internet connection.'); return; }
+
+  // If multiple strips, generate one LBX per strip and zip them together
+  if (strips.length === 1) {
+    // Single strip: download one .lbx file
+    var zip = new JSZip();
+    zip.file('label.xml', generateLbxXml(strips[0]));
+    zip.file('prop.xml',  generatePropXml(strips[0]));
+    var blob = await zip.generateAsync({type:'blob', mimeType:'application/octet-stream'});
+    var name = (strips[0].device || 'port-labels').replace(/[^a-z0-9\-_]/gi,'_') + '.lbx';
+    triggerDownload(blob, name);
+  } else {
+    // Multiple strips: zip of .lbx files
+    var outer = new JSZip();
+    for (var si = 0; si < strips.length; si++) {
+      var s = strips[si];
+      var inner = new JSZip();
+      inner.file('label.xml', generateLbxXml(s));
+      inner.file('prop.xml',  generatePropXml(s));
+      var lbxBlob = await inner.generateAsync({type:'uint8array', mimeType:'application/octet-stream'});
+      var fname = ((si+1) + '_' + (s.device||'strip').replace(/[^a-z0-9\-_]/gi,'_') + '.lbx');
+      outer.file(fname, lbxBlob);
+    }
+    var zipBlob = await outer.generateAsync({type:'blob'});
+    triggerDownload(zipBlob, 'port-labels.zip');
+  }
+}
+
+function triggerDownload(blob, filename) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
 }
 
 // ── Init ──────────────────────────────────────────────────────
