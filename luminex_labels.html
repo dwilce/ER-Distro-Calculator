@@ -277,7 +277,7 @@ main {
 
 @media print {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
+  .no-print { display: none !important; }
   body { background: white; }
   header, #editor, .preview-label, .tape-device-name { display: none !important; }
 
@@ -383,7 +383,7 @@ main {
 
   <div id="preview">
     <div class="preview-label" id="prevLabel">&#9632; Live Preview — 12mm tape @ 180 dpi</div>
-    <div id="printGuide" style="background:#1a2235;border:1px solid #263045;border-radius:6px;padding:10px 14px;margin-bottom:8px;max-width:600px;font-size:11px;line-height:1.6;color:#8899aa">
+    <div id="printGuide" style="background:#1a2235;border:1px solid #263045;border-radius:6px;padding:10px 14px;margin-bottom:8px;max-width:600px;font-size:11px;line-height:1.6;color:#8899aa" class="no-print">
       <strong style="color:#00d4ff;letter-spacing:1px;font-size:10px">PRINT SETUP (one-time)</strong><br>
       1. Open <strong style="color:#e8edf5">Devices &amp; Printers</strong> → right-click your P-touch → <strong style="color:#e8edf5">Printing preferences</strong><br>
       2. Set paper size to match your tape width (e.g. <strong style="color:#e8edf5">12mm</strong>), length = <strong style="color:#e8edf5">Auto</strong><br>
