@@ -302,10 +302,7 @@ main {
   }
   /* tape height, port height, font sizes set dynamically via #printStyle */
 
-  @page {
-    size: auto;
-    margin: 2mm 3mm;
-  }
+  /* @page size set dynamically by updatePrintCss() in #printStyle */
 }
 </style>
 <style id="printStyle"></style>
@@ -411,12 +408,21 @@ function getTapeWidthMm() { return parseFloat(document.getElementById('tapeWidth
 function getPrinterDpi()  { return parseFloat(document.getElementById('printerDpi').value) || 180; }
 
 function updatePrintCss() {
-  var tw = getTapeWidthMm();
-  var twPt = mmToPt(tw).toFixed(2);
+  var tw    = getTapeWidthMm();
+  var twPt  = mmToPt(tw).toFixed(2);
 
-  // For print, calculate per-strip in pt based on pitch of first strip (or default)
-  // Use a representative pitch - will be overridden inline anyway
-  var pitchPt = mmToPt(25); // default fallback
+  // Calculate exact tape length from first strip's ports × pitch
+  var pageRule = '@page { size: auto; margin: 2mm 4mm; }';
+  if (strips.length) {
+    var s0    = strips[0];
+    var p0    = s0.pitch || getPitch(s0.dtype || 'luminode12');
+    var lenMm = (s0.ports.length * p0 + 8).toFixed(1);
+    pageRule  = '@page { size: ' + lenMm + 'mm ' + tw + 'mm; margin: 0mm 4mm; }';
+  }
+
+  // Font sizes in pt based on first strip pitch
+  var pitchMm = strips.length ? (strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
+  var pitchPt = mmToPt(pitchMm);
   var maxByH  = tw * 0.46 * 72 / 25.4;
   var maxByW  = pitchPt * 0.85 / 6.0;
   var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
@@ -425,19 +431,23 @@ function updatePrintCss() {
 
   var style = document.getElementById('printStyle');
   if (style) {
-    style.textContent =
+    style.textContent = pageRule +
       '@media print {' +
-      '  .tape { height:' + twPt + 'pt !important; }' +
-      '  .tape-port { height:' + twPt + 'pt !important; }' +
+      '  .tape-wrap { page-break-after:always; }' +
+      '  .tape-wrap:last-child { page-break-after:avoid; }' +
+      '  .tape { height:' + twPt + 'pt !important; box-shadow:none !important; background:#fff !important; border:0.3mm solid #000 !important; }' +
+      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; }' +
       '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
-      '  .tape-port-line1 { font-size:' + f1pt + 'pt !important; }' +
-      '  .tape-port-line2 { font-size:' + f2pt + 'pt !important; }' +
-      '  .tape-device-name,.no-print { display:none !important; }' +
-      '  .tape-port-line1,.tape-port-line2 { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-0.3px; }  .tape-port-line1 { font-family:Consolas,\"Courier New\",monospace !important; font-weight:700 !important; color:#000 !important; }  .tape-port-line2 { font-family:\"Arial Narrow\",Arial,sans-serif !important; color:#111 !important; }  .tape { border:0.3mm solid #000 !important; box-shadow:none !important; background:#fff !important; }  .tape-port { border-right:0.2mm solid #888 !important; }' +
+      '  .tape-port-line1 { font-family:Consolas,"Courier New",monospace !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
+      '  .tape-port-line2 { font-family:"Arial Narrow",Arial,sans-serif !important; font-size:' + f2pt + 'pt !important; color:#111 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
+      '  .tape-device-name, .no-print { display:none !important; }' +
       '}';
   }
   var lbl = document.querySelector('.preview-label');
-  if (lbl) lbl.textContent = '\u25aa Live Preview \u2014 ' + tw + 'mm tape @ ' + getPrinterDpi() + ' dpi';
+  if (lbl) {
+    var lenInfo = strips.length ? ' · ' + (strips[0].ports.length * (strips[0].pitch || 25) + 8).toFixed(0) + 'mm long' : '';
+    lbl.textContent = '\u25aa Live Preview \u2014 ' + tw + 'mm tape @ ' + getPrinterDpi() + ' dpi' + lenInfo;
+  }
 }
 
 var DEVICE_TYPES = {
@@ -447,6 +457,12 @@ var DEVICE_TYPES = {
   dmx8:       { label: 'DMX8',         pitch: 24.13, ports: 8  },
   custom:     { label: 'Custom',       pitch: 25,    ports: 8  }
 };
+
+function renderAll() {
+  renderEditor();
+  renderPreview();
+  updatePrintCss();
+}
 
 function getPitch(dtype) {
   if (dtype === 'custom') {
@@ -475,7 +491,7 @@ function onDeviceTypeChange() {
   renderAll();
 }
 
-function renderAll() { renderEditor(); renderPreview(); }
+function renderAll() { renderEditor(); renderPreview(); updatePrintCss(); }
 
 function makeStrip(portCount, device, dtype, pitch) {
   var ports = [];
@@ -526,6 +542,7 @@ function deleteStrip(id) {
   strips = strips.filter(function(s){ return s.id !== id; });
   renderEditor();
   renderPreview();
+  updatePrintCss();
   save();
 }
 
