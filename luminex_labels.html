@@ -437,8 +437,7 @@ function updatePrintCss() {
   if (style) {
     style.textContent = pageRule +
       '@media print {' +
-      '  .tape-wrap { page-break-after:always; }' +
-      '  .tape-wrap:last-child { page-break-after:avoid; }' +
+      '  .tape-wrap { page-break-inside:avoid; break-inside:avoid; }' +
       '  .tape { height:' + twPt + 'pt !important; width:auto !important; min-width:0 !important; box-shadow:none !important; background:#fff !important; border:none !important; overflow:visible !important; }' +
       '  .tape-port { height:' + twPt + 'pt !important; border-right:0.4mm solid #333 !important; overflow:visible !important; }' +
       strips.map(function(s,i) {
@@ -523,8 +522,7 @@ function addStrip() {
   var dtype   = document.getElementById('deviceType').value;
   var pitch   = getPitch(dtype);
   strips.push(makeStrip(count, device, dtype, pitch));
-  renderEditor();
-  renderPreview();
+  renderAll();
   save();
 }
 
@@ -535,7 +533,7 @@ function updateStripType(id, dtype) {
   s.dtype    = dtype;
   s.pitch    = dt.pitch    || getPitch(dtype);
   s.boxWidth = dt.boxWidth || s.pitch;
-  renderPreview();
+  renderAll();
   save();
 }
 
@@ -548,16 +546,13 @@ function duplicateStrip(id) {
   copy.open = true;
   var idx = strips.indexOf(s);
   strips.splice(idx + 1, 0, copy);
-  renderEditor();
-  renderPreview();
+  renderAll();
   save();
 }
 
 function deleteStrip(id) {
   strips = strips.filter(function(s){ return s.id !== id; });
-  renderEditor();
-  renderPreview();
-  updatePrintCss();
+  renderAll();
   save();
 }
 
@@ -586,8 +581,7 @@ function updatePort(stripId, portIdx, line, val) {
 function clearAll() {
   if (confirm('Clear all strips?')) {
     strips = [];
-    renderEditor();
-    renderPreview();
+    renderAll();
     save();
   }
 }
