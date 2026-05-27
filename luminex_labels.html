@@ -303,8 +303,7 @@ main {
   }
   /* tape height, port height, font sizes set dynamically via #printStyle */
 
-  /* @page size set dynamically by updatePrintCss() in #printStyle */
-  @page { margin: 0; }
+  /* @page set dynamically in #printStyle */
 }
 </style>
 <style id="printStyle"></style>
@@ -416,13 +415,7 @@ function updatePrintCss() {
   var twPt  = mmToPt(tw).toFixed(2);
 
   // Calculate exact tape length from first strip's ports × pitch
-  var pageRule = '@page { size: auto; margin: 2mm 4mm; }';
-  if (strips.length) {
-    var s0    = strips[0];
-    var p0    = s0.pitch || getPitch(s0.dtype || 'luminode12');
-    var lenMm = (s0.ports.length * p0).toFixed(1);
-    pageRule  = '@page { size: ' + lenMm + 'mm ' + tw + 'mm; margin: 0mm 4mm; }';
-  }
+  var pageRule = '@page { margin: 0; }';
 
   // Font sizes in pt based on first strip pitch
   var pitchMm = strips.length ? (strips[0].boxWidth || strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
@@ -661,8 +654,9 @@ function renderPreview() {
     }).join('');
     var stripLengthMm = Math.ceil(strip.ports.length * (strip.boxWidth || strip.pitch || 25));
     return '<div class="tape-wrap">' +
-      '<div class="tape-device-name">' + esc(deviceLabel) + ' \u2014 ' + strip.ports.length + ' ports' +
-      ' &nbsp;<span style="color:#00d4ff;font-weight:700">\u2192 Set label length to ' + stripLengthMm + 'mm when printing</span></div>' +
+      '<div class="tape-device-name">' + esc(deviceLabel) + ' \u2014 ' + strip.ports.length + ' ports</div>' +
+      '<div style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:12px;padding:3px 10px;border-radius:4px;margin-bottom:6px;letter-spacing:0.3px">' +
+      '&#9658; SET LABEL LENGTH TO ' + stripLengthMm + 'mm</div>' +
       '<div class="tape" style="height:' + pxH + 'px">' +
         '<div class="tape-ports">' + portBoxes + '</div>' +
       '</div>' +
