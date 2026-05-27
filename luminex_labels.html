@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Port Labels — ER Productions</title>
 <style>
-/* System fonts only - no external dependencies */
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;700;800&family=Barlow+Condensed:wght@400;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,7 +23,7 @@
 }
 
 body {
-  font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -65,7 +65,7 @@ header {
 .btn {
   padding: 7px 16px; border-radius: 4px; font-size: 12px;
   font-weight: 700; letter-spacing: .5px; cursor: pointer;
-  border: 1px solid transparent; font-family: 'Arial Narrow', 'Arial', sans-serif;
+  border: 1px solid transparent; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   text-transform: uppercase; transition: all .15s;
 }
 .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
@@ -115,7 +115,7 @@ main {
 .config-select, .config-input {
   background: var(--card); border: 1px solid var(--border);
   color: var(--text); padding: 6px 8px; border-radius: 4px;
-  font-size: 12px; font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-size: 12px; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   font-weight: 600; width: 100%;
 }
 .config-select:focus, .config-input:focus {
@@ -126,7 +126,7 @@ main {
   width: 100%; margin-top: 10px; padding: 8px;
   background: transparent; border: 1px dashed var(--border);
   color: var(--muted); border-radius: 4px; cursor: pointer;
-  font-size: 12px; font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-size: 12px; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   transition: all .15s;
 }
@@ -156,7 +156,7 @@ main {
 }
 .strip-name-input {
   flex: 1; background: transparent; border: none; color: var(--text);
-  font-size: 13px; font-weight: 700; font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-size: 13px; font-weight: 700; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   letter-spacing: .5px;
 }
 .strip-name-input:focus { outline: none; }
@@ -178,7 +178,7 @@ main {
 .port-inp {
   background: var(--bg); border: 1px solid var(--border);
   color: var(--text); padding: 3px 6px; border-radius: 3px;
-  font-size: 11px; font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-size: 11px; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   font-weight: 600; width: 100%; transition: border-color .1s;
 }
 .port-inp:focus { outline: none; border-color: var(--accent); background: #0d1525; }
@@ -206,7 +206,7 @@ main {
 }
 
 .preview-label {
-  font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   font-size: 11px; color: var(--muted); letter-spacing: 2px;
   text-transform: uppercase; align-self: flex-start;
 }
@@ -248,29 +248,29 @@ main {
 .tape-port:last-child { border-right: none; }
 
 .tape-port-num {
-  font-family: 'Arial Narrow', 'Arial', sans-serif;
+  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   font-size: 5px; font-weight: 700; color: #aaa;
   position: absolute; top: 1px; right: 2px; line-height: 1;
 }
 
 .tape-port-line1 {
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 9px; font-weight: 700; color: #000;
+  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-size: 9px; font-weight: 800; color: #000;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 1px;
   margin-top: 2px;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 .tape-port-line2 {
-  font-family: 'Arial Narrow', 'Arial', sans-serif;
-  font-size: 7px; font-weight: 400; color: #222;
+  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-size: 7px; font-weight: 500; color: #111;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 1px;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.1px;
 }
 .tape-port-line1.empty { color: #ccc; }
 
@@ -463,7 +463,7 @@ function updatePrintCss() {
 
 var DEVICE_TYPES = {
   gigacore:   { label: 'Gigacore 16XT', pitch: 28.89, ports: 10, boxWidth: 30    },
-  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12, boxWidth: 25    },
+  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12, boxWidth: 34.33 },
   luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4,  boxWidth: null  },
   dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8,  boxWidth: null  },
   lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10, boxWidth: 35    },
