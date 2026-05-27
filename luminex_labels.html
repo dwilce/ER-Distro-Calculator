@@ -230,7 +230,7 @@ main {
 }
 
 /* Port boxes */
-.tape-ports { display: flex; flex-direction: row; }
+.tape-ports { display: flex; flex-direction: row; overflow: visible; }
 
 .tape-port {
   display: flex;
@@ -304,6 +304,7 @@ main {
   /* tape height, port height, font sizes set dynamically via #printStyle */
 
   /* @page size set dynamically by updatePrintCss() in #printStyle */
+  @page { margin: 0; }
 }
 </style>
 <style id="printStyle"></style>
@@ -439,8 +440,9 @@ function updatePrintCss() {
       '@media print {' +
       '  .tape-wrap { page-break-after:always; }' +
       '  .tape-wrap:last-child { page-break-after:avoid; }' +
-      '  .tape { height:' + twPt + 'pt !important; box-shadow:none !important; background:#fff !important; border:none !important; border-top:0.3mm solid #000 !important; }' +
-      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; }' +
+      '  .tape { height:' + twPt + 'pt !important; width:auto !important; box-shadow:none !important; background:#fff !important; border:none !important; border-top:0.3mm solid #000 !important; overflow:visible !important; }' +
+      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; overflow:visible !important; }'
+      '  .tape-ports { overflow:visible !important; display:flex !important; flex-direction:row !important; }' +
       '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
       '  .tape-port-line1 { font-family:Consolas,"Courier New",monospace !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
       '  .tape-port-line2 { font-family:"Arial Narrow",Arial,sans-serif !important; font-size:' + f2pt + 'pt !important; color:#111 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
@@ -808,23 +810,33 @@ function generateLbxXml(strip) {
 }
 
 function lbxText(id, text, x, y, w, fontSize, font, bold) {
-  var h = fontSize * 1.5;
-  var fw = bold ? '700' : '400';
-  return '<text:text pt:objectID="' + id + '" pt:locked="false" pt:printArea="false">' +
+  var h = fontSize * 1.6;
+  return '<text:text pt:objectID="' + id + '" pt:locked="false">' +
     '<pt:bounds x="' + x.toFixed(3) + 'pt" y="' + y.toFixed(3) + 'pt"' +
     ' width="' + w.toFixed(3) + 'pt" height="' + h.toFixed(3) + 'pt"/>' +
-    '<text:textControl shrinkToFit="true"/>' +
-    '<text:textStyle' +
+    '<text:textControl' +
     ' horizontalAlignment="Center"' +
     ' verticalAlignment="Center"' +
-    ' fontName="' + font + '"' +
-    ' size="' + fontSize.toFixed(1) + 'pt"' +
-    ' weight="' + fw + '"' +
+    ' shrinkToFit="true"' +
+    ' splitWords="true"' +
+    ' formatClearMode="false"/>' +
+    '<text:ptFontInfo>' +
+    '<text:logFont' +
+    ' name="' + font + '"' +
+    ' width="0"' +
     ' italic="false"' +
-    ' color="#000000"' +
-    ' printColorNumber="1"' +
-    ' strikeThrough="false"' +
-    ' underline="false"/>' +
+    ' weight="' + (bold ? '700' : '400') + '"' +
+    ' charSet="0"' +
+    ' pitchAndFamily="0"/>' +
+    '<text:fontExt' +
+    ' effect="NOEFFECT"' +
+    ' underline="0"' +
+    ' strikethrough="0"' +
+    ' size="' + fontSize.toFixed(1) + 'pt"' +
+    ' orgSize="' + fontSize.toFixed(1) + 'pt"' +
+    ' textColor="#000000"' +
+    ' textPrintColorNumber="1"/>' +
+    '</text:ptFontInfo>' +
     '<pt:data>' + escXml(text) + '</pt:data>' +
     '</text:text>';
 }
