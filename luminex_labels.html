@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Port Labels — ER Productions</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;700;800&family=Barlow+Condensed:wght@400;600;700&display=swap');
+/* System fonts only */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,7 +23,7 @@
 }
 
 body {
-  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -65,7 +65,7 @@ header {
 .btn {
   padding: 7px 16px; border-radius: 4px; font-size: 12px;
   font-weight: 700; letter-spacing: .5px; cursor: pointer;
-  border: 1px solid transparent; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  border: 1px solid transparent; font-family: Arial, Helvetica, sans-serif;
   text-transform: uppercase; transition: all .15s;
 }
 .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
@@ -115,7 +115,7 @@ main {
 .config-select, .config-input {
   background: var(--card); border: 1px solid var(--border);
   color: var(--text); padding: 6px 8px; border-radius: 4px;
-  font-size: 12px; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-size: 12px; font-family: Arial, Helvetica, sans-serif;
   font-weight: 600; width: 100%;
 }
 .config-select:focus, .config-input:focus {
@@ -126,7 +126,7 @@ main {
   width: 100%; margin-top: 10px; padding: 8px;
   background: transparent; border: 1px dashed var(--border);
   color: var(--muted); border-radius: 4px; cursor: pointer;
-  font-size: 12px; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-size: 12px; font-family: Arial, Helvetica, sans-serif;
   font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   transition: all .15s;
 }
@@ -156,7 +156,7 @@ main {
 }
 .strip-name-input {
   flex: 1; background: transparent; border: none; color: var(--text);
-  font-size: 13px; font-weight: 700; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-size: 13px; font-weight: 700; font-family: Arial, Helvetica, sans-serif;
   letter-spacing: .5px;
 }
 .strip-name-input:focus { outline: none; }
@@ -178,7 +178,7 @@ main {
 .port-inp {
   background: var(--bg); border: 1px solid var(--border);
   color: var(--text); padding: 3px 6px; border-radius: 3px;
-  font-size: 11px; font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-size: 11px; font-family: Arial, Helvetica, sans-serif;
   font-weight: 600; width: 100%; transition: border-color .1s;
 }
 .port-inp:focus { outline: none; border-color: var(--accent); background: #0d1525; }
@@ -206,7 +206,7 @@ main {
 }
 
 .preview-label {
-  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 11px; color: var(--muted); letter-spacing: 2px;
   text-transform: uppercase; align-self: flex-start;
 }
@@ -237,40 +237,39 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* Width matches EtherCon socket face: ~12mm = 45px */
   width: 45px;
   height: 45px;
   border-right: 1.5px solid #aaa;
-  padding: 2px 1px;
+  padding: 1px;
   position: relative;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 .tape-port:last-child { border-right: none; }
 
 .tape-port-num {
-  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 5px; font-weight: 700; color: #aaa;
   position: absolute; top: 1px; right: 2px; line-height: 1;
 }
 
 .tape-port-line1 {
-  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
-  font-size: 9px; font-weight: 800; color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9px; font-weight: 700; color: #000;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
-  padding: 0 1px;
-  margin-top: 2px;
-  letter-spacing: -0.2px;
+  padding: 0 2px;
+  letter-spacing: 0;
 }
 .tape-port-line2 {
-  font-family: 'Inter Tight', 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
-  font-size: 7px; font-weight: 500; color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 7px; font-weight: 400; color: #222;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
-  padding: 0 1px;
-  letter-spacing: -0.1px;
+  padding: 0 2px;
+  letter-spacing: 0;
 }
 .tape-port-line1.empty { color: #ccc; }
 
@@ -428,8 +427,8 @@ function updatePrintCss() {
   // Font sizes in pt based on first strip pitch
   var pitchMm = strips.length ? (strips[0].boxWidth || strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
   var pitchPt = mmToPt(pitchMm);
-  var maxByH  = tw * 0.60 * 72 / 25.4;
-  var maxByW  = pitchPt * 0.90 / 5.5;
+  var maxByH  = tw * 0.55 * 72 / 25.4;
+  var maxByW  = pitchPt * 0.85 / 6.2;
   var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
   var f2pt    = (parseFloat(f1pt) * 0.72).toFixed(1);
   var fnPt    = (parseFloat(f1pt) * 0.42).toFixed(1);
@@ -463,7 +462,7 @@ function updatePrintCss() {
 
 var DEVICE_TYPES = {
   gigacore:   { label: 'Gigacore 16XT', pitch: 28.89, ports: 10, boxWidth: 30    },
-  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12, boxWidth: 34.33 },
+  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12, boxWidth: 26    },
   luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4,  boxWidth: null  },
   dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8,  boxWidth: null  },
   lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10, boxWidth: 35    },
@@ -644,9 +643,10 @@ function renderPreview() {
     var ptW  = (boxWidth * 72 / 25.4).toFixed(2);
     var ptH  = (tw * 72 / 25.4).toFixed(2);
 
-    var maxByH  = Math.floor(pxH * 0.60);
-    var maxByW  = Math.floor(pxW * 0.90 / 5.5);
-    var fs1px   = Math.max(8, Math.min(maxByH, maxByW));
+    // Arial: avg char ~0.58 of font-size wide, assume 5-6 chars per box
+    var maxByH  = Math.floor(pxH * 0.55);
+    var maxByW  = Math.floor(pxW * 0.85 / 6.2);
+    var fs1px   = Math.max(7, Math.min(maxByH, maxByW));
     var fs2px   = Math.max(6, Math.round(fs1px * 0.70));
     var fsNumPx = Math.max(4, Math.round(fs1px * 0.38));
     // Print font sizes in pt
