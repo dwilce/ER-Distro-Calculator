@@ -426,7 +426,7 @@ function updatePrintCss() {
   }
 
   // Font sizes in pt based on first strip pitch
-  var pitchMm = strips.length ? (strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
+  var pitchMm = strips.length ? (strips[0].boxWidth || strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
   var pitchPt = mmToPt(pitchMm);
   var maxByH  = tw * 0.60 * 72 / 25.4;
   var maxByW  = pitchPt * 0.90 / 5.5;
@@ -440,8 +440,13 @@ function updatePrintCss() {
       '@media print {' +
       '  .tape-wrap { page-break-after:always; }' +
       '  .tape-wrap:last-child { page-break-after:avoid; }' +
-      '  .tape { height:' + twPt + 'pt !important; width:auto !important; box-shadow:none !important; background:#fff !important; border:none !important; border-top:0.3mm solid #000 !important; overflow:visible !important; }' +
-      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; overflow:visible !important; }'
+      '  .tape { height:' + twPt + 'pt !important; width:auto !important; min-width:0 !important; box-shadow:none !important; background:#fff !important; border:none !important; border-top:0.3mm solid #000 !important; overflow:visible !important; }' +
+      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; overflow:visible !important; }' +
+      strips.map(function(s,i) {
+        var bw = s.boxWidth || s.pitch || 25;
+        var bwPt = (bw * 72 / 25.4).toFixed(2);
+        return '  .tape-port.strip-' + i + ' { width:' + bwPt + 'pt !important; min-width:' + bwPt + 'pt !important; }';
+      }).join('') +
       '  .tape-ports { overflow:visible !important; display:flex !important; flex-direction:row !important; }' +
       '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
       '  .tape-port-line1 { font-family:Consolas,"Courier New",monospace !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
@@ -632,24 +637,32 @@ function renderPreview() {
     var boxWidth = strip.boxWidth || pitch;
     var dpi = getPrinterDpi();
     var tw  = getTapeWidthMm();
-    var pxW  = Math.round(mmToPx(boxWidth, dpi));
-    var pxH  = Math.round(mmToPx(tw, dpi));
+    // Screen preview: use 96dpi px
+    var pxW  = Math.round(mmToPx(boxWidth, 96));
+    var pxH  = Math.round(mmToPx(tw, 96));
+    // Print: use pt (device-independent)
+    var ptW  = (boxWidth * 72 / 25.4).toFixed(2);
+    var ptH  = (tw * 72 / 25.4).toFixed(2);
 
     var maxByH  = Math.floor(pxH * 0.60);
     var maxByW  = Math.floor(pxW * 0.90 / 5.5);
     var fs1px   = Math.max(8, Math.min(maxByH, maxByW));
     var fs2px   = Math.max(6, Math.round(fs1px * 0.70));
     var fsNumPx = Math.max(4, Math.round(fs1px * 0.38));
-    var fs1 = fs1px + 'px';
-    var fs2 = fs2px + 'px';
-    var fsNum = fsNumPx + 'px';
+    // Print font sizes in pt
+    var maxByHpt = tw * 0.60 * 72 / 25.4;
+    var maxByWpt = boxWidth * 0.90 * 72 / 25.4 / 5.5;
+    var fs1pt = Math.max(4, Math.min(maxByHpt, maxByWpt)).toFixed(1);
+    var fs2pt = (parseFloat(fs1pt) * 0.70).toFixed(1);
+    var fsnpt = (parseFloat(fs1pt) * 0.38).toFixed(1);
+
     var portBoxes = strip.ports.map(function(port, pi) {
       var l1 = port.line1 || '';
       var l2 = port.line2 || '';
-      return '<div class="tape-port" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
-        '<div class="tape-port-num" style="font-size:' + fsNum + '">' + (pi+1) + '</div>' +
-        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1 + ';max-width:' + (pxW-2) + 'px">' + esc(l1||'·') + '</div>' +
-        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2 + ';max-width:' + (pxW-2) + 'px">' + esc(l2) + '</div>' : '') +
+      return '<div class="tape-port strip-' + si + '" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
+        '<div class="tape-port-num" style="font-size:' + fsNumPx + 'px">' + (pi+1) + '</div>' +
+        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l1||'·') + '</div>' +
+        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l2) + '</div>' : '') +
       '</div>';
     }).join('');
     return '<div class="tape-wrap">' +
