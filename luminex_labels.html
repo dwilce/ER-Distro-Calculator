@@ -334,10 +334,11 @@ main {
         <div class="config-item">
           <div class="config-label">Device Type</div>
           <select class="config-select" id="deviceType" onchange="onDeviceTypeChange()">
-            <option value="gigacore">Gigacore 16 (30mm · 10 ports)</option>
-            <option value="luminode12" selected>Luminode 12 (25mm · 12 ports)</option>
-            <option value="luminode4">Luminode 4 (31.75mm · 4 ports)</option>
-            <option value="dmx8">DMX8 (24.13mm · 8 ports)</option>
+            <option value="gigacore">Gigacore 16XT (28.89mm · 10 ports)</option>
+            <option value="luminode12" selected>Luminode 12 (26.45mm · 12 ports)</option>
+            <option value="luminode4">Luminode 4 (26.67mm · 4 ports)</option>
+            <option value="dmx8">DMX8 (25mm · 8 ports)</option>
+            <option value="lumisplit">LumiSplit 10 (34.56mm · 10 ports)</option>
             <option value="custom">Custom</option>
           </select>
         </div>
@@ -453,11 +454,12 @@ function updatePrintCss() {
 }
 
 var DEVICE_TYPES = {
-  gigacore:   { label: 'Gigacore 16',  pitch: 30,    ports: 10 },
-  luminode12: { label: 'Luminode 12',  pitch: 25,    ports: 12 },
-  luminode4:  { label: 'Luminode 4',   pitch: 31.75, ports: 4  },
-  dmx8:       { label: 'DMX8',         pitch: 24.13, ports: 8  },
-  custom:     { label: 'Custom',       pitch: 25,    ports: 8  }
+  gigacore:   { label: 'Gigacore 16XT', pitch: 28.89, ports: 10 },
+  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12 },
+  luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4  },
+  dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8  },
+  lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10 },
+  custom:     { label: 'Custom',        pitch: 25,    ports: 8  }
 };
 
 function renderAll() {
@@ -488,7 +490,7 @@ function onDeviceTypeChange() {
     if (portDisp) { portCountDisp.style.display = 'none'; }
   }
   // Update placeholder
-  var ph = { gigacore:'e.g. Gigacore 16 #1', luminode12:'e.g. Luminode 12 #1', luminode4:'e.g. Luminode 4 #1', dmx8:'e.g. DMX8 #1', custom:'e.g. Switch #1' };
+  var ph = { gigacore:'e.g. Gigacore 16XT #1', luminode12:'e.g. Luminode 12 #1', luminode4:'e.g. Luminode 4 #1', dmx8:'e.g. DMX8 #1', lumisplit:'e.g. LumiSplit #1', custom:'e.g. Switch #1' };
   document.getElementById('defaultDevice').placeholder = ph[dtype] || 'Device name';
   renderAll();
 }
