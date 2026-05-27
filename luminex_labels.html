@@ -322,7 +322,6 @@ main {
   </div>
   <div class="top-actions">
     <button class="btn btn-ghost" onclick="clearAll()">&#128465; Clear All</button>
-    <button class="btn btn-ghost" onclick="downloadSvg()" title="Download as SVG (open in Inkscape, Illustrator or import to P-touch)">&#128229; Download .svg</button>
     <button class="btn btn-primary" onclick="window.print()">&#128424; Print</button>
     <button class="btn btn-ghost" onclick="window.close()">&#10005; Close</button>
   </div>
@@ -463,11 +462,11 @@ function updatePrintCss() {
 
 var DEVICE_TYPES = {
   gigacore:   { label: 'Gigacore 16XT', pitch: 28.89, ports: 10, boxWidth: 30    },
-  luminode12: { label: 'Luminode 12',   pitch: 27, ports: 12, boxWidth: 27    },
-  luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4,  boxWidth: null  },
-  dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8,  boxWidth: 25  },
+  luminode12: { label: 'Luminode 12',   pitch: 27,    ports: 12, boxWidth: 27    },
+  luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4,  boxWidth: 26.67 },
+  dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8,  boxWidth: 25    },
   lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10, boxWidth: 35    },
-  custom:     { label: 'Custom',        pitch: 25,    ports: 8,  boxWidth: null  }
+  custom:     { label: 'Custom',        pitch: 25,    ports: 8,  boxWidth: 25    }
 };
 
 function renderAll() {
@@ -719,98 +718,6 @@ function load() {
     var nid = localStorage.getItem('er_portlabels_nextid');
     if (nid) nextId = parseInt(nid);
   } catch(e) {}
-}
-
-
-// ── SVG GENERATOR ────────────────────────────────────────────────
-// Generates exact-dimension SVG for import into P-touch Editor / Inkscape
-function downloadSvg() {
-  if (!strips.length) { alert('Add at least one strip first.'); return; }
-  var svgParts = [];
-
-  strips.forEach(function(strip, si) {
-    var tw      = getTapeWidthMm();
-    var bw      = strip.boxWidth || strip.pitch || 25;
-    var n       = strip.ports.length;
-    var totalW  = n * bw;
-    var name    = strip.device || ('Strip ' + (si+1));
-
-    // Font sizes in mm
-    var maxByH = tw * 0.58;
-    var maxByW = bw * 0.88 / 6.5;
-    var f1mm   = Math.max(1.5, Math.min(maxByH, maxByW));
-    var f2mm   = Math.max(1.2, f1mm * 0.70);
-
-    // Convert mm to SVG user units (1 unit = 1mm)
-    var svgW = totalW;
-    var svgH = tw;
-
-    var defs = '<defs><style>' +
-      '.l1{font-family:Arial,Helvetica,sans-serif;font-weight:700;fill:#000;text-anchor:middle;dominant-baseline:central}' +
-      '.l2{font-family:"Arial Narrow",Arial,sans-serif;font-weight:400;fill:#000;text-anchor:middle;dominant-baseline:central}' +
-      '.div{stroke:#333;stroke-width:0.4;fill:none}' +
-      '</style></defs>';
-
-    var bg = '<rect width="' + svgW + '" height="' + svgH + '" fill="white" stroke="#999" stroke-width="0.3"/>';
-
-    var content = '';
-    for (var i = 0; i < n; i++) {
-      var port = strip.ports[i];
-      var l1   = (port.line1 || '').trim();
-      var l2   = (port.line2 || '').trim();
-      var cx   = i * bw + bw / 2;
-
-      if (l1) {
-        var y1 = l2 ? svgH * 0.32 : svgH * 0.50;
-        content += '<text class="l1" x="' + cx + '" y="' + y1 + '" font-size="' + f1mm + '">' + escXml(l1) + '</text>';
-      }
-      if (l2) {
-        var y2 = svgH * 0.72;
-        content += '<text class="l2" x="' + cx + '" y="' + y2 + '" font-size="' + f2mm + '">' + escXml(l2) + '</text>';
-      }
-      // Divider
-      if (i > 0) {
-        var dx = i * bw;
-        content += '<line class="div" x1="' + dx + '" y1="0" x2="' + dx + '" y2="' + svgH + '"/>';
-      }
-    }
-
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg"' +
-      ' width="' + svgW + 'mm" height="' + svgH + 'mm"' +
-      ' viewBox="0 0 ' + svgW + ' ' + svgH + '">' +
-      '<!-- ' + name + ' | ' + n + ' ports | ' + bw + 'mm pitch | ' + tw + 'mm tape -->' +
-      defs + bg + content +
-      '</svg>';
-
-    svgParts.push({ name: (si+1) + '_' + (name||'strip').replace(/[^a-z0-9\-_]/gi,'_') + '.svg', svg: svg });
-  });
-
-  if (svgParts.length === 1) {
-    var blob = new Blob([svgParts[0].svg], {type:'image/svg+xml'});
-    triggerDownload(blob, svgParts[0].name);
-  } else {
-    // Multiple strips - need JSZip
-    if (typeof JSZip === 'undefined') {
-      // fallback: download first only
-      var blob = new Blob([svgParts[0].svg], {type:'image/svg+xml'});
-      triggerDownload(blob, svgParts[0].name);
-      alert('JSZip not loaded - downloaded first strip only. Reload page with internet to download all as ZIP.');
-      return;
-    }
-    var zip = new JSZip();
-    svgParts.forEach(function(p){ zip.file(p.name, p.svg); });
-    zip.generateAsync({type:'blob'}).then(function(blob){
-      triggerDownload(blob, 'port-labels.zip');
-    });
-  }
-}
-
-function escXml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
 }
 
 
