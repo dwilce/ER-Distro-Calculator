@@ -240,7 +240,7 @@ main {
   /* Width matches EtherCon socket face: ~12mm = 45px */
   width: 45px;
   height: 45px;
-  border-right: 0.8px solid #ddd;
+  border-right: 1.5px solid #aaa;
   padding: 2px 1px;
   position: relative;
   flex-shrink: 0;
@@ -322,7 +322,7 @@ main {
   </div>
   <div class="top-actions">
     <button class="btn btn-ghost" onclick="clearAll()">&#128465; Clear All</button>
-    <button class="btn btn-ghost" onclick="downloadLbx()" title="Open in P-touch Editor">&#128229; Download .lbx</button>
+    <button class="btn btn-ghost" onclick="downloadSvg()" title="Download as SVG (open in Inkscape, Illustrator or import to P-touch)">&#128229; Download .svg</button>
     <button class="btn btn-primary" onclick="window.print()">&#128424; Print</button>
     <button class="btn btn-ghost" onclick="window.close()">&#10005; Close</button>
   </div>
@@ -421,7 +421,7 @@ function updatePrintCss() {
   if (strips.length) {
     var s0    = strips[0];
     var p0    = s0.pitch || getPitch(s0.dtype || 'luminode12');
-    var lenMm = (s0.ports.length * p0 + 8).toFixed(1);
+    var lenMm = (s0.ports.length * p0).toFixed(1);
     pageRule  = '@page { size: ' + lenMm + 'mm ' + tw + 'mm; margin: 0mm 4mm; }';
   }
 
@@ -441,14 +441,14 @@ function updatePrintCss() {
       '  .tape-wrap { page-break-after:always; }' +
       '  .tape-wrap:last-child { page-break-after:avoid; }' +
       '  .tape { height:' + twPt + 'pt !important; width:auto !important; min-width:0 !important; box-shadow:none !important; background:#fff !important; border:none !important; border-top:0.3mm solid #000 !important; overflow:visible !important; }' +
-      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; overflow:visible !important; }' +
+      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.4mm solid #333 !important; overflow:visible !important; }' +
       strips.map(function(s,i) {
         var bw = s.boxWidth || s.pitch || 25;
         var bwPt = (bw * 72 / 25.4).toFixed(2);
         return '  .tape-port.strip-' + i + ' { width:' + bwPt + 'pt !important; min-width:' + bwPt + 'pt !important; }';
       }).join('') +
       '  .tape-ports { overflow:visible !important; display:flex !important; flex-direction:row !important; }' +
-      '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
+      '  .tape-port-num { display:none !important; }' +
       '  .tape-port-line1 { font-family:Consolas,"Courier New",monospace !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
       '  .tape-port-line2 { font-family:"Arial Narrow",Arial,sans-serif !important; font-size:' + f2pt + 'pt !important; color:#111 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
       '  .tape-device-name, .no-print { display:none !important; }' +
@@ -456,7 +456,7 @@ function updatePrintCss() {
   }
   var lbl = document.querySelector('.preview-label');
   if (lbl) {
-    var lenInfo = strips.length ? ' · ' + (strips[0].ports.length * (strips[0].pitch || 25) + 8).toFixed(0) + 'mm long' : '';
+    var lenInfo = strips.length ? ' · ' + (strips[0].ports.length * (strips[0].boxWidth || strips[0].pitch || 25)).toFixed(0) + 'mm long' : '';
     lbl.textContent = '\u25aa Live Preview \u2014 ' + tw + 'mm tape @ ' + getPrinterDpi() + ' dpi' + lenInfo;
   }
 }
@@ -661,12 +661,14 @@ function renderPreview() {
       var l2 = port.line2 || '';
       return '<div class="tape-port strip-' + si + '" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
         '<div class="tape-port-num" style="font-size:' + fsNumPx + 'px">' + (pi+1) + '</div>' +
-        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l1||'·') + '</div>' +
+        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l1) + '</div>' +
         (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l2) + '</div>' : '') +
       '</div>';
     }).join('');
+    var stripLengthMm = Math.ceil(strip.ports.length * (strip.boxWidth || strip.pitch || 25));
     return '<div class="tape-wrap">' +
-      '<div class="tape-device-name">' + esc(deviceLabel) + ' — ' + strip.ports.length + ' ports</div>' +
+      '<div class="tape-device-name">' + esc(deviceLabel) + ' \u2014 ' + strip.ports.length + ' ports' +
+      ' &nbsp;<span style="color:#00d4ff;font-weight:700">\u2192 Set label length to ' + stripLengthMm + 'mm when printing</span></div>' +
       '<div class="tape" style="height:' + pxH + 'px">' +
         '<div class="tape-ports">' + portBoxes + '</div>' +
       '</div>' +
@@ -719,147 +721,87 @@ function load() {
 }
 
 
-// ── LBX GENERATOR ────────────────────────────────────────────────
-function mmToPtLbx(mm) { return (mm * 72 / 25.4).toFixed(3); }
+// ── SVG GENERATOR ────────────────────────────────────────────────
+// Generates exact-dimension SVG for import into P-touch Editor / Inkscape
+function downloadSvg() {
+  if (!strips.length) { alert('Add at least one strip first.'); return; }
+  var svgParts = [];
 
-function generateLbxXml(strip) {
-  var tw      = getTapeWidthMm();
-  var pitch    = strip.pitch    || getPitch(strip.dtype || 'luminode12');
-  var boxWMm   = strip.boxWidth || pitch;
-  var nPorts   = strip.ports.length;
-  var totalMm  = nPorts * boxWMm + 8;
-  var twPt     = parseFloat(mmToPtLbx(tw));
-  var totPt    = parseFloat(mmToPtLbx(totalMm));
-  var pitPt    = parseFloat(mmToPtLbx(boxWMm));
-  var marPt    = parseFloat(mmToPtLbx(4));
+  strips.forEach(function(strip, si) {
+    var tw      = getTapeWidthMm();
+    var bw      = strip.boxWidth || strip.pitch || 25;
+    var n       = strip.ports.length;
+    var totalW  = n * bw;
+    var name    = strip.device || ('Strip ' + (si+1));
 
-  // Font sizes
-  var maxByH = twPt * 0.58;
-  var maxByW = pitPt * 0.88 / 6.0;
-  var f1pt   = Math.max(5, Math.min(maxByH, maxByW));
-  var f2pt   = Math.max(4, f1pt * 0.70);
+    // Font sizes in mm
+    var maxByH = tw * 0.58;
+    var maxByW = bw * 0.88 / 6.5;
+    var f1mm   = Math.max(1.5, Math.min(maxByH, maxByW));
+    var f2mm   = Math.max(1.2, f1mm * 0.70);
 
-  var objId = 1;
-  var objects = '';
+    // Convert mm to SVG user units (1 unit = 1mm)
+    var svgW = totalW;
+    var svgH = tw;
 
-  for (var i = 0; i < nPorts; i++) {
-    var port = strip.ports[i];
-    var l1   = (port.line1 || '').trim();
-    var l2   = (port.line2 || '').trim();
-    var xPt  = marPt + i * pitPt;
+    var defs = '<defs><style>' +
+      '.l1{font-family:Consolas,"Courier New",monospace;font-weight:700;fill:#000;text-anchor:middle;dominant-baseline:central}' +
+      '.l2{font-family:"Arial Narrow",Arial,sans-serif;font-weight:400;fill:#000;text-anchor:middle;dominant-baseline:central}' +
+      '.div{stroke:#333;stroke-width:0.4;fill:none}' +
+      '</style></defs>';
 
-    // Port number
-    var numX = xPt + pitPt - 7;
-    var numY = 1;
-    objects += lbxText(objId++, l1 ? String(i+1) : '', numX, numY, 6, 4, 'Arial', false);
+    var bg = '<rect width="' + svgW + '" height="' + svgH + '" fill="white" stroke="#999" stroke-width="0.3"/>';
 
-    // Line 1 - main label
-    var y1 = l2 ? (twPt * 0.08) : (twPt * 0.20);
-    var h1 = l2 ? (twPt * 0.50) : (twPt * 0.65);
-    objects += lbxText(objId++, l1, xPt, y1, pitPt, f1pt, 'Consolas', true);
+    var content = '';
+    for (var i = 0; i < n; i++) {
+      var port = strip.ports[i];
+      var l1   = (port.line1 || '').trim();
+      var l2   = (port.line2 || '').trim();
+      var cx   = i * bw + bw / 2;
 
-    // Line 2 - secondary
-    if (l2) {
-      var y2 = twPt * 0.60;
-      var h2 = twPt * 0.35;
-      objects += lbxText(objId++, l2, xPt, y2, pitPt, f2pt, 'Arial', false);
+      if (l1) {
+        var y1 = l2 ? svgH * 0.32 : svgH * 0.50;
+        content += '<text class="l1" x="' + cx + '" y="' + y1 + '" font-size="' + f1mm + '">' + escXml(l1) + '</text>';
+      }
+      if (l2) {
+        var y2 = svgH * 0.72;
+        content += '<text class="l2" x="' + cx + '" y="' + y2 + '" font-size="' + f2mm + '">' + escXml(l2) + '</text>';
+      }
+      // Divider
+      if (i > 0) {
+        var dx = i * bw;
+        content += '<line class="div" x1="' + dx + '" y1="0" x2="' + dx + '" y2="' + svgH + '"/>';
+      }
     }
 
-    // Vertical divider line
-    if (i < nPorts - 1) {
-      var lx = (xPt + pitPt).toFixed(3);
-      objects +=
-        '<draw:line pt:objectID="' + (objId++) + '" pt:locked="false" pt:printArea="false">' +
-          '<pt:bounds x="' + lx + 'pt" y="0pt" width="0.5pt" height="' + twPt.toFixed(3) + 'pt"/>' +
-          '<draw:lineStyle draw:lineColor="#AAAAAA" draw:lineWeight="0.5pt" draw:lineStyle="solid"/>' +
-        '</draw:line>';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg"' +
+      ' width="' + svgW + 'mm" height="' + svgH + 'mm"' +
+      ' viewBox="0 0 ' + svgW + ' ' + svgH + '">' +
+      '<!-- ' + name + ' | ' + n + ' ports | ' + bw + 'mm pitch | ' + tw + 'mm tape -->' +
+      defs + bg + content +
+      '</svg>';
+
+    svgParts.push({ name: (si+1) + '_' + (name||'strip').replace(/[^a-z0-9\-_]/gi,'_') + '.svg', svg: svg });
+  });
+
+  if (svgParts.length === 1) {
+    var blob = new Blob([svgParts[0].svg], {type:'image/svg+xml'});
+    triggerDownload(blob, svgParts[0].name);
+  } else {
+    // Multiple strips - need JSZip
+    if (typeof JSZip === 'undefined') {
+      // fallback: download first only
+      var blob = new Blob([svgParts[0].svg], {type:'image/svg+xml'});
+      triggerDownload(blob, svgParts[0].name);
+      alert('JSZip not loaded - downloaded first strip only. Reload page with internet to download all as ZIP.');
+      return;
     }
+    var zip = new JSZip();
+    svgParts.forEach(function(p){ zip.file(p.name, p.svg); });
+    zip.generateAsync({type:'blob'}).then(function(blob){
+      triggerDownload(blob, 'port-labels.zip');
+    });
   }
-
-  return '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<pt:document' +
-    ' xmlns:pt="http://schemas.brother.info/ptouch/2007/lbx/main"' +
-    ' xmlns:style="http://schemas.brother.info/ptouch/2007/lbx/style"' +
-    ' xmlns:text="http://schemas.brother.info/ptouch/2007/lbx/text"' +
-    ' xmlns:draw="http://schemas.brother.info/ptouch/2007/lbx/draw"' +
-    ' version="1.1"' +
-    ' generator="P-touch Editor 5.1.105">' +
-    '<pt:body currentSheet="Sheet 1">' +
-    '<style:sheet name="Sheet 1">' +
-    '<style:paper' +
-    ' media="0"' +
-    ' width="' + twPt.toFixed(3) + 'pt"' +
-    ' height="' + totPt.toFixed(3) + 'pt"' +
-    ' marginLeft="' + marPt.toFixed(3) + 'pt"' +
-    ' marginTop="2pt"' +
-    ' marginRight="' + marPt.toFixed(3) + 'pt"' +
-    ' marginBottom="2pt"' +
-    ' orientation="landscape"' +
-    ' autoLength="true"' +
-    ' monochromeDisplay="true"' +
-    ' paperColor="#FFFFFF"' +
-    ' paperInk="#000000"' +
-    ' split="1"' +
-    ' format=""' +
-    ' backgroundTheme="0"' +
-    ' printerID="30862"' +
-    ' printerName="Brother PT-P710BT"/>' +
-    '<style:objectStyle' +
-    ' x="' + marPt.toFixed(3) + 'pt"' +
-    ' y="2pt"' +
-    ' width="' + (totPt - marPt * 2).toFixed(3) + 'pt"' +
-    ' height="' + (twPt - 4).toFixed(3) + 'pt"' +
-    ' backColor="#FFFFFF"' +
-    ' backPrintColorNumber="1"' +
-    ' ropCode="13"' +
-    ' shadowEffect="false"' +
-    ' objectName="Sheet 1"' +
-    ' expanded="true"' +
-    ' printColorNumber="1"/>' +
-    '</style:sheet>' +
-    '<pt:objects>' + objects + '</pt:objects>' +
-    '</pt:body>' +
-    '</pt:document>';
-}
-
-function lbxText(id, text, x, y, w, fontSize, font, bold) {
-  var h = fontSize * 1.6;
-  return '<text:text pt:objectID="' + id + '" pt:locked="false">' +
-    '<pt:bounds x="' + x.toFixed(3) + 'pt" y="' + y.toFixed(3) + 'pt"' +
-    ' width="' + w.toFixed(3) + 'pt" height="' + h.toFixed(3) + 'pt"/>' +
-    '<text:textControl' +
-    ' horizontalAlignment="Center"' +
-    ' verticalAlignment="Center"' +
-    ' shrinkToFit="true"' +
-    ' splitWords="true"' +
-    ' formatClearMode="false"/>' +
-    '<text:ptFontInfo>' +
-    '<text:logFont' +
-    ' name="' + font + '"' +
-    ' width="0"' +
-    ' italic="false"' +
-    ' weight="' + (bold ? '700' : '400') + '"' +
-    ' charSet="0"' +
-    ' pitchAndFamily="0"/>' +
-    '<text:fontExt' +
-    ' effect="NOEFFECT"' +
-    ' underline="0"' +
-    ' strikethrough="0"' +
-    ' size="' + fontSize.toFixed(1) + 'pt"' +
-    ' orgSize="' + fontSize.toFixed(1) + 'pt"' +
-    ' textColor="#000000"' +
-    ' textPrintColorNumber="1"/>' +
-    '</text:ptFontInfo>' +
-    '<pt:data>' + escXml(text) + '</pt:data>' +
-    '</text:text>';
-}
-
-function generatePropXml(strip) {
-  return '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<meta:properties xmlns:meta="http://schemas.brother.info/ptouch/2007/lbx/meta">' +
-    '<meta:appVersion>5.3.007</meta:appVersion>' +
-    '<meta:sheet>Sheet 1</meta:sheet>' +
-    '</meta:properties>';
 }
 
 function escXml(s) {
@@ -870,35 +812,6 @@ function escXml(s) {
     .replace(/"/g,'&quot;');
 }
 
-async function downloadLbx() {
-  if (!strips.length) { alert('Add at least one strip first.'); return; }
-  if (typeof JSZip === 'undefined') { alert('JSZip not loaded — check internet connection.'); return; }
-
-  // If multiple strips, generate one LBX per strip and zip them together
-  if (strips.length === 1) {
-    // Single strip: download one .lbx file
-    var zip = new JSZip();
-    zip.file('label.xml', generateLbxXml(strips[0]));
-    zip.file('prop.xml',  generatePropXml(strips[0]));
-    var blob = await zip.generateAsync({type:'blob', mimeType:'application/octet-stream'});
-    var name = (strips[0].device || 'port-labels').replace(/[^a-z0-9\-_]/gi,'_') + '.lbx';
-    triggerDownload(blob, name);
-  } else {
-    // Multiple strips: zip of .lbx files
-    var outer = new JSZip();
-    for (var si = 0; si < strips.length; si++) {
-      var s = strips[si];
-      var inner = new JSZip();
-      inner.file('label.xml', generateLbxXml(s));
-      inner.file('prop.xml',  generatePropXml(s));
-      var lbxBlob = await inner.generateAsync({type:'uint8array', mimeType:'application/octet-stream'});
-      var fname = ((si+1) + '_' + (s.device||'strip').replace(/[^a-z0-9\-_]/gi,'_') + '.lbx');
-      outer.file(fname, lbxBlob);
-    }
-    var zipBlob = await outer.generateAsync({type:'blob'});
-    triggerDownload(zipBlob, 'port-labels.zip');
-  }
-}
 
 function triggerDownload(blob, filename) {
   var url = URL.createObjectURL(blob);
