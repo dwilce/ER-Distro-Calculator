@@ -222,7 +222,8 @@ main {
   background: #ffffff;
   display: flex;
   flex-direction: row;
-  border: 0.5px solid #999;
+  border: none;
+  border-top: 0.5px solid #999;
   height: 45px;
   position: relative;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
@@ -426,8 +427,8 @@ function updatePrintCss() {
   // Font sizes in pt based on first strip pitch
   var pitchMm = strips.length ? (strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
   var pitchPt = mmToPt(pitchMm);
-  var maxByH  = tw * 0.46 * 72 / 25.4;
-  var maxByW  = pitchPt * 0.85 / 6.0;
+  var maxByH  = tw * 0.60 * 72 / 25.4;
+  var maxByW  = pitchPt * 0.90 / 5.5;
   var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
   var f2pt    = (parseFloat(f1pt) * 0.72).toFixed(1);
   var fnPt    = (parseFloat(f1pt) * 0.42).toFixed(1);
@@ -438,7 +439,7 @@ function updatePrintCss() {
       '@media print {' +
       '  .tape-wrap { page-break-after:always; }' +
       '  .tape-wrap:last-child { page-break-after:avoid; }' +
-      '  .tape { height:' + twPt + 'pt !important; box-shadow:none !important; background:#fff !important; border:0.3mm solid #000 !important; }' +
+      '  .tape { height:' + twPt + 'pt !important; box-shadow:none !important; background:#fff !important; border:none !important; border-top:0.3mm solid #000 !important; }' +
       '  .tape-port { height:' + twPt + 'pt !important; border-right:0.2mm solid #888 !important; }' +
       '  .tape-port-num { font-size:' + fnPt + 'pt !important; }' +
       '  .tape-port-line1 { font-family:Consolas,"Courier New",monospace !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
@@ -454,12 +455,12 @@ function updatePrintCss() {
 }
 
 var DEVICE_TYPES = {
-  gigacore:   { label: 'Gigacore 16XT', pitch: 28.89, ports: 10 },
-  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12 },
-  luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4  },
-  dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8  },
-  lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10 },
-  custom:     { label: 'Custom',        pitch: 25,    ports: 8  }
+  gigacore:   { label: 'Gigacore 16XT', pitch: 28.89, ports: 10, boxWidth: 30    },
+  luminode12: { label: 'Luminode 12',   pitch: 26.45, ports: 12, boxWidth: null  },
+  luminode4:  { label: 'Luminode 4',    pitch: 26.67, ports: 4,  boxWidth: null  },
+  dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8,  boxWidth: null  },
+  lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10, boxWidth: null  },
+  custom:     { label: 'Custom',        pitch: 25,    ports: 8,  boxWidth: null  }
 };
 
 function renderAll() {
@@ -504,7 +505,9 @@ function makeStrip(portCount, device, dtype, pitch) {
   }
   dtype = dtype || 'luminode12';
   pitch = pitch || getPitch(dtype);
-  return { id: nextId++, device: device || '', ports: ports, open: true, dtype: dtype, pitch: pitch };
+  var dt = DEVICE_TYPES[dtype] || {};
+  var boxWidth = dt.boxWidth || pitch; // box width defaults to pitch if not specified
+  return { id: nextId++, device: device || '', ports: ports, open: true, dtype: dtype, pitch: pitch, boxWidth: boxWidth };
 }
 
 function addStrip() {
@@ -522,8 +525,10 @@ function addStrip() {
 function updateStripType(id, dtype) {
   var s = strips.find(function(x){ return x.id === id; });
   if (!s) return;
-  s.dtype = dtype;
-  s.pitch = getPitch(dtype);
+  var dt = DEVICE_TYPES[dtype] || {};
+  s.dtype    = dtype;
+  s.pitch    = dt.pitch    || getPitch(dtype);
+  s.boxWidth = dt.boxWidth || s.pitch;
   renderPreview();
   save();
 }
@@ -621,21 +626,18 @@ function renderPreview() {
   }
   area.innerHTML = strips.map(function(strip, si) {
     var deviceLabel = strip.device || ('Strip ' + (si+1));
-    var pitch = strip.pitch || getPitch(strip.dtype || 'luminode12');
+    var pitch    = strip.pitch    || getPitch(strip.dtype || 'luminode12');
+    var boxWidth = strip.boxWidth || pitch;
     var dpi = getPrinterDpi();
     var tw  = getTapeWidthMm();
-    // Screen preview: convert mm to px at selected DPI
-    var pxW  = Math.round(mmToPx(pitch, dpi));
+    var pxW  = Math.round(mmToPx(boxWidth, dpi));
     var pxH  = Math.round(mmToPx(tw, dpi));
 
-    // Font size constrained by BOTH width (pitch) and height (tape width)
-    // Consolas chars are approx 0.6em wide (monospace)
-    // Height: line1 gets ~48% of tape height, leave ~15% for port num, ~35% for line2
-    var maxByH  = Math.floor(pxH * 0.46);
-    var maxByW  = Math.floor(pxW * 0.85 / 6.0); // Consolas ~6px per char at 1px size
-    var fs1px   = Math.max(7, Math.min(maxByH, maxByW));
-    var fs2px   = Math.max(5, Math.round(fs1px * 0.72));
-    var fsNumPx = Math.max(4, Math.round(fs1px * 0.42));
+    var maxByH  = Math.floor(pxH * 0.60);
+    var maxByW  = Math.floor(pxW * 0.90 / 5.5);
+    var fs1px   = Math.max(8, Math.min(maxByH, maxByW));
+    var fs2px   = Math.max(6, Math.round(fs1px * 0.70));
+    var fsNumPx = Math.max(4, Math.round(fs1px * 0.38));
     var fs1 = fs1px + 'px';
     var fs2 = fs2px + 'px';
     var fsNum = fsNumPx + 'px';
@@ -703,107 +705,127 @@ function load() {
 
 
 // ── LBX GENERATOR ────────────────────────────────────────────────
-// LBX = ZIP containing label.xml + prop.xml
-// Units in P-touch Editor are pt (1pt = 1/72 inch = 0.3528mm)
-function mmToPtLbx(mm) { return (mm * 72 / 25.4).toFixed(2); }
+function mmToPtLbx(mm) { return (mm * 72 / 25.4).toFixed(3); }
 
 function generateLbxXml(strip) {
-  var tw       = getTapeWidthMm();
-  var pitch    = strip.pitch || getPitch(strip.dtype || 'luminode12');
+  var tw      = getTapeWidthMm();
+  var pitch    = strip.pitch    || getPitch(strip.dtype || 'luminode12');
+  var boxWMm   = strip.boxWidth || pitch;
   var nPorts   = strip.ports.length;
-  var totalMm  = nPorts * pitch + 8; // 4mm margin each end
-  var twPt     = mmToPtLbx(tw);
-  var totalPt  = mmToPtLbx(totalMm);
-  var pitchPt  = mmToPtLbx(pitch);
-  var marginPt = mmToPtLbx(4);
+  var totalMm  = nPorts * boxWMm + 8;
+  var twPt     = parseFloat(mmToPtLbx(tw));
+  var totPt    = parseFloat(mmToPtLbx(totalMm));
+  var pitPt    = parseFloat(mmToPtLbx(boxWMm));
+  var marPt    = parseFloat(mmToPtLbx(4));
 
-  // Font sizes in pt
-  var maxByH  = tw * 0.46 * 72 / 25.4;
-  var maxByW  = pitch * 0.72 * 72 / 25.4 / 6.0;
-  var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
-  var f2pt    = (parseFloat(f1pt) * 0.72).toFixed(1);
+  // Font sizes
+  var maxByH = twPt * 0.58;
+  var maxByW = pitPt * 0.88 / 6.0;
+  var f1pt   = Math.max(5, Math.min(maxByH, maxByW));
+  var f2pt   = Math.max(4, f1pt * 0.70);
 
-  // Build text objects for each port
+  var objId = 1;
   var objects = '';
+
   for (var i = 0; i < nPorts; i++) {
-    var port   = strip.ports[i];
-    var l1     = port.line1 || '';
-    var l2     = port.line2 || '';
-    var xPt    = (parseFloat(marginPt) + i * parseFloat(pitchPt)).toFixed(2);
-    // Port number label (small, top right of box)
-    var numX   = (parseFloat(xPt) + parseFloat(pitchPt) - 6).toFixed(2);
-    var numY   = '1.5';
-    objects += buildTextObj(String(i+1), numX, numY, pitchPt, '6', 'Arial', '400');
-    // Line 1
-    var y1 = (parseFloat(twPt) * 0.15).toFixed(2);
-    var h1 = (parseFloat(twPt) * 0.48).toFixed(2);
-    objects += buildTextObj(l1, xPt, y1, pitchPt, f1pt, 'Consolas', '700');
-    // Line 2 (if present)
+    var port = strip.ports[i];
+    var l1   = (port.line1 || '').trim();
+    var l2   = (port.line2 || '').trim();
+    var xPt  = marPt + i * pitPt;
+
+    // Port number
+    var numX = xPt + pitPt - 7;
+    var numY = 1;
+    objects += lbxText(objId++, l1 ? String(i+1) : '', numX, numY, 6, 4, 'Arial', false);
+
+    // Line 1 - main label
+    var y1 = l2 ? (twPt * 0.08) : (twPt * 0.20);
+    var h1 = l2 ? (twPt * 0.50) : (twPt * 0.65);
+    objects += lbxText(objId++, l1, xPt, y1, pitPt, f1pt, 'Consolas', true);
+
+    // Line 2 - secondary
     if (l2) {
-      var y2 = (parseFloat(twPt) * 0.63).toFixed(2);
-      var h2 = (parseFloat(twPt) * 0.34).toFixed(2);
-      objects += buildTextObj(l2, xPt, y2, pitchPt, f2pt, 'Arial Narrow', '400');
+      var y2 = twPt * 0.60;
+      var h2 = twPt * 0.35;
+      objects += lbxText(objId++, l2, xPt, y2, pitPt, f2pt, 'Arial', false);
     }
-    // Vertical divider line between ports
+
+    // Vertical divider line
     if (i < nPorts - 1) {
-      var lineX = (parseFloat(xPt) + parseFloat(pitchPt)).toFixed(2);
-      objects += '<draw:line pt:objectID="div' + i + '" pt:locked="false">' +
-        '<pt:bounds x="' + lineX + 'pt" y="0pt" width="0.5pt" height="' + twPt + 'pt"/>' +
-        '<draw:lineStyle draw:lineColor="#888888" draw:lineWeight="0.5pt" draw:lineStyle="solid"/>' +
+      var lx = (xPt + pitPt).toFixed(3);
+      objects +=
+        '<draw:line pt:objectID="' + (objId++) + '" pt:locked="false" pt:printArea="false">' +
+          '<pt:bounds x="' + lx + 'pt" y="0pt" width="0.5pt" height="' + twPt.toFixed(3) + 'pt"/>' +
+          '<draw:lineStyle draw:lineColor="#AAAAAA" draw:lineWeight="0.5pt" draw:lineStyle="solid"/>' +
         '</draw:line>';
     }
   }
 
-  // Paper: width=tape_height, height=tape_length (landscape orientation)
-  var xml = '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<pt:document xmlns:pt="http://schemas.brother.info/ptouch/2007/lbx/main"' +
+  return '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<pt:document' +
+    ' xmlns:pt="http://schemas.brother.info/ptouch/2007/lbx/main"' +
     ' xmlns:style="http://schemas.brother.info/ptouch/2007/lbx/style"' +
     ' xmlns:text="http://schemas.brother.info/ptouch/2007/lbx/text"' +
     ' xmlns:draw="http://schemas.brother.info/ptouch/2007/lbx/draw"' +
-    ' version="1.1" generator="ER-Distro-Calculator">' +
+    ' version="1.1"' +
+    ' generator="P-touch Editor 5.1.105">' +
     '<pt:body currentSheet="Sheet 1">' +
     '<style:sheet name="Sheet 1">' +
-    '<style:paper media="0"' +
-    ' width="' + twPt + 'pt"' +
-    ' height="' + totalPt + 'pt"' +
-    ' marginLeft="' + marginPt + 'pt"' +
+    '<style:paper' +
+    ' media="0"' +
+    ' width="' + twPt.toFixed(3) + 'pt"' +
+    ' height="' + totPt.toFixed(3) + 'pt"' +
+    ' marginLeft="' + marPt.toFixed(3) + 'pt"' +
     ' marginTop="2pt"' +
-    ' marginRight="' + marginPt + 'pt"' +
+    ' marginRight="' + marPt.toFixed(3) + 'pt"' +
     ' marginBottom="2pt"' +
     ' orientation="landscape"' +
     ' autoLength="true"' +
     ' monochromeDisplay="true"' +
     ' paperColor="#FFFFFF"' +
     ' paperInk="#000000"' +
-    ' split="1" format="" backgroundTheme="0"' +
-    ' printerID="30862" printerName="Brother PT-P710BT"/>' +
-    '<style:objectStyle x="' + marginPt + 'pt" y="2pt"' +
-    ' width="' + (parseFloat(totalPt) - parseFloat(marginPt)*2).toFixed(2) + 'pt"' +
-    ' height="' + (parseFloat(twPt) - 4).toFixed(2) + 'pt"' +
-    ' backColor="#FFFFFF" backPrintColorNumber="1"' +
-    ' ropCode="13" shadowEffect="false" objectName="Sheet 1"' +
-    ' expanded="true" printColorNumber="1"/>' +
+    ' split="1"' +
+    ' format=""' +
+    ' backgroundTheme="0"' +
+    ' printerID="30862"' +
+    ' printerName="Brother PT-P710BT"/>' +
+    '<style:objectStyle' +
+    ' x="' + marPt.toFixed(3) + 'pt"' +
+    ' y="2pt"' +
+    ' width="' + (totPt - marPt * 2).toFixed(3) + 'pt"' +
+    ' height="' + (twPt - 4).toFixed(3) + 'pt"' +
+    ' backColor="#FFFFFF"' +
+    ' backPrintColorNumber="1"' +
+    ' ropCode="13"' +
+    ' shadowEffect="false"' +
+    ' objectName="Sheet 1"' +
+    ' expanded="true"' +
+    ' printColorNumber="1"/>' +
     '</style:sheet>' +
-    '<pt:objects>' +
-    objects +
-    '</pt:objects>' +
+    '<pt:objects>' + objects + '</pt:objects>' +
     '</pt:body>' +
     '</pt:document>';
-  return xml;
 }
 
-function buildTextObj(text, x, y, w, fontSize, font, weight) {
-  var objId = 'obj_' + Math.random().toString(36).substr(2,8);
-  var h = (parseFloat(fontSize) * 1.4).toFixed(2);
-  return '<text:text pt:objectID="' + objId + '" pt:locked="false">' +
-    '<pt:bounds x="' + x + 'pt" y="' + y + 'pt" width="' + w + 'pt" height="' + h + 'pt"/>' +
-    '<text:textControl verticalAlignment="center" shrinkToFit="true"/>' +
-    '<text:textStyle horizontalAlignment="center" verticalAlignment="center"' +
-    ' fontName="' + font + '" fontSize="' + fontSize + 'pt"' +
-    ' fontWeight="' + weight + '" fontItalic="false"' +
-    ' foreColor="#000000" backColor="none"' +
-    ' strikeThrough="false" underline="false"/>' +
-    '<text:data>' + escXml(text) + '</text:data>' +
+function lbxText(id, text, x, y, w, fontSize, font, bold) {
+  var h = fontSize * 1.5;
+  var fw = bold ? '700' : '400';
+  return '<text:text pt:objectID="' + id + '" pt:locked="false" pt:printArea="false">' +
+    '<pt:bounds x="' + x.toFixed(3) + 'pt" y="' + y.toFixed(3) + 'pt"' +
+    ' width="' + w.toFixed(3) + 'pt" height="' + h.toFixed(3) + 'pt"/>' +
+    '<text:textControl shrinkToFit="true"/>' +
+    '<text:textStyle' +
+    ' horizontalAlignment="Center"' +
+    ' verticalAlignment="Center"' +
+    ' fontName="' + font + '"' +
+    ' size="' + fontSize.toFixed(1) + 'pt"' +
+    ' weight="' + fw + '"' +
+    ' italic="false"' +
+    ' color="#000000"' +
+    ' printColorNumber="1"' +
+    ' strikeThrough="false"' +
+    ' underline="false"/>' +
+    '<pt:data>' + escXml(text) + '</pt:data>' +
     '</text:text>';
 }
 
