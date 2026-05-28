@@ -285,26 +285,40 @@ main {
 @media print {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .no-print { display: none !important; }
-  body { background: white; }
+  body { background: white; margin: 0; padding: 0; }
   header, #editor, .preview-label, .tape-device-name { display: none !important; }
 
   #preview {
     background: white;
     padding: 0;
+    margin: 0;
     overflow: visible;
     display: block;
     height: auto;
+    width: auto;
   }
-  main { display: block; height: auto; overflow: visible; }
+  #previewArea {
+    padding: 0;
+    margin: 0;
+    display: block;
+    height: auto;
+  }
+  main { display: block; height: auto; overflow: visible; margin: 0; padding: 0; }
 
   .tape-wrap {
     page-break-inside: avoid;
-    margin-bottom: 4mm;
+    break-inside: avoid;
+    margin: 0;
+    padding: 0;
+    display: block;
   }
 
   .tape {
     box-shadow: none;
-    border: 0.3mm solid #555;
+    border: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
   }
   /* tape height, port height, font sizes set dynamically via #printStyle */
 
@@ -682,7 +696,7 @@ function renderPreview() {
     var stripLengthMm = Math.ceil(portCount * (strip.boxWidth || strip.pitch || 25) + gapMm);
     return '<div class="tape-wrap">' +
       '<div class="tape-device-name">' + esc(deviceLabel) + ' \u2014 ' + strip.ports.length + ' ports</div>' +
-      '<div style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:12px;padding:3px 10px;border-radius:4px;margin-bottom:6px;letter-spacing:0.3px">' +
+      '<div class="no-print" style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:12px;padding:3px 10px;border-radius:4px;margin-bottom:6px;letter-spacing:0.3px">' +
       '&#9658; SET LABEL LENGTH TO ' + stripLengthMm + 'mm</div>' +
       '<div class="tape" style="height:' + pxH + 'px">' +
         '<div class="tape-ports">' + portBoxes + '</div>' +
