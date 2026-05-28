@@ -225,7 +225,7 @@ main {
   border: none;
   image-rendering: crisp-edges;
   border: none;
-  height: 45px;
+  height: 45px; /* default, overridden by .strip-tape-N */
   position: relative;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
 }
@@ -618,6 +618,23 @@ function renderPreview() {
     area.innerHTML = '<div style="color:#888;font-size:13px;text-align:center;margin-top:60px">Add a strip to see the preview</div>';
     return;
   }
+  // Build per-strip screen CSS
+  var screenCss = strips.map(function(s, i) {
+    var bw = s.boxWidth || s.pitch || 25;
+    var tw = getTapeWidthMm();
+    var pxW = Math.round(bw * 96 / 25.4);
+    var pxH = Math.round(tw * 96 / 25.4);
+    return '.tape-port.strip-' + i + ' { width:' + pxW + 'px; min-width:' + pxW + 'px; }' +
+           '.strip-tape-' + i + ' { height:' + pxH + 'px; }';
+  }).join('');
+  var screenStyleEl = document.getElementById('screenStyle');
+  if (!screenStyleEl) {
+    screenStyleEl = document.createElement('style');
+    screenStyleEl.id = 'screenStyle';
+    document.head.appendChild(screenStyleEl);
+  }
+  screenStyleEl.textContent = screenCss;
+
   area.innerHTML = strips.map(function(strip, si) {
     var deviceLabel = strip.device || ('Strip ' + (si+1));
     var pitch    = strip.pitch    || getPitch(strip.dtype || 'luminode12');
@@ -647,16 +664,16 @@ function renderPreview() {
     var portBoxes = strip.ports.map(function(port, pi) {
       var l1 = port.line1 || '';
       var l2 = port.line2 || '';
-      var box = '<div class="tape-port strip-' + si + '" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
+      var box = '<div class="tape-port strip-' + si + '">' +
         '<div class="tape-port-num" style="font-size:' + fsNumPx + 'px">' + (strip.dtype === 'cableplug' ? 'P'+(pi+1) : (pi+1)) + '</div>' +
         '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px' + (strip.dtype!=='cableplug'?';max-width:'+(pxW-2)+'px':'') + '">' + esc(l1) + '</div>' +
         (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2px + 'px' + (strip.dtype!=='cableplug'?';max-width:'+(pxW-2)+'px':'') + '">' + esc(l2) + '</div>' : '') +
       '</div>';
       if (strip.dtype === 'cableplug') {
         // Two identical boxes with a bolder divider between pairs
-        var divider = '<div style="width:2px;min-width:2px;height:' + pxH + 'px;background:#333;flex-shrink:0"></div>';
+        var divider = '<div style="width:2px;min-width:2px;background:#333;flex-shrink:0;align-self:stretch"></div>';
         var gap = pi < strip.ports.length - 1
-          ? '<div style="width:4px;min-width:4px;height:' + pxH + 'px;background:#eee;flex-shrink:0"></div>'
+          ? '<div style="width:4px;min-width:4px;background:#eee;flex-shrink:0;align-self:stretch"></div>'
           : '';
         return box + divider + box + gap;
       }
@@ -669,7 +686,7 @@ function renderPreview() {
       '<div class="tape-device-name">' + esc(deviceLabel) + ' \u2014 ' + strip.ports.length + ' ports</div>' +
       '<div class="no-print" style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:12px;padding:3px 10px;border-radius:4px;margin-bottom:6px;letter-spacing:0.3px">' +
       '&#9658; SET LABEL LENGTH TO ' + stripLengthMm + 'mm</div>' +
-      '<div class="tape" style="height:' + pxH + 'px">' +
+      '<div class="tape strip-tape-' + si + '">' +
         '<div class="tape-ports">' + portBoxes + '</div>' +
       '</div>' +
     '</div>';
