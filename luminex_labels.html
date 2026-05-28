@@ -671,9 +671,9 @@ function renderPreview() {
       '</div>';
       if (strip.dtype === 'cableplug') {
         // Two identical boxes with a bolder divider between pairs
-        var divider = '<div style="width:2px;min-width:2px;background:#333;flex-shrink:0;align-self:stretch"></div>';
+        var divider = '<div style="width:2px;min-width:2px;background:repeating-linear-gradient(to bottom,#bbb 0,#bbb 3px,transparent 3px,transparent 6px);flex-shrink:0;align-self:stretch"></div>';
         var gap = pi < strip.ports.length - 1
-          ? '<div style="width:4px;min-width:4px;background:#eee;flex-shrink:0;align-self:stretch"></div>'
+          ? '<div style="width:4px;min-width:4px;background:repeating-linear-gradient(to bottom,#bbb 0,#bbb 3px,transparent 3px,transparent 6px);flex-shrink:0;align-self:stretch"></div>'
           : '';
         return box + divider + box + gap;
       }
@@ -749,10 +749,6 @@ function triggerDownload(blob, filename) {
 
 // ── Init ──────────────────────────────────────────────────────
 load();
-if (!strips.length) {
-  // Start with one default strip
-  strips.push(makeStrip(12, 'Luminex 16XT #1'));
-}
 renderEditor();
 renderPreview();
 updatePrintCss();
