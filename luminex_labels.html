@@ -283,46 +283,14 @@ main {
 #printStyle { }  /* dynamic - written by JS */
 
 @media print {
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .no-print { display: none !important; }
-  body { background: white; margin: 0; padding: 0; }
-  header, #editor, .preview-label, .tape-device-name { display: none !important; }
-
-  #preview {
-    background: white;
-    padding: 0;
-    margin: 0;
-    overflow: visible;
-    display: block;
-    height: auto;
-    width: auto;
-  }
-  #previewArea {
-    padding: 0;
-    margin: 0;
-    display: block;
-    height: auto;
-  }
-  main { display: block; height: auto; overflow: visible; margin: 0; padding: 0; }
-
-  .tape-wrap {
-    page-break-inside: avoid;
-    break-inside: avoid;
-    margin: 0;
-    padding: 0;
-    display: block;
-  }
-
-  .tape {
-    box-shadow: none;
-    border: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-  }
-  /* tape height, port height, font sizes set dynamically via #printStyle */
-
-  /* @page set dynamically in #printStyle */
+  @page { margin: 0; size: auto; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+  .no-print, header, #editor, .preview-label, .tape-device-name { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important; background: white; height: auto !important; overflow: hidden !important; }
+  main, #preview, #previewArea { display: block !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: hidden !important; width: auto !important; background: white !important; }
+  .tape-wrap { display: block !important; margin: 0 !important; padding: 0 !important; page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid; }
+  .tape { display: flex !important; box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; }
+  .tape-ports { display: flex !important; flex-direction: row !important; overflow: visible !important; }
 }
 </style>
 <style id="printStyle"></style>
@@ -435,7 +403,7 @@ function updatePrintCss() {
   var twPt  = mmToPt(tw).toFixed(2);
 
   // Calculate exact tape length from first strip's ports × pitch
-  var pageRule = '@page { margin: 0; }';
+  var pageRule = '@page { margin: 0 !important; size: auto; }';
 
   // Font sizes in pt based on first strip pitch
   var pitchMm = strips.length ? (strips[0].boxWidth || strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
