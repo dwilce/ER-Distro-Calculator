@@ -238,13 +238,12 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 45px;
-  height: 45px;
   border-right: 1.5px solid #aaa;
-  padding: 1px;
+  padding: 1px 2px;
   position: relative;
   flex-shrink: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 .tape-port:last-child { border-right: none; }
 .tape-port:first-child { border-left: none; }
@@ -258,22 +257,25 @@ main {
 .tape-port-line1 {
   font-family: "Franklin Gothic Medium Condensed","Franklin Gothic Medium","Franklin Gothic Demi Cond","Trebuchet MS","Arial Narrow",Arial,sans-serif;
   font-size: 9px; font-weight: 700; color: #000;
-  text-align: center; line-height: 1.1;
+  text-align: center; line-height: 1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 2px;
   letter-spacing: -0.3px;
+  flex-shrink: 0;
   -webkit-font-smoothing: none;
   text-rendering: optimizeSpeed;
 }
 .tape-port-line2 {
   font-family: "Franklin Gothic Book Condensed","Franklin Gothic Medium","Trebuchet MS","Arial Narrow",Arial,sans-serif;
   font-size: 7px; font-weight: 600; color: #000;
-  text-align: center; line-height: 1.1;
+  text-align: center; line-height: 1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 2px;
   letter-spacing: -0.2px;
+  flex-shrink: 0;
+  display: block;
   -webkit-font-smoothing: none;
   text-rendering: optimizeSpeed;
 }
@@ -420,16 +422,17 @@ function updatePrintCss() {
       '@media print {' +
       '  .tape-wrap { page-break-inside:avoid; break-inside:avoid; }' +
       '  .tape { height:' + twPt + 'pt !important; width:auto !important; min-width:0 !important; box-shadow:none !important; background:#fff !important; border:none !important; overflow:visible !important; }' +
-      '  .tape-port { height:' + twPt + 'pt !important; border-right:0.4mm solid #333 !important; overflow:visible !important; }' +
       strips.map(function(s,i) {
         var bw = s.boxWidth || s.pitch || 25;
         var bwPt = (bw * 72 / 25.4).toFixed(2);
-        return '  .tape-port.strip-' + i + ' { width:' + bwPt + 'pt !important; min-width:' + bwPt + 'pt !important; }';
+        var plugCss = s.dtype === 'cableplug' ? '  .tape-port.strip-' + i + ' .tape-port-line1 { font-size:8pt !important; }  .tape-port.strip-' + i + ' .tape-port-line2 { font-size:6pt !important; }' : '';
+        return '  .tape-port.strip-' + i + ' { width:' + bwPt + 'pt !important; min-width:' + bwPt + 'pt !important; }' + plugCss;
       }).join('') +
       '  .tape-ports { overflow:visible !important; display:flex !important; flex-direction:row !important; }' +
       '  .tape-port-num { display:none !important; }' +
-      '  .tape-port-line1 { font-family:"Arial Black","Arial Bold",Arial,sans-serif !important; font-size:' + f1pt + 'pt !important; font-weight:900 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
-      '  .tape-port-line2 { font-family:"Arial Narrow",Arial,sans-serif !important; font-size:' + f2pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
+      '  .tape-port { display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:0.5pt !important; padding:1pt 1pt !important; height:' + twPt + 'pt !important; border-right:0.4mm solid #333 !important; overflow:hidden !important; }' +
+      '  .tape-port-line1 { font-family:"Franklin Gothic Medium Condensed","Franklin Gothic Medium","Trebuchet MS","Arial Narrow",Arial,sans-serif !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-shrink:0; }' +
+      '  .tape-port-line2 { font-family:"Franklin Gothic Book Condensed","Franklin Gothic Medium","Trebuchet MS","Arial Narrow",Arial,sans-serif !important; font-size:' + f2pt + 'pt !important; font-weight:600 !important; color:#000 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block !important; flex-shrink:0; }' +
       '  .tape-device-name, .no-print { display:none !important; }' +
       '}';
   }
@@ -631,8 +634,8 @@ function renderPreview() {
     // Arial: avg char ~0.58 of font-size wide, assume 5-6 chars per box
     var maxByH  = Math.floor(pxH * 0.58);
     var maxByW  = Math.floor(pxW * 0.90 / 5.2); // Franklin Gothic Condensed
-    var fs1px   = Math.max(7, Math.min(maxByH, maxByW));
-    var fs2px   = Math.max(6, Math.round(fs1px * 0.70));
+    var fs1px   = strip.dtype === 'cableplug' ? Math.round(8 * 96/72) : Math.max(7, Math.min(maxByH, maxByW));
+    var fs2px   = strip.dtype === 'cableplug' ? Math.round(6 * 96/72) : Math.max(6, Math.round(fs1px * 0.70));
     var fsNumPx = Math.max(4, Math.round(fs1px * 0.38));
     // Print font sizes in pt
     var maxByHpt = tw * 0.60 * 72 / 25.4;
@@ -646,8 +649,8 @@ function renderPreview() {
       var l2 = port.line2 || '';
       var box = '<div class="tape-port strip-' + si + '" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
         '<div class="tape-port-num" style="font-size:' + fsNumPx + 'px">' + (strip.dtype === 'cableplug' ? 'P'+(pi+1) : (pi+1)) + '</div>' +
-        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l1) + '</div>' +
-        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l2) + '</div>' : '') +
+        '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px' + (strip.dtype!=='cableplug'?';max-width:'+(pxW-2)+'px':'') + '">' + esc(l1) + '</div>' +
+        (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2px + 'px' + (strip.dtype!=='cableplug'?';max-width:'+(pxW-2)+'px':'') + '">' + esc(l2) + '</div>' : '') +
       '</div>';
       if (strip.dtype === 'cableplug') {
         // Two identical boxes with a bolder divider between pairs
