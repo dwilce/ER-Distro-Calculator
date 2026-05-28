@@ -223,6 +223,7 @@ main {
   display: flex;
   flex-direction: row;
   border: none;
+  image-rendering: crisp-edges;
   border: none;
   height: 45px;
   position: relative;
@@ -255,22 +256,26 @@ main {
 }
 
 .tape-port-line1 {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Franklin Gothic Medium Condensed","Franklin Gothic Medium","Franklin Gothic Demi Cond","Trebuchet MS","Arial Narrow",Arial,sans-serif;
   font-size: 9px; font-weight: 700; color: #000;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 2px;
-  letter-spacing: 0;
+  letter-spacing: -0.3px;
+  -webkit-font-smoothing: none;
+  text-rendering: optimizeSpeed;
 }
 .tape-port-line2 {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 7px; font-weight: 400; color: #222;
+  font-family: "Franklin Gothic Book Condensed","Franklin Gothic Medium","Trebuchet MS","Arial Narrow",Arial,sans-serif;
+  font-size: 7px; font-weight: 600; color: #000;
   text-align: center; line-height: 1.1;
   width: 100%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   padding: 0 2px;
-  letter-spacing: 0;
+  letter-spacing: -0.2px;
+  -webkit-font-smoothing: none;
+  text-rendering: optimizeSpeed;
 }
 .tape-port-line1.empty { color: #ccc; }
 
@@ -339,6 +344,7 @@ main {
             <option value="luminode4">Luminode 4 — 27mm box · 108mm label</option>
             <option value="dmx8">DMX8 — 25mm box · 200mm label</option>
             <option value="lumisplit">LumiSplit 10 — 35mm box · 350mm label</option>
+            <option value="cableplug">Cable Plug (12mm box · set qty below)</option>
             <option value="custom">Custom</option>
           </select>
         </div>
@@ -352,7 +358,7 @@ main {
         </div>
         <div class="config-item" id="customPortWrap" style="display:none">
           <div class="config-label">Port Count</div>
-          <input class="config-input" id="customPortCount" type="number" value="8" min="1" max="32" oninput="renderAll()">
+          <input class="config-input" id="customPortCount" type="number" value="1" min="1" max="99" oninput="renderAll()" placeholder="qty">
         </div>
         <div class="config-item">
           <div class="config-label">Device Name</div>
@@ -420,8 +426,8 @@ function updatePrintCss() {
   // Font sizes in pt based on first strip pitch
   var pitchMm = strips.length ? (strips[0].boxWidth || strips[0].pitch || getPitch(strips[0].dtype || 'luminode12')) : 25;
   var pitchPt = mmToPt(pitchMm);
-  var maxByH  = tw * 0.55 * 72 / 25.4;
-  var maxByW  = pitchPt * 0.85 / 6.2;
+  var maxByH  = tw * 0.58 * 72 / 25.4;
+  var maxByW  = pitchPt * 0.90 / 5.2;
   var f1pt    = Math.max(4, Math.min(maxByH, maxByW)).toFixed(1);
   var f2pt    = (parseFloat(f1pt) * 0.72).toFixed(1);
   var fnPt    = (parseFloat(f1pt) * 0.42).toFixed(1);
@@ -440,8 +446,8 @@ function updatePrintCss() {
       }).join('') +
       '  .tape-ports { overflow:visible !important; display:flex !important; flex-direction:row !important; }' +
       '  .tape-port-num { display:none !important; }' +
-      '  .tape-port-line1 { font-family:Arial,Helvetica,sans-serif !important; font-size:' + f1pt + 'pt !important; font-weight:700 !important; color:#000 !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
-      '  .tape-port-line2 { font-family:Arial,Helvetica,sans-serif !important; font-size:' + f2pt + 'pt !important; font-weight:400 !important; color:#111 !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
+      '  .tape-port-line1 { font-family:"Arial Black","Arial Bold",Arial,sans-serif !important; font-size:' + f1pt + 'pt !important; font-weight:900 !important; color:#000 !important; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
+      '  .tape-port-line2 { font-family:"Arial Narrow",Arial,sans-serif !important; font-size:' + f2pt + 'pt !important; font-weight:700 !important; color:#000 !important; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' +
       '  .tape-device-name, .no-print { display:none !important; }' +
       '}';
   }
@@ -458,6 +464,7 @@ var DEVICE_TYPES = {
   luminode4:  { label: 'Luminode 4',    pitch: 27,    ports: 4,  boxWidth: 27    },
   dmx8:       { label: 'DMX8',          pitch: 25.00, ports: 8,  boxWidth: 25    },
   lumisplit:  { label: 'LumiSplit 10',  pitch: 34.56, ports: 10, boxWidth: 35    },
+  cableplug:  { label: 'Cable Plug',    pitch: 12,    ports: 1,  boxWidth: 12    },
   custom:     { label: 'Custom',        pitch: 25,    ports: 8,  boxWidth: 25    }
 };
 
@@ -482,14 +489,21 @@ function onDeviceTypeChange() {
   // Auto-set port count for known types
   var portDisp = document.getElementById('portCount');
   var portCountDisp = document.getElementById('portCountDisplay');
-  if (dtype !== 'custom' && DEVICE_TYPES[dtype]) {
+  var isCustomOrPlug = dtype === 'custom' || dtype === 'cableplug';
+  if (!isCustomOrPlug && DEVICE_TYPES[dtype]) {
     if (portDisp) { portDisp.value = DEVICE_TYPES[dtype].ports; portDisp.readOnly = true; portDisp.style.opacity='0.5'; }
     if (portCountDisp) portCountDisp.style.display = 'flex';
   } else {
     if (portDisp) { portCountDisp.style.display = 'none'; }
   }
+  // Show custom port count for cable plugs too
+  var customPortWrap = document.getElementById('customPortWrap');
+  if (customPortWrap) customPortWrap.style.display = isCustomOrPlug ? 'flex' : 'none';
+  // Show custom pitch only for custom
+  var customPitchWrap = document.getElementById('customPitchWrap');
+  if (customPitchWrap) customPitchWrap.style.display = dtype === 'custom' ? 'flex' : 'none';
   // Update placeholder
-  var ph = { gigacore:'e.g. Gigacore 16XT #1', luminode12:'e.g. Luminode 12 #1', luminode4:'e.g. Luminode 4 #1', dmx8:'e.g. DMX8 #1', lumisplit:'e.g. LumiSplit #1', custom:'e.g. Switch #1' };
+  var ph = { gigacore:'e.g. Gigacore 16XT #1', luminode12:'e.g. Luminode 12 #1', luminode4:'e.g. Luminode 4 #1', dmx8:'e.g. DMX8 #1', lumisplit:'e.g. LumiSplit #1', cableplug:'e.g. FOH Link', custom:'e.g. Switch #1' };
   document.getElementById('defaultDevice').placeholder = ph[dtype] || 'Device name';
   renderAll();
 }
@@ -504,13 +518,14 @@ function makeStrip(portCount, device, dtype, pitch) {
   dtype = dtype || 'luminode12';
   pitch = pitch || getPitch(dtype);
   var dt = DEVICE_TYPES[dtype] || {};
-  var boxWidth = dt.boxWidth || pitch; // box width defaults to pitch if not specified
+  var boxWidth = dt.boxWidth || dt.pitch || pitch; // always use pitch if no explicit boxWidth
   return { id: nextId++, device: device || '', ports: ports, open: true, dtype: dtype, pitch: pitch, boxWidth: boxWidth };
 }
 
 function addStrip() {
   var dtype2  = document.getElementById('deviceType').value;
-  var count   = dtype2 === 'custom' ? (parseInt(document.getElementById('customPortCount').value)||8) : (DEVICE_TYPES[dtype2] ? DEVICE_TYPES[dtype2].ports : 8);
+  var isFlexCount = dtype2 === 'custom' || dtype2 === 'cableplug';
+  var count   = isFlexCount ? (parseInt(document.getElementById('customPortCount').value)||1) : (DEVICE_TYPES[dtype2] ? DEVICE_TYPES[dtype2].ports : 8);
   var device  = document.getElementById('defaultDevice').value;
   var dtype   = document.getElementById('deviceType').value;
   var pitch   = getPitch(dtype);
@@ -525,7 +540,7 @@ function updateStripType(id, dtype) {
   var dt = DEVICE_TYPES[dtype] || {};
   s.dtype    = dtype;
   s.pitch    = dt.pitch    || getPitch(dtype);
-  s.boxWidth = dt.boxWidth || s.pitch;
+  s.boxWidth = dt.boxWidth || dt.pitch || s.pitch;
   renderAll();
   save();
 }
@@ -587,8 +602,9 @@ function renderEditor() {
   }
   list.innerHTML = strips.map(function(strip, si) {
     var portRows = strip.ports.map(function(port, pi) {
+      var portLabel = strip.dtype === 'cableplug' ? 'Plug&nbsp;' + (pi+1) : (pi+1);
       return '<div class="port-row">' +
-        '<div class="port-num">' + (pi+1) + '</div>' +
+        '<div class="port-num">' + portLabel + '</div>' +
         '<input class="port-inp" placeholder="Line 1" value="' + esc(port.line1) + '" ' +
           'oninput="updatePort(' + strip.id + ',' + pi + ',\'line1\',this.value)" ' +
           'onkeydown="portNav(event,' + strip.id + ',' + pi + ',\'line1\')">' +
@@ -631,8 +647,8 @@ function renderPreview() {
     var ptH  = (tw * 72 / 25.4).toFixed(2);
 
     // Arial: avg char ~0.58 of font-size wide, assume 5-6 chars per box
-    var maxByH  = Math.floor(pxH * 0.55);
-    var maxByW  = Math.floor(pxW * 0.85 / 6.2);
+    var maxByH  = Math.floor(pxH * 0.58);
+    var maxByW  = Math.floor(pxW * 0.90 / 5.2); // Franklin Gothic Condensed
     var fs1px   = Math.max(7, Math.min(maxByH, maxByW));
     var fs2px   = Math.max(6, Math.round(fs1px * 0.70));
     var fsNumPx = Math.max(4, Math.round(fs1px * 0.38));
@@ -646,13 +662,24 @@ function renderPreview() {
     var portBoxes = strip.ports.map(function(port, pi) {
       var l1 = port.line1 || '';
       var l2 = port.line2 || '';
-      return '<div class="tape-port strip-' + si + '" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
-        '<div class="tape-port-num" style="font-size:' + fsNumPx + 'px">' + (pi+1) + '</div>' +
+      var box = '<div class="tape-port strip-' + si + '" style="width:' + pxW + 'px;min-width:' + pxW + 'px;height:' + pxH + 'px">' +
+        '<div class="tape-port-num" style="font-size:' + fsNumPx + 'px">' + (strip.dtype === 'cableplug' ? 'P'+(pi+1) : (pi+1)) + '</div>' +
         '<div class="tape-port-line1' + (!l1?' empty':'') + '" style="font-size:' + fs1px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l1) + '</div>' +
         (l2 ? '<div class="tape-port-line2" style="font-size:' + fs2px + 'px;max-width:' + (pxW-2) + 'px">' + esc(l2) + '</div>' : '') +
       '</div>';
+      if (strip.dtype === 'cableplug') {
+        // Two identical boxes with a bolder divider between pairs
+        var divider = '<div style="width:2px;min-width:2px;height:' + pxH + 'px;background:#333;flex-shrink:0"></div>';
+        var gap = pi < strip.ports.length - 1
+          ? '<div style="width:4px;min-width:4px;height:' + pxH + 'px;background:#eee;flex-shrink:0"></div>'
+          : '';
+        return box + divider + box + gap;
+      }
+      return box;
     }).join('');
-    var stripLengthMm = Math.ceil(strip.ports.length * (strip.boxWidth || strip.pitch || 25));
+    var portCount = strip.dtype === 'cableplug' ? strip.ports.length * 2 : strip.ports.length;
+    var gapMm = strip.dtype === 'cableplug' ? (strip.ports.length - 1) * 1 : 0; // ~1mm gap between pairs
+    var stripLengthMm = Math.ceil(portCount * (strip.boxWidth || strip.pitch || 25) + gapMm);
     return '<div class="tape-wrap">' +
       '<div class="tape-device-name">' + esc(deviceLabel) + ' \u2014 ' + strip.ports.length + ' ports</div>' +
       '<div style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:12px;padding:3px 10px;border-radius:4px;margin-bottom:6px;letter-spacing:0.3px">' +
