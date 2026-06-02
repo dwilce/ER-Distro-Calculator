@@ -357,6 +357,7 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
         </div>
       </div>
       <button class="tc-btn" onclick="openReport()" title="Equipment report">&#128438; Report</button>
+      <button class="tc-btn" onclick="printDistroSheet()" title="Print / Save as PDF">&#128424; Print Sheet</button>
     </div>
     <div class="tc-divider"></div>
     <div class="tc-group">
@@ -2513,6 +2514,143 @@ function loadFromURL() {
   }
 }
 
+
+// ── PRINT / SAVE AS PDF ─────────────────────────────────────
+function printDistroSheet() {
+  var cfg = SHEETS[activeSheet];
+  if (!cfg) return;
+  var banks = cfg.banks, ways = cfg.ways;
+  var regionStr = region === 'US' ? '208V' : '230V';
+  var phColors3 = ['','#7d3c98','#c0622a','#0e7c7b'];
+  var phLt3 = ['','#f4eeff','#fff3ea','#eafaf7'];
+
+  // Build bank tables
+  var banksHtml = '';
+  for (var bi = 0; bi < banks.length; bi++) {
+    var bankLetter = banks[bi];
+    var ph = phaseOfBank(bi);
+    var bcEntry = (bankColors[activeSheet] && bankColors[activeSheet][bankLetter]) || null;
+    var hdrBg = bcEntry ? bankSwatchStyle(bcEntry) : phColors3[ph];
+    var hdrTxt = (bcEntry && bcEntry.color === '#ffffff') ? '#000' : '#fff';
+
+    var rows = '';
+    for (var w = 1; w <= ways; w++) {
+      var slots = distroData[activeSheet][bi][w];
+      var items = [];
+      for (var sr = 0; sr < 4; sr++) { if (slots[sr]) items.push(slots[sr]); }
+      var content = items.length
+        ? items.map(function(s){
+            var vw = eqVoltWarn(s.eq) || (s.v120only?'120V ONLY':'') || (s.v240only&&region==='US'?'240V ONLY':'');
+            var vwTag = vw ? '<span class="vw">' + vw + '</span>' : '';
+            return vwTag + (s.qty>1?s.qty+'\u00d7':'') + s.eq;
+          }).join(' · ')
+        : '<span class="empty">—</span>';
+      var wph = phaseOf(w);
+      var rowBg = items.length ? phLt3[wph] : '#fff';
+      rows += '<tr style="background:' + rowBg + '">' +
+        '<td class="wn" style="color:' + phColors3[wph] + '">' + bankLetter + w + '</td>' +
+        '<td class="wc">' + content + '</td>' +
+        '</tr>';
+    }
+    banksHtml += '<div class="bank-wrap"><table class="bank-tbl">' +
+      '<thead><tr><th colspan="2" style="background:' + hdrBg + ';color:' + hdrTxt + '">Bank ' + bankLetter + '</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+      '</table></div>';
+  }
+
+  // Fixed outlets section
+  var foHtml = '';
+  var foList = getFixedOutlets(activeSheet);
+  if (foList.length) {
+    var foRows = '';
+    foList.forEach(function(outlet) {
+      for (var i = 1; i <= outlet.count; i++) {
+        var key = outlet.label.replace(/\s/g,'_') + '_' + i;
+        var content = '';
+        if (outlet.ph === 1) {
+          var fslot = ((distroData[activeSheet].fixedSlots)||{})[key] || {};
+          content = fslot.eq ? (fslot.qty>1?fslot.qty+'\u00d7':'') + fslot.eq : '<span class="empty">—</span>';
+        } else {
+          var tport = ((distroData[activeSheet].threePhasePorts)||{})[key] || {};
+          content = tport.connected ? '\u2192 ' + tport.connected : '<span class="empty">—</span>';
+        }
+        foRows += '<tr><td class="wn" style="color:' + outlet.color + '">' + outlet.label + ' #' + i + '</td><td class="wc">' + content + '</td></tr>';
+      }
+    });
+    foHtml = '<div class="bank-wrap"><table class="bank-tbl">' +
+      '<thead><tr><th colspan="2" style="background:#444;color:#fff">Fixed Outlets</th></tr></thead>' +
+      '<tbody>' + foRows + '</tbody></table></div>';
+  }
+
+  // Grand summary
+  var gs = '';
+  var lim = limits[activeSheet] || cfg.limit || 32;
+  var totals = [0,0,0];
+  for (var bi2 = 0; bi2 < banks.length; bi2++) {
+    for (var w2 = 1; w2 <= ways; w2++) {
+      var wph2 = phaseOf(w2);
+      var slots2 = distroData[activeSheet][bi2][w2];
+      for (var sr2 = 0; sr2 < 4; sr2++) {
+        if (slots2[sr2] && slots2[sr2].watts) totals[wph2-1] += toAmps(slots2[sr2].watts) * (slots2[sr2].qty||1);
+      }
+    }
+  }
+  var phLabels = ['L1','L2','L3'];
+  gs = '<div class="gs">' + [0,1,2].map(function(pi){
+    var used = totals[pi].toFixed(1);
+    var pct = lim > 0 ? totals[pi]/lim*100 : 0;
+    var st = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+    return '<div class="gs-ph ' + st + '"><strong>' + phLabels[pi] + '</strong> ' + used + 'A / ' + lim + 'A</div>';
+  }).join('') + '</div>';
+
+  var logoTag = logoDataURL ? '<img src="' + logoDataURL + '" style="height:28px;object-fit:contain">' : '';
+
+  var css = '* { box-sizing:border-box; margin:0; padding:0; }' +
+    'body { font-family:"Franklin Gothic Medium Condensed","Franklin Gothic Medium","Arial Narrow",Arial,sans-serif; font-size:10pt; background:white; color:#111; }' +
+    '@page { size:A4; margin:12mm 10mm; }' +
+    '.header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0d2137; padding-bottom:6pt; margin-bottom:10pt; }' +
+    '.header-title { font-size:18pt; font-weight:800; color:#0d2137; letter-spacing:0.5px; }' +
+    '.header-meta { text-align:right; font-size:9pt; color:#555; }' +
+    '.banks { display:grid; grid-template-columns:repeat(auto-fill,minmax(90mm,1fr)); gap:8pt; margin-bottom:10pt; }' +
+    '.bank-wrap { break-inside:avoid; }' +
+    '.bank-tbl { width:100%; border-collapse:collapse; border:0.5pt solid #ddd; border-radius:4pt; overflow:hidden; }' +
+    '.bank-tbl thead th { padding:5pt 7pt; font-size:10pt; font-weight:800; text-align:left; letter-spacing:0.5px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    '.bank-tbl tbody tr { border-bottom:0.3pt solid #eee; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    '.bank-tbl tbody tr:last-child { border-bottom:none; }' +
+    '.wn { padding:3pt 6pt; font-weight:800; font-size:9pt; width:18pt; white-space:nowrap; }' +
+    '.wc { padding:3pt 6pt; font-size:9pt; }' +
+    '.empty { color:#bbb; }' +
+    '.vw { display:inline-block; background:#FFD700; color:#000; font-size:6pt; font-weight:900; padding:0.5pt 3pt; border-radius:2pt; margin-right:2pt; vertical-align:middle; }' +
+    '.gs { display:flex; gap:12pt; padding:8pt 10pt; background:#f4f6f9; border-radius:4pt; margin-top:6pt; border:0.5pt solid #ddd; }' +
+    '.gs-ph { flex:1; text-align:center; font-size:10pt; padding:4pt; border-radius:3pt; }' +
+    '.gs-ph.ok   { background:#d4edda; color:#155724; }' +
+    '.gs-ph.warn { background:#fff3cd; color:#856404; }' +
+    '.gs-ph.over { background:#f8d7da; color:#721c24; }' +
+    '.no-print { position:fixed; top:12px; right:12px; display:flex; gap:8px; }' +
+    '.no-print button { padding:8px 16px; border-radius:4px; font-weight:700; font-size:12px; cursor:pointer; }' +
+    '@media print { .no-print { display:none !important; } }';
+
+  var htm = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + activeSheet + ' — ER Distro</title>' +
+    '<style>' + css + '</style></head><body>' +
+    '<div class="no-print">' +
+    '<button onclick="window.close()" style="border:1px solid #ccc;background:white">\u2715 Close</button>' +
+    '<button onclick="window.print()" style="border:none;background:#1f4e79;color:white">&#128424; Print / Save PDF</button>' +
+    '</div>' +
+    '<div class="header">' +
+      '<div>' + logoTag + '<div class="header-title">' + activeSheet + '</div></div>' +
+      '<div class="header-meta">ER Productions &nbsp;|&nbsp; ' + regionStr + ' &nbsp;|&nbsp; ' + new Date().toLocaleDateString() + '</div>' +
+    '</div>' +
+    '<div class="banks">' + banksHtml + foHtml + '</div>' +
+    gs +
+    '</body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(htm);
+  win.document.close();
+  win.focus();
+}
+
+
 function openReport() {
   var rows = [];
   for (var sName in SHEETS) {
@@ -2815,6 +2953,7 @@ if (document.readyState === 'loading') {
         </div>
         <button class="dd-btn" onclick="ddFitAll()" title="Fit all">&#9974;</button>
         <button class="dd-btn" onclick="ddExport()" title="Export SVG">&#128438; SVG</button>
+        <button class="dd-btn" onclick="ddPrintPdf()" title="Print / Save as PDF">&#128424; PDF</button>
         <div style="width:1px;height:20px;background:rgba(255,255,255,.1)"></div>
         <button class="dd-btn dd-btn-danger" onclick="closeDistroDesigner()" style="padding:5px 12px">&#10005; Close</button>
       </div>
@@ -3006,7 +3145,9 @@ function openDistroDesigner() {
   var svg = document.getElementById('ddSvg');
   dd.svgPt = svg.createSVGPoint();
   svg.addEventListener('mousemove', ddOnMouseMove);
+  document.addEventListener('mousemove', ddOnMouseMove);
   svg.addEventListener('mouseup',   ddOnMouseUp);
+  document.addEventListener('mouseup', ddOnMouseUp);
   svg.addEventListener('click', ddOnSvgClick);
   svg.addEventListener('wheel', ddOnWheel, {passive: false});
   svg.addEventListener('mousedown', ddOnPanStart);
@@ -3370,7 +3511,7 @@ function ddNodeMouseDown(e, nodeId) {
   ddSelect('node', nodeId);
   e.stopPropagation();
   var svg = document.getElementById('ddSvg');
-  function onUp() { dd.dragging = null; svg.removeEventListener('mouseup', onUp); }
+  function onUp() { dd.dragging = null; dd.draggingCard = null; dd.draggingZone = null; dd.resizingZone = null; svg.removeEventListener('mouseup', onUp); }
   svg.addEventListener('mouseup', onUp);
 }
 
@@ -3776,15 +3917,17 @@ function ddRender() {
 
     // Zone drag
     zg.addEventListener('mousedown', (function(zid){ return function(e) {
-      if (e.target.tagName === 'rect' && parseFloat(e.target.getAttribute('x')) >= dd.zones.find(function(z){return z.id===zid;}).x+dd.zones.find(function(z){return z.id===zid;}).w-12) {
-        // Resize
-        dd.resizingZone = {id:zid, startX:e.clientX, startY:e.clientY};
-      } else {
-        var z = dd.zones.find(function(z2){return z2.id===zid;});
-        if (z) dd.draggingZone = {id:zid, offX: ddSvgPoint(e).x - z.x, offY: ddSvgPoint(e).y - z.y};
-      }
       dd.selected = {type:'zone', id:zid};
       e.stopPropagation();
+      var pt = ddSvgCoords(e);
+      var z = dd.zones.find(function(z2){return z2.id===zid;});
+      if (!z) return;
+      // Check if clicking resize handle (bottom-right 16x16)
+      if (pt.x >= z.x+z.w-16 && pt.y >= z.y+z.h-16) {
+        dd.resizingZone = {id:zid};
+      } else {
+        dd.draggingZone = {id:zid, offX: pt.x - z.x, offY: pt.y - z.y};
+      }
       ddRenderProps();
     }; })(zone.id));
     nodeLayer.insertBefore(zg, nodeLayer.firstChild);
@@ -4307,7 +4450,7 @@ function ddRender() {
       eg.addEventListener('mousedown', (function(nid, cidx, bx, by){ return function(e) {
         if (dd.connecting) return;
         e.stopPropagation();
-        var pt = ddSvgPoint(e);
+        var pt = ddSvgCoords(e);
         var off = ddGetCardOff(nid, cidx);
         dd.draggingCard = {nodeId:nid, cardIdx:cidx, baseX:bx, baseY:by,
           offX: pt.x - (bx + off.dx), offY: pt.y - (by + off.dy)};
@@ -4521,11 +4664,92 @@ function ddClearAll() {
 function ddExport() {
   var svg = document.getElementById('ddSvg');
   var clone = svg.cloneNode(true);
-  // Remove drag line
   var dl = clone.querySelector('#ddDragLine'); if(dl) dl.remove();
   var blob = new Blob(['<?xml version="1.0"?>' + clone.outerHTML], {type:'image/svg+xml'});
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'ER-Distro-Map.svg'; a.click();
+}
+
+function ddPrintPdf() {
+  // Fit all nodes before exporting so the full diagram is visible
+  ddFitAll();
+
+  var svg = document.getElementById('ddSvg');
+  var clone = svg.cloneNode(true);
+  // Remove interactive elements
+  var dl = clone.querySelector('#ddDragLine'); if(dl) dl.remove();
+  // Remove click handlers - not needed in print
+  clone.style.cursor = 'default';
+
+  // Get natural bounding box of all content
+  var allNodes = dd.nodes;
+  if (!allNodes.length) { alert('Nothing to print — add some distros first.'); return; }
+
+  // Calculate content bounds
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  allNodes.forEach(function(n) {
+    minX = Math.min(minX, n.x - 10);
+    minY = Math.min(minY, n.y - 10);
+    // Rough estimate of max extent including equipment cards below
+    maxX = Math.max(maxX, n.x + n.w + 10);
+    maxY = Math.max(maxY, n.y + n.h + 400);
+  });
+  dd.zones.forEach(function(z) {
+    minX = Math.min(minX, z.x - 10);
+    minY = Math.min(minY, z.y - 10);
+    maxX = Math.max(maxX, z.x + z.w + 10);
+    maxY = Math.max(maxY, z.y + z.h + 10);
+  });
+
+  var contentW = maxX - minX;
+  var contentH = maxY - minY;
+
+  // Set SVG to show full content without pan/zoom transform interference
+  clone.setAttribute('viewBox', minX + ' ' + minY + ' ' + contentW + ' ' + contentH);
+  clone.setAttribute('width', '100%');
+  clone.setAttribute('height', 'auto');
+  clone.style.transform = '';
+  // Remove the transform group wrapper if present
+  var g = clone.querySelector('#ddTransformGroup');
+  if (g) {
+    g.removeAttribute('transform');
+    g.style.transform = '';
+  }
+
+  var logoTag = logoDataURL ? '<img src="' + logoDataURL + '" style="height:24px;object-fit:contain;vertical-align:middle;margin-right:8px">' : '';
+  var svgStr = clone.outerHTML;
+  var date = new Date().toLocaleDateString();
+
+  var css = '* { box-sizing:border-box; margin:0; padding:0; }' +
+    'body { font-family:"Franklin Gothic Medium Condensed","Arial Narrow",Arial,sans-serif; background:white; }' +
+    '@page { size:A3 landscape; margin:10mm; }' +
+    '.hdr { display:flex; justify-content:space-between; align-items:center;' +
+    '  border-bottom:2px solid #0d2137; padding-bottom:6pt; margin-bottom:8pt; }' +
+    '.hdr-title { font-size:16pt; font-weight:800; color:#0d2137; }' +
+    '.hdr-meta { font-size:9pt; color:#555; text-align:right; }' +
+    '.diagram { width:100%; border:0.5pt solid #ddd; border-radius:4pt; overflow:hidden; }' +
+    '.diagram svg { display:block; width:100%; height:auto; max-height:85vh; }' +
+    '.no-print { position:fixed; top:12px; right:12px; display:flex; gap:8px; z-index:99; }' +
+    '.no-print button { padding:8px 16px; border-radius:4px; font-weight:700; font-size:12px; cursor:pointer; }' +
+    '@media print { .no-print { display:none !important; } @page { margin:8mm; } }';
+
+  var htm = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<title>ER Distro Map</title><style>' + css + '</style></head><body>' +
+    '<div class="no-print">' +
+    '<button onclick="window.close()" style="border:1px solid #ccc;background:white">\u2715 Close</button>' +
+    '<button onclick="window.print()" style="border:none;background:#1f4e79;color:white">&#128424; Print / Save PDF</button>' +
+    '</div>' +
+    '<div class="hdr">' +
+      '<div>' + logoTag + '<span class="hdr-title">Distro Power Map</span></div>' +
+      '<div class="hdr-meta">ER Productions &nbsp;|&nbsp; ' + date + '</div>' +
+    '</div>' +
+    '<div class="diagram">' + svgStr + '</div>' +
+    '</body></html>';
+
+  var win = window.open('', '_blank');
+  win.document.write(htm);
+  win.document.close();
+  win.focus();
 }
 </script>
 <div class="pdf-overlay" id="pdfOverlay">
@@ -4756,6 +4980,7 @@ function ddExport() {
   <button class="m-btn" onclick="openEquipmentLabels();mClose()">&#128218; P-touch 24mm — Equipment Labels</button>
   <div class="m-sec">Actions</div>
   <button class="m-btn" onclick="openReport();mClose()">&#128438; Equipment Report</button>
+  <button class="m-btn" onclick="printDistroSheet();mClose()">&#128424; Print Distro Sheet (PDF)</button>
   <button class="m-btn" onclick="openDistroDesigner();mClose()">&#9889; Distro Designer</button>
   <button class="m-btn" onclick="triggerPdfImport();mClose()">&#128196; Import PDF</button>
   <button class="m-btn" onclick="saveToFile();mClose()">&#128190; Save Show File</button>
