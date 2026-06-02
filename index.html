@@ -2713,9 +2713,9 @@ if (document.readyState === 'loading') {
 .dd-conn-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.75)}
 .dd-prop-row{margin-bottom:10px}
 .dd-prop-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
-.dd-prop-input{width:100%;padding:6px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.9);font-size:11px;border-radius:5px;box-sizing:border-box;transition:border .15s}
+.dd-prop-input{width:100%;padding:6px 8px;background:#0d1f35;border:1px solid rgba(255,255,255,.15);color:#d0e8ff;font-size:11px;border-radius:5px;box-sizing:border-box;transition:border .15s}
 .dd-prop-input:focus{outline:none;border-color:rgba(255,215,0,.5);background:rgba(255,255,255,.08)}
-.dd-prop-select{width:100%;padding:6px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.9);font-size:11px;border-radius:5px;box-sizing:border-box}
+.dd-prop-select{width:100%;padding:6px 8px;background:#0d1f35;border:1px solid rgba(255,255,255,.15);color:#d0e8ff;font-size:11px;border-radius:5px;box-sizing:border-box}.dd-prop-select option{background:#0d1f35;color:#d0e8ff}
 .dd-jump-btn{width:100%;padding:7px;background:rgba(36,113,163,.4);border:1px solid rgba(36,113,163,.6);color:#7fc4e8;font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;margin-top:6px;letter-spacing:.3px;transition:all .15s}
 .dd-jump-btn:hover{background:rgba(36,113,163,.7);color:#fff}
 .dd-del-btn{width:100%;padding:7px;background:rgba(123,34,34,.3);border:1px solid rgba(192,57,43,.4);color:rgba(231,76,60,.8);font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;margin-top:4px;transition:all .15s}
@@ -3059,8 +3059,15 @@ function ddOnMouseMove(e) {
     var dl = document.getElementById('ddDragLine');
     var from = dd.nodes.find(function(n){return n.id===dd.connFrom;});
     if (from) {
-      dl.setAttribute('x1', from.x + from.w/2);
-      dl.setAttribute('y1', from.y + from.h/2);
+      var fromDragCfg = from.sheetKey && SHEETS[from.sheetKey];
+      var fromDragBanks = fromDragCfg ? fromDragCfg.banks : [];
+      var dragFrac = 0.5;
+      if (dd.pendingBank && fromDragBanks.length > 1) {
+        var dbIdx = fromDragBanks.indexOf(dd.pendingBank);
+        if (dbIdx >= 0) dragFrac = (dbIdx + 0.5) / fromDragBanks.length;
+      }
+      dl.setAttribute('x1', from.x + from.w * dragFrac);
+      dl.setAttribute('y1', from.y + from.h);
       dl.setAttribute('x2', pt.x);
       dl.setAttribute('y2', pt.y);
       dl.setAttribute('opacity', '0.7');
@@ -3134,6 +3141,7 @@ function ddNodeMouseDown(e, nodeId) {
       }
       dd.conns.push({id: dd.nextId++, from: dd.connFrom, to: nodeId, type: dd.connType, label: ct.label, color: ct.color, marker: ct.marker, fromBank: fromBank, fromFixedOutlet: fromFixedOutlet});
       dd.connFrom = null;
+      dd.pendingBank = null;
       var dl = document.getElementById('ddDragLine');
       dl.setAttribute('opacity','0');
       ddSetStatus('Connected! Click another source or turn off Connect mode');
@@ -3420,7 +3428,12 @@ function ddRender() {
     if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentBank) return;
     var parentNode = dd.nodes.find(function(n){ return n.sheetKey === node.parentSheet; });
     if (!parentNode) return;
-    var x1 = parentNode.x + parentNode.w/2, y1 = parentNode.y + parentNode.h;
+    // Emerge from the correct bank column
+    var pCfg = parentNode.sheetKey && SHEETS[parentNode.sheetKey];
+    var pBanks = pCfg ? pCfg.banks : [];
+    var bIdx = pBanks.indexOf(node.parentBank);
+    var bankFracS = pBanks.length > 1 && bIdx >= 0 ? (bIdx + 0.5) / pBanks.length : 0.5;
+    var x1 = parentNode.x + parentNode.w * bankFracS, y1 = parentNode.y + parentNode.h;
     var x2 = node.x + node.w/2, y2 = node.y;
     var cp = (y2-y1)/2;
     var path = document.createElementNS(ns, 'path');
@@ -3540,8 +3553,10 @@ function ddRender() {
     var x2 = to.x + to.w/2,   y2 = to.y;
     var dx = Math.abs(x2-x1), dy = Math.abs(y2-y1);
     if (dx > dy * 1.5) {
-      if (to.x > from.x) { x1 = from.x+from.w; y1 = from.y + from.h * bankFrac; x2 = to.x; y2 = to.y+to.h/2; }
-      else { x1 = from.x; y1 = from.y + from.h * bankFrac; x2 = to.x+to.w; y2 = to.y+to.h/2; }
+      // Side exit — use bankFrac to determine exit height on source
+      var exitY = from.y + from.h * bankFrac;
+      if (to.x > from.x) { x1 = from.x+from.w; y1 = exitY; x2 = to.x; y2 = to.y+to.h/2; }
+      else                { x1 = from.x;         y1 = exitY; x2 = to.x+to.w; y2 = to.y+to.h/2; }
     }
     var cp1x = x1, cp1y = (y1+y2)/2, cp2x = x2, cp2y = (y1+y2)/2;
     if (dx > dy * 1.5) { cp1x = (x1+x2)/2; cp1y = y1; cp2x = (x1+x2)/2; cp2y = y2; }
