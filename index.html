@@ -2937,7 +2937,7 @@ var DD_SHEET_CONFIGS = {
   '48way': {ways:6, banks:['A','B','C','D','E','F','G','H'],                 limit:63,  altLimit:125},
   '18way': {ways:6, banks:['A','B','C'],                                      limit:32,  altLimit:0},
   'dist':      {ways:6, banks:['A','B','C'],   limit:32,  altLimit:0},
-  'socaswitch': {ways:6, banks:['A'], limit:16, altLimit:0},
+  'socaswitch': null,
   'pdr':       {ways:6, banks:['A'], limit:32, altLimit:63},
   'lasearray': {ways:8, banks:['A'], limit:32, altLimit:0},
   'gen':   null,
@@ -3802,8 +3802,10 @@ function ddRender() {
     // Get equipment for this node's flowchart children
     var eqItems;
     if (node.type === 'socaswitch') {
-      // Show equipment from the SocaSwitch's own 6 outputs
-      eqItems = node.sheetKey ? ddGetEquipmentForSheet(node.sheetKey, null) : [];
+      // Show equipment from the parent distro's linked bank (SocaSwitch outputs mirror parent bank)
+      eqItems = (node.parentSheet && node.parentBank)
+        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank)
+        : [];
     } else {
       // For regular distro nodes: exclude any banks claimed by a SocaSwitch
       var claimedBanks = {};
@@ -4069,7 +4071,10 @@ function ddRender() {
         srcY = node.y + node.h + foRowHEq;
       } else {
         var bankFracEq;
-        if (nBanksEq > 1 && item.bankIdx >= 0) {
+        if (node.type === 'socaswitch') {
+          // SocaSwitch: spread 6 outputs evenly (way 1-6)
+          bankFracEq = item.wayNum ? (item.wayNum - 0.5) / 6 : (eIdx + 0.5) / Math.max(eqItems.length, 1);
+        } else if (nBanksEq > 1 && item.bankIdx >= 0) {
           // Multi-bank: use bank position
           bankFracEq = (item.bankIdx + 0.5) / nBanksEq;
         } else if (item.wayNum && item.totalWays && item.totalWays > 1) {
