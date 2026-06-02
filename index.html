@@ -3572,11 +3572,37 @@ function ddGetEquipmentForSheet(sheetKey, bankFilter) {
             output: banks[bi] + w + (sr > 0 ? '.' + sr : ''),
             eq: slot.eq,
             qty: slot.qty || 1,
-            phase: ((w-1)%3)+1
+            phase: ((w-1)%3)+1,
+            bank: banks[bi],
+            bankIdx: bi
           });
         }
       }
     }
+  }
+  // Include 1-phase fixed outlet assignments (not bank-filtered)
+  if (!bankFilter) {
+    var foList = getFixedOutlets(sheetKey);
+    var fixedSlots = (distroData[sheetKey] && distroData[sheetKey].fixedSlots) || {};
+    foList.forEach(function(fo) {
+      if (fo.ph !== 1) return;
+      for (var fi = 1; fi <= fo.count; fi++) {
+        var key = fo.label.replace(/\s/g,'_') + '_' + fi;
+        var slot = fixedSlots[key];
+        if (slot && slot.eq) {
+          items.push({
+            output: fo.label + ' #' + fi,
+            eq: slot.eq,
+            qty: slot.qty || 1,
+            phase: ((fi-1)%3)+1,
+            bank: null,
+            bankIdx: -1,
+            isFixed: true,
+            foColor: fo.color
+          });
+        }
+      }
+    });
   }
   return items;
 }
@@ -4018,50 +4044,54 @@ function ddRender() {
     var gridStartX = node.x + node.w/2 - gridW/2;
     var gridStartY = node.y + node.h + EQ_GAP_Y;
 
-    // Vertical trunk line from distro bottom to grid top
-    var trunkX = node.x + node.w/2;
-    var trunkY1 = node.y + node.h;
-    var trunkY2 = gridStartY - 6;
+    // ── Per-item trunk lines from correct bank/FO position ───────
+    var nodeCfgEq = node.sheetKey && SHEETS[node.sheetKey];
+    var nBanksEq = nodeCfgEq ? nodeCfgEq.banks.length : 1;
+    var foListEq = getFixedOutlets(node.sheetKey || '');
+    var foGroupsEq = [];
+    foListEq.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) foGroupsEq.push({key:fo.label.replace(/\s/g,'_')+'_'+fi}); });
+    var foRowHEq = foGroupsEq.length ? 14 : 0;
 
-    var trunk = document.createElementNS(ns, 'line');
-    trunk.setAttribute('x1', trunkX); trunk.setAttribute('y1', trunkY1);
-    trunk.setAttribute('x2', trunkX); trunk.setAttribute('y2', trunkY2);
-    trunk.setAttribute('stroke', 'rgba(255,255,255,0.15)'); trunk.setAttribute('stroke-width', '1.5');
-    trunk.setAttribute('stroke-dasharray', '4 3');
-    connLayer.appendChild(trunk);
+    eqItems.forEach(function(item, eIdx) {
+      var col = eIdx % cols;
+      var row2 = Math.floor(eIdx / cols);
+      var cardX = gridStartX + col * (EQ_W + EQ_GAP_X);
+      var cardY = gridStartY + row2 * (EQ_H + 16);
+      var cardCX = cardX + EQ_W/2;
 
-    // Horizontal bus line across all columns
-    if (cols > 1) {
-      var busY = trunkY2;
-      var busX1 = gridStartX + EQ_W/2;
-      var busX2 = gridStartX + (cols-1)*(EQ_W+EQ_GAP_X) + EQ_W/2;
-      var bus = document.createElementNS(ns, 'line');
-      bus.setAttribute('x1', busX1); bus.setAttribute('y1', busY);
-      bus.setAttribute('x2', busX2); bus.setAttribute('y2', busY);
-      bus.setAttribute('stroke', 'rgba(255,255,255,0.15)'); bus.setAttribute('stroke-width', '1.5');
-      bus.setAttribute('stroke-dasharray', '4 3');
-      connLayer.appendChild(bus);
-    }
+      // Source X on node
+      var srcX, srcY;
+      if (item.isFixed) {
+        // From FO strip position
+        var foIdx = foGroupsEq.findIndex(function(f){ return f.key === item.output.replace(/\s/g,'_').replace(/#/,'_'); });
+        if (foIdx < 0 && foGroupsEq.length) foIdx = 0;
+        srcX = foIdx >= 0 ? node.x + (foIdx + 0.5) / foGroupsEq.length * node.w : node.x + node.w/2;
+        srcY = node.y + node.h + foRowHEq;
+      } else {
+        var bankFracEq = nBanksEq > 1 && item.bankIdx >= 0 ? (item.bankIdx + 0.5) / nBanksEq : 0.5;
+        srcX = node.x + node.w * bankFracEq;
+        srcY = node.y + node.h;
+      }
+
+      // Draw curved line from node bank/FO to card top
+      var cpY = (srcY + cardY) / 2;
+      var connPath = document.createElementNS(ns, 'path');
+      connPath.setAttribute('d', 'M'+srcX+' '+srcY+' C'+srcX+' '+cpY+','+cardCX+' '+cpY+','+cardCX+' '+cardY);
+      connPath.setAttribute('fill', 'none');
+      connPath.setAttribute('stroke', item.isFixed ? (item.foColor || 'rgba(255,255,255,0.12)') : 'rgba(255,255,255,0.12)');
+      connPath.setAttribute('stroke-width', '1.5');
+      connPath.setAttribute('stroke-dasharray', '4 3');
+      connLayer.appendChild(connPath);
+    });
 
     eqItems.forEach(function(item, idx) {
       var col = idx % cols;
       var row = Math.floor(idx / cols);
       var ex = gridStartX + col * (EQ_W + EQ_GAP_X);
-      var ey = gridStartY + row * (EQ_H + 12);
+      var ey = gridStartY + row * (EQ_H + 16);
 
-      var phCol = PH_ITEM[item.phase] || '#1a3a57';
-      var phLt  = PH_ITEM_LT[item.phase] || 'rgba(31,78,121,0.2)';
-
-      // Drop line from bus to item
-      var dropX = ex + EQ_W/2;
-      var dropY1 = trunkY2;
-      var dropY2 = ey;
-      var drop = document.createElementNS(ns, 'line');
-      drop.setAttribute('x1', dropX); drop.setAttribute('y1', dropY1);
-      drop.setAttribute('x2', dropX); drop.setAttribute('y2', dropY2);
-      drop.setAttribute('stroke', 'rgba(255,255,255,0.12)'); drop.setAttribute('stroke-width', '1');
-      drop.setAttribute('stroke-dasharray', '3 3');
-      connLayer.appendChild(drop);
+      var phCol = item.isFixed ? (item.foColor || '#3498db') : (PH_ITEM[item.phase] || '#1a3a57');
+      var phLt  = item.isFixed ? (item.foColor || '#3498db') + '22' : (PH_ITEM_LT[item.phase] || 'rgba(31,78,121,0.2)');
 
       // Equipment card
       var eg = document.createElementNS(ns, 'g');
