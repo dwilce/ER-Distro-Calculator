@@ -1542,6 +1542,21 @@ function parseSpreadsheetRows(rows, filename) {
     return;
   }
 
+  // Build fuzzy matcher using global scoring functions
+  var invNames = Object.keys(eqMap);
+  var invToksSheet = invNames.map(function(n){ return {name:n, toks:tokens(n), norm:normalise(n)}; });
+  function matchNameSheet(name) {
+    var nameToks = tokens(name);
+    var bestMatch = null, bestScore = 0, partials = [];
+    invToksSheet.forEach(function(inv) {
+      var score = fuzzyScore(name, inv.name, nameToks, inv.toks, inv.norm);
+      if (score > bestScore) { bestScore = score; bestMatch = inv.name; }
+      if (score >= 0.45 && score < 0.72) partials.push({name:inv.name, score:score});
+    });
+    partials.sort(function(a,b){return b.score-a.score;}).splice(5);
+    return {match: bestScore >= 0.72 ? bestMatch : null, partials: partials};
+  }
+
   // Build items - merge same name+unitID combos
   var items = [];
   for (var ri = 1; ri < rows.length; ri++) {
@@ -1555,17 +1570,18 @@ function parseSpreadsheetRows(rows, filename) {
     var placement = colPlacement >= 0 ? String(row[colPlacement]||'').trim() : '';
 
     // Fuzzy match to inventory
-    var match = fuzzyMatchEq(nameVal);
+    var matchResult = matchNameSheet(nameVal);
 
     items.push({
       raw: nameVal,
-      match: match,
+      match: matchResult.match,
+      partials: matchResult.partials,
       qty: qtyVal,
       unitId: unitId,
       address: address,
       placement: placement,
       remaining: qtyVal,
-      assigned: false
+      assigned: []
     });
   }
 
