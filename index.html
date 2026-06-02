@@ -2937,7 +2937,7 @@ var DD_SHEET_CONFIGS = {
   '48way': {ways:6, banks:['A','B','C','D','E','F','G','H'],                 limit:63,  altLimit:125},
   '18way': {ways:6, banks:['A','B','C'],                                      limit:32,  altLimit:0},
   'dist':      {ways:6, banks:['A','B','C'],   limit:32,  altLimit:0},
-  'socaswitch': null,
+  'socaswitch': {ways:6, banks:['A'], limit:16, altLimit:0},
   'pdr':       {ways:6, banks:['A'], limit:32, altLimit:63},
   'lasearray': {ways:8, banks:['A'], limit:32, altLimit:0},
   'gen':   null,
@@ -3574,7 +3574,9 @@ function ddGetEquipmentForSheet(sheetKey, bankFilter) {
             qty: slot.qty || 1,
             phase: ((w-1)%3)+1,
             bank: banks[bi],
-            bankIdx: bi
+            bankIdx: bi,
+            wayNum: w,
+            totalWays: cfg.ways
           });
         }
       }
@@ -3800,10 +3802,8 @@ function ddRender() {
     // Get equipment for this node's flowchart children
     var eqItems;
     if (node.type === 'socaswitch') {
-      // Show equipment from the parent distro's linked bank
-      eqItems = (node.parentSheet && node.parentBank)
-        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank)
-        : [];
+      // Show equipment from the SocaSwitch's own 6 outputs
+      eqItems = node.sheetKey ? ddGetEquipmentForSheet(node.sheetKey, null) : [];
     } else {
       // For regular distro nodes: exclude any banks claimed by a SocaSwitch
       var claimedBanks = {};
@@ -4068,7 +4068,16 @@ function ddRender() {
         srcX = foIdx >= 0 ? node.x + (foIdx + 0.5) / foGroupsEq.length * node.w : node.x + node.w/2;
         srcY = node.y + node.h + foRowHEq;
       } else {
-        var bankFracEq = nBanksEq > 1 && item.bankIdx >= 0 ? (item.bankIdx + 0.5) / nBanksEq : 0.5;
+        var bankFracEq;
+        if (nBanksEq > 1 && item.bankIdx >= 0) {
+          // Multi-bank: use bank position
+          bankFracEq = (item.bankIdx + 0.5) / nBanksEq;
+        } else if (item.wayNum && item.totalWays && item.totalWays > 1) {
+          // Single-bank multi-way (e.g. Lasearray): spread by way number
+          bankFracEq = (item.wayNum - 0.5) / item.totalWays;
+        } else {
+          bankFracEq = 0.5;
+        }
         srcX = node.x + node.w * bankFracEq;
         srcY = node.y + node.h;
       }
