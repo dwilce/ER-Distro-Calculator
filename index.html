@@ -317,6 +317,7 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 #mob-menu .m-sec { padding:8px 16px 4px; font-size:9px; font-weight:700;
   color:rgba(255,255,255,.4); letter-spacing:2px; text-transform:uppercase }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <header id="topbar">
@@ -361,8 +362,15 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
     <div class="tc-group">
       <span class="tc-label">TOOLS</span>
       <button class="tc-btn tc-btn-purple" onclick="openDistroDesigner()" title="Distro Designer">&#9889; Designer</button>
-      <button class="tc-btn" onclick="triggerPdfImport()" title="Import from PDF">&#128196; Import</button>
+      <div class="labels-drop-wrap">
+        <button class="tc-btn" onclick="toggleImportMenu()" title="Import equipment list">&#128196; Import &#9660;</button>
+        <div class="labels-drop" id="importDrop" style="display:none">
+          <button onclick="triggerPdfImport();closeImportMenu()">&#128196; PDF &nbsp;<small>Stage plot, rider, equipment list</small></button>
+          <button onclick="triggerSpreadsheetImport();closeImportMenu()">&#128202; Spreadsheet &nbsp;<small>.xlsx or .csv — Name, Unit ID, Address</small></button>
+        </div>
+      </div>
       <input type="file" id="pdfInput" accept=".pdf" style="display:none" onchange="handlePdfImport(event)">
+      <input type="file" id="spreadsheetInput" accept=".xlsx,.csv" style="display:none" onchange="handleSpreadsheetImport(event)">
       <button class="tc-btn" onclick="triggerLogoUpload()" title="Upload logo" id="logoBtn">&#128444; Logo</button>
       <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
     </div>
@@ -1425,6 +1433,22 @@ var pdfItems = []; // parsed items from PDF
 // ── PDF IMPORT ────────────────────────────────────────────────
 var pdfItems = [];
 
+function toggleImportMenu() {
+  var d = document.getElementById('importDrop');
+  if (!d) return;
+  var open = d.style.display !== 'none';
+  document.querySelectorAll('.labels-drop').forEach(function(x){ x.style.display='none'; });
+  if (!open) d.style.display = 'block';
+}
+function closeImportMenu() {
+  var d = document.getElementById('importDrop');
+  if (d) d.style.display = 'none';
+}
+
+function triggerSpreadsheetImport() {
+  document.getElementById('spreadsheetInput').click();
+}
+
 function triggerPdfImport() {
   document.getElementById('pdfInput').click();
 }
@@ -1456,6 +1480,107 @@ function handlePdfImport(event) {
   reader.readAsArrayBuffer(file);
   event.target.value = '';
 }
+
+
+function handleSpreadsheetImport(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  var reader = new FileReader();
+  var isCsv = file.name.toLowerCase().endsWith('.csv');
+
+  reader.onload = function(e) {
+    try {
+      var rows = [];
+      if (isCsv) {
+        // Parse CSV manually
+        var text = e.target.result;
+        var lines = text.split(/\r?\n/);
+        rows = lines.map(function(l){ return l.split(',').map(function(c){ return c.replace(/^"|"$/g,'').trim(); }); });
+      } else {
+        // Parse XLSX via SheetJS
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_array(ws, {defval:''});
+      }
+      parseSpreadsheetRows(rows, file.name);
+    } catch(err) {
+      alert('Error reading file: ' + err.message);
+    }
+  };
+
+  if (isCsv) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function parseSpreadsheetRows(rows, filename) {
+  if (!rows || rows.length < 2) { alert('No data found in file.'); return; }
+
+  // Detect header row - first row
+  var headers = rows[0].map(function(h){ return String(h).toLowerCase().trim(); });
+
+  // Find columns by fuzzy match
+  function findCol(keywords) {
+    for (var ki = 0; ki < keywords.length; ki++) {
+      for (var ci = 0; ci < headers.length; ci++) {
+        if (headers[ci].indexOf(keywords[ki]) >= 0) return ci;
+      }
+    }
+    return -1;
+  }
+
+  var colName    = findCol(['name','equipment','item','description','fixture','type','product']);
+  var colQty     = findCol(['qty','quantity','count','num','amount']);
+  var colUnitId  = findCol(['unit id','unit no','unit number','id','unit','serial','#']);
+  var colAddress = findCol(['address','patch','dmx','channel','addr','universe','output']);
+  var colPlacement = findCol(['placement','location','position','pos','place','area']);
+
+  if (colName < 0) {
+    alert('Could not find a Name/Equipment column.\n\nHeaders found:\n' + headers.join(', ') + '\n\nPlease ensure your spreadsheet has a column named "Name", "Equipment", "Fixture", or similar.');
+    return;
+  }
+
+  // Build items - merge same name+unitID combos
+  var items = [];
+  for (var ri = 1; ri < rows.length; ri++) {
+    var row = rows[ri];
+    var nameVal = colName >= 0 ? String(row[colName]||'').trim() : '';
+    if (!nameVal) continue;
+
+    var qtyVal = colQty >= 0 ? parseInt(row[colQty]) || 1 : 1;
+    var unitId = colUnitId >= 0 ? String(row[colUnitId]||'').trim() : '';
+    var address = colAddress >= 0 ? String(row[colAddress]||'').trim() : '';
+    var placement = colPlacement >= 0 ? String(row[colPlacement]||'').trim() : '';
+
+    // Fuzzy match to inventory
+    var match = fuzzyMatchEq(nameVal);
+
+    items.push({
+      raw: nameVal,
+      match: match,
+      qty: qtyVal,
+      unitId: unitId,
+      address: address,
+      placement: placement,
+      remaining: qtyVal,
+      assigned: false
+    });
+  }
+
+  if (!items.length) { alert('No equipment rows found in file.'); return; }
+
+  // Reuse the PDF overlay with these items
+  pdfItems = items;
+  openPdfModal();
+  document.getElementById('pdfStatus').textContent =
+    'Spreadsheet: ' + filename + ' — ' + items.length + ' rows imported' +
+    (colUnitId >= 0 ? ' · Unit IDs detected' : '') +
+    (colAddress >= 0 ? ' · Addresses detected' : '');
+  renderPdfItems();
+}
+
 
 function parsePdf(typedArr) {
   pdfjsLib.getDocument({data: typedArr}).promise.then(function(pdf) {
@@ -1797,7 +1922,14 @@ function renderPdfItems() {
         '</select>' +
         (assignedTags ? '<span style="display:flex;gap:3px;flex-wrap:wrap;">' + assignedTags + '</span>' : '') +
         '<button class="pdf-delete-btn" onclick="deletePdfItem(' + idx + ')" title="Remove this line">&#10005;</button>' +
-      '</div>';
+      '</div>' +
+      ((item.unitId || item.address || item.placement) ?
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 6px 2px;font-size:10px;color:var(--muted)">' +
+          (item.unitId    ? '<span style="background:var(--blue-lt);color:var(--navy3);padding:1px 5px;border-radius:3px;font-weight:600">ID: ' + escAttr(item.unitId) + '</span>' : '') +
+          (item.placement ? '<span style="background:var(--faint);color:var(--text);padding:1px 5px;border-radius:3px;font-weight:600">&#128205; ' + escAttr(item.placement) + '</span>' : '') +
+          (item.address   ? '<span style="background:var(--faint);color:var(--text);padding:1px 5px;border-radius:3px;font-weight:600">&#128279; ' + escAttr(item.address) + '</span>' : '') +
+        '</div>'
+      : '');
 
     list.appendChild(div);
   });
@@ -1925,13 +2057,13 @@ function assignFromPdf() {
 
     if (!distroData[sheetName]) return;
 
-    // Build units array with placement/address if provided
+    // Build units array — use spreadsheet data if available, else form fields
     var units = [];
     for (var ui = 0; ui < toAssign; ui++) {
       units.push({
-        id: '',
-        placement: pdfPlacement,
-        address: pdfAddress
+        id:        item.unitId    || '',
+        placement: item.placement || pdfPlacement,
+        address:   item.address   || pdfAddress
       });
     }
 
