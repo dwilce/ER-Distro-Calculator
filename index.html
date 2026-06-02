@@ -2380,6 +2380,8 @@ function getShowState() {
     designer: {
       nodes: dd.nodes,
       conns: dd.conns,
+      zones: dd.zones,
+      cardOffsets: dd.cardOffsets,
       nextId: dd.nextId,
       scale: dd.scale,
       panX: dd.panX,
@@ -2411,12 +2413,14 @@ function applyShowState(state) {
   }
   // Restore Distro Designer
   if (state.designer) {
-    dd.nodes  = state.designer.nodes  || [];
-    dd.conns  = state.designer.conns  || [];
-    dd.nextId = state.designer.nextId || 1;
-    dd.scale  = state.designer.scale  || 1;
-    dd.panX   = state.designer.panX   || 0;
-    dd.panY   = state.designer.panY   || 0;
+    dd.nodes       = state.designer.nodes       || [];
+    dd.conns       = state.designer.conns       || [];
+    dd.zones       = state.designer.zones       || [];
+    dd.cardOffsets = state.designer.cardOffsets || {};
+    dd.nextId      = state.designer.nextId      || 1;
+    dd.scale       = state.designer.scale       || 1;
+    dd.panX        = state.designer.panX        || 0;
+    dd.panY        = state.designer.panY        || 0;
     // Rebuild SHEETS from designer nodes
     if (dd.nodes.length) ddSyncSheets();
   }
@@ -2799,6 +2803,7 @@ if (document.readyState === 'loading') {
         <button class="dd-btn" onclick="ddAddDistro()">＋ Add</button>
         <button class="dd-btn" id="ddConnBtn" onclick="ddToggleConnect()">&#128279; Connect</button>
         <button class="dd-btn" onclick="ddAutoLayout()">⊞ Auto Layout</button>
+        <button class="dd-btn" onclick="ddAddZone()" title="Add labelled region">&#9635; Zone</button>
         <button class="dd-btn dd-btn-danger" onclick="ddClearAll()">&#128465;</button>
       </div>
       <span id="ddStatus" style="font-size:10px;color:rgba(255,215,0,.7);font-style:italic"></span>
@@ -2893,15 +2898,19 @@ if (document.readyState === 'loading') {
 var dd = {
   nodes: [],
   conns: [],
+  zones: [],         // {id, label, color, x, y, w, h}
+  cardOffsets: {},   // nodeId → {idx → {dx, dy}}
   nextId: 1,
   connecting: false,
   connFrom: null,
   connType: 'cam-lock',
   dragging: null,
   dragOffX: 0, dragOffY: 0,
+  draggingCard: null, // {nodeId, cardIdx, offX, offY}
+  draggingZone: null,
+  resizingZone: null,
   selected: null,
   svgPt: null,
-  // Viewport transform
   scale: 1,
   panX: 0,
   panY: 0,
@@ -2997,6 +3006,7 @@ function openDistroDesigner() {
   var svg = document.getElementById('ddSvg');
   dd.svgPt = svg.createSVGPoint();
   svg.addEventListener('mousemove', ddOnMouseMove);
+  svg.addEventListener('mouseup',   ddOnMouseUp);
   svg.addEventListener('click', ddOnSvgClick);
   svg.addEventListener('wheel', ddOnWheel, {passive: false});
   svg.addEventListener('mousedown', ddOnPanStart);
@@ -3246,11 +3256,44 @@ function ddOnMouseMove(e) {
       node.x = Math.max(0, pt.x - dd.dragOffX);
       node.y = Math.max(0, pt.y - dd.dragOffY);
       ddRender();
-      if (dd.selected && dd.selected.type === 'node' && dd.selected.id === node.id) {
-        ddRenderProps();
-      }
+      if (dd.selected && dd.selected.type === 'node' && dd.selected.id === node.id) ddRenderProps();
     }
   }
+  // Card dragging
+  if (dd.draggingCard) {
+    var pt = ddSvgCoords(e);
+    var dc = dd.draggingCard;
+    var newX = pt.x - dc.offX - dc.baseX;
+    var newY = pt.y - dc.offY - dc.baseY;
+    // Limit drag range
+    newX = Math.max(-200, Math.min(200, newX));
+    newY = Math.max(-50,  Math.min(400, newY));
+    ddSetCardOff(dc.nodeId, dc.cardIdx, newX, newY);
+    ddRender();
+  }
+  // Zone dragging
+  if (dd.draggingZone) {
+    var pt = ddSvgCoords(e);
+    var z = dd.zones.find(function(z2){ return z2.id===dd.draggingZone.id; });
+    if (z) { z.x = pt.x - dd.draggingZone.offX; z.y = pt.y - dd.draggingZone.offY; ddRender(); }
+  }
+  // Zone resizing
+  if (dd.resizingZone) {
+    var pt = ddSvgCoords(e);
+    var z = dd.zones.find(function(z2){ return z2.id===dd.resizingZone.id; });
+    if (z) {
+      z.w = Math.max(120, pt.x - z.x);
+      z.h = Math.max(80,  pt.y - z.y);
+      ddRender();
+    }
+  }
+}
+
+function ddOnMouseUp(e) {
+  dd.dragging = null;
+  dd.draggingCard = null;
+  dd.draggingZone = null;
+  dd.resizingZone = null;
 }
 
 function ddSetConnBank(connId, bank) {
@@ -3345,7 +3388,22 @@ function ddSelect(type, id) {
 
 function ddRenderProps() {
   var panel = document.getElementById('ddProps');
-  if (!dd.selected) { panel.innerHTML = '<div style="color:#2a5a7a;font-size:11px;font-style:italic;padding:4px">Nothing selected</div>'; return; }
+  if (!dd.selected) { panel.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:11px;font-style:italic;padding:8px">Nothing selected</div>'; return; }
+
+  // ── Zone properties ──────────────────────────────────────────
+  if (dd.selected.type === 'zone') {
+    var zone = dd.zones.find(function(z){ return z.id===dd.selected.id; });
+    if (!zone) return;
+    var colorBtns = ZONE_COLORS.map(function(c, ci) {
+      return '<div onclick="ddZoneColor(' + zone.id + ',' + ci + ')" style="width:20px;height:20px;border-radius:4px;background:' + ZONE_BORDERS[ci] + ';cursor:pointer;opacity:0.8;border:2px solid '+(zone.border===ZONE_BORDERS[ci]?'#fff':'transparent')+'"></div>';
+    }).join('');
+    panel.innerHTML =
+      '<div class="dd-prop-row"><div class="dd-prop-label">ZONE NAME</div>' +
+      '<input class="dd-prop-input" value="' + ddEsc(zone.label) + '" oninput="var z=dd.zones.find(function(z){return z.id===' + zone.id + ';});if(z){z.label=this.value;ddRender();}"></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">COLOUR</div><div style="display:flex;gap:4px;flex-wrap:wrap">' + colorBtns + '</div></div>' +
+      '<button class="dd-del-btn" onclick="ddDeleteZone(' + zone.id + ')">&#128465; Delete Zone</button>';
+    return;
+  }
 
   if (dd.selected.type === 'node') {
     var node = dd.nodes.find(function(n){return n.id===dd.selected.id;});
@@ -3409,7 +3467,8 @@ function ddRenderProps() {
           '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + ddEsc(node.sheetKey || node.label) + '\')">&#8594; Open in Calculator</button>'
         : (!isSoca ? '<div style="font-size:9px;color:#4a7a9b;padding:3px 0 6px">No calculator sheet (source unit)</div>' : '')
       ) +
-      '<button class="dd-del-btn" onclick="ddDeleteNode(' + node.id + ')" style="margin-top:8px">&#128465; Delete Distro</button>';
+      '<button class="dd-del-btn" onclick="ddDeleteNode(' + node.id + ')" style="margin-top:8px">&#128465; Delete Distro</button>' +
+      (dd.cardOffsets[node.id] ? '<button class="dd-jump-btn" onclick="ddResetCards(' + node.id + ')" style="margin-top:4px">&#8635; Reset Card Positions</button>' : '');
   } else if (dd.selected.type === 'conn') {
     var conn = dd.conns.find(function(c){return c.id===dd.selected.id;});
     if (!conn) return;
@@ -3609,6 +3668,53 @@ function ddGetEquipmentForSheet(sheetKey, bankFilter) {
   return items;
 }
 
+// ── ZONES ─────────────────────────────────────────────────────
+var ZONE_COLORS  = ['rgba(52,152,219,0.10)','rgba(46,204,113,0.10)','rgba(231,76,60,0.10)',
+  'rgba(241,196,15,0.08)','rgba(155,89,182,0.10)','rgba(230,126,34,0.10)'];
+var ZONE_BORDERS = ['#3498db','#2ecc71','#e74c3c','#f1c40f','#9b59b6','#e67e22'];
+
+function ddAddZone() {
+  var ci = dd.zones.length % ZONE_COLORS.length;
+  var label = prompt('Zone name:', 'Zone ' + (dd.zones.length + 1));
+  if (label === null) return;
+  var svgEl = document.getElementById('ddSvg');
+  var cx = (-dd.panX + svgEl.clientWidth/2) / dd.scale;
+  var cy = (-dd.panY + svgEl.clientHeight/2) / dd.scale;
+  dd.zones.push({id: dd.nextId++, label: label, color: ZONE_COLORS[ci],
+    border: ZONE_BORDERS[ci], x: cx-200, y: cy-150, w: 400, h: 300});
+  ddRender();
+}
+function ddDeleteZone(id) {
+  dd.zones = dd.zones.filter(function(z){ return z.id !== id; });
+  if (dd.selected && dd.selected.type==='zone' && dd.selected.id===id) dd.selected=null;
+  ddRender();
+}
+function ddRenameZone(id) {
+  var z = dd.zones.find(function(z){ return z.id===id; });
+  if (!z) return;
+  var n = prompt('Zone name:', z.label);
+  if (n !== null) { z.label = n; ddRender(); }
+}
+function ddZoneColor(id, ci) {
+  var z = dd.zones.find(function(z){ return z.id===id; });
+  if (!z) return;
+  z.color  = ZONE_COLORS[ci  % ZONE_COLORS.length];
+  z.border = ZONE_BORDERS[ci % ZONE_BORDERS.length];
+  ddRender(); ddRenderProps();
+}
+
+// ── CARD OFFSETS ──────────────────────────────────────────────
+function ddGetCardOff(nodeId, idx) {
+  return (dd.cardOffsets[nodeId] && dd.cardOffsets[nodeId][idx]) || {dx:0,dy:0};
+}
+function ddSetCardOff(nodeId, idx, dx, dy) {
+  if (!dd.cardOffsets[nodeId]) dd.cardOffsets[nodeId] = {};
+  dd.cardOffsets[nodeId][idx] = {dx:Math.round(dx), dy:Math.round(dy)};
+}
+function ddResetCards(nodeId) {
+  delete dd.cardOffsets[nodeId]; ddRender();
+}
+
 function ddRender() {
   var nodeLayer = document.getElementById('ddNodeLayer');
   var connLayer = document.getElementById('ddConnLayer');
@@ -3616,6 +3722,73 @@ function ddRender() {
   connLayer.innerHTML = '';
 
   var ns = 'http://www.w3.org/2000/svg';
+  var SHOW_CARDS = dd.scale >= 0.45; // auto-hide equipment cards when zoomed out
+
+  // ── Draw zones (behind everything) ───────────────────────────
+  dd.zones.forEach(function(zone) {
+    var zg = document.createElementNS(ns, 'g');
+    zg.style.cursor = 'move';
+
+    // Zone fill
+    var zr = document.createElementNS(ns, 'rect');
+    zr.setAttribute('x', zone.x); zr.setAttribute('y', zone.y);
+    zr.setAttribute('width', zone.w); zr.setAttribute('height', zone.h);
+    zr.setAttribute('rx', 12); zr.setAttribute('fill', zone.color);
+    zr.setAttribute('stroke', zone.border); zr.setAttribute('stroke-width', '1.5');
+    zr.setAttribute('stroke-dasharray', '8 4');
+    zg.appendChild(zr);
+
+    // Zone label
+    var zt = document.createElementNS(ns, 'text');
+    zt.setAttribute('x', zone.x + 14); zt.setAttribute('y', zone.y + 20);
+    zt.setAttribute('font-size', '12'); zt.setAttribute('font-weight', '700');
+    zt.setAttribute('fill', zone.border); zt.setAttribute('font-family', 'sans-serif');
+    zt.setAttribute('letter-spacing', '1'); zt.setAttribute('opacity', '0.85');
+    zt.textContent = zone.label.toUpperCase();
+    zg.appendChild(zt);
+
+    // Resize handle (bottom-right corner)
+    var rh = document.createElementNS(ns, 'rect');
+    rh.setAttribute('x', zone.x+zone.w-12); rh.setAttribute('y', zone.y+zone.h-12);
+    rh.setAttribute('width', 12); rh.setAttribute('height', 12);
+    rh.setAttribute('rx', 2); rh.setAttribute('fill', zone.border);
+    rh.setAttribute('opacity', '0.5'); rh.style.cursor = 'se-resize';
+    zg.appendChild(rh);
+
+    // Rename + delete controls (top right)
+    var isSel = dd.selected && dd.selected.type==='zone' && dd.selected.id===zone.id;
+    if (isSel) {
+      var delBtn = document.createElementNS(ns, 'text');
+      delBtn.setAttribute('x', zone.x+zone.w-8); delBtn.setAttribute('y', zone.y+16);
+      delBtn.setAttribute('text-anchor','end'); delBtn.setAttribute('font-size','13');
+      delBtn.setAttribute('fill','#e74c3c'); delBtn.setAttribute('cursor','pointer');
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', function(e){ e.stopPropagation(); ddDeleteZone(zone.id); });
+      zg.appendChild(delBtn);
+      var renBtn = document.createElementNS(ns, 'text');
+      renBtn.setAttribute('x', zone.x+zone.w-24); renBtn.setAttribute('y', zone.y+16);
+      renBtn.setAttribute('text-anchor','end'); renBtn.setAttribute('font-size','11');
+      renBtn.setAttribute('fill', zone.border); renBtn.setAttribute('cursor','pointer');
+      renBtn.textContent = '✎';
+      renBtn.addEventListener('click', function(e){ e.stopPropagation(); ddRenameZone(zone.id); });
+      zg.appendChild(renBtn);
+    }
+
+    // Zone drag
+    zg.addEventListener('mousedown', (function(zid){ return function(e) {
+      if (e.target.tagName === 'rect' && parseFloat(e.target.getAttribute('x')) >= dd.zones.find(function(z){return z.id===zid;}).x+dd.zones.find(function(z){return z.id===zid;}).w-12) {
+        // Resize
+        dd.resizingZone = {id:zid, startX:e.clientX, startY:e.clientY};
+      } else {
+        var z = dd.zones.find(function(z2){return z2.id===zid;});
+        if (z) dd.draggingZone = {id:zid, offX: ddSvgPoint(e).x - z.x, offY: ddSvgPoint(e).y - z.y};
+      }
+      dd.selected = {type:'zone', id:zid};
+      e.stopPropagation();
+      ddRenderProps();
+    }; })(zone.id));
+    nodeLayer.insertBefore(zg, nodeLayer.firstChild);
+  });
 
   // ── Draw Socapex feed lines for SocaSwitch nodes ─────────────
   dd.nodes.forEach(function(node) {
@@ -4039,6 +4212,24 @@ function ddRender() {
     // ── EQUIPMENT FLOWCHART ITEMS ─────────────────────────────
     if (eqItems.length === 0) return;
 
+    // Auto-hide at low zoom — show count badge instead
+    if (!SHOW_CARDS) {
+      var badge = document.createElementNS(ns, 'g');
+      var br = document.createElementNS(ns, 'rect');
+      br.setAttribute('x', node.x+node.w/2-18); br.setAttribute('y', node.y+node.h+6);
+      br.setAttribute('width', 36); br.setAttribute('height', 16);
+      br.setAttribute('rx', 8); br.setAttribute('fill', 'rgba(255,255,255,0.15)');
+      badge.appendChild(br);
+      var bt = document.createElementNS(ns, 'text');
+      bt.setAttribute('x', node.x+node.w/2); bt.setAttribute('y', node.y+node.h+18);
+      bt.setAttribute('text-anchor','middle'); bt.setAttribute('font-size','9');
+      bt.setAttribute('fill','rgba(255,255,255,0.7)'); bt.setAttribute('font-family','sans-serif');
+      bt.textContent = eqItems.length + ' item' + (eqItems.length>1?'s':'');
+      badge.appendChild(bt);
+      nodeLayer.appendChild(badge);
+      return;
+    }
+
     var EQ_W = 150, EQ_H = 36, EQ_GAP_X = 16, EQ_GAP_Y = 50;
     var cols = Math.min(eqItems.length, 4);
     var rows = Math.ceil(eqItems.length / cols);
@@ -4101,16 +4292,28 @@ function ddRender() {
     eqItems.forEach(function(item, idx) {
       var col = idx % cols;
       var row = Math.floor(idx / cols);
-      var ex = gridStartX + col * (EQ_W + EQ_GAP_X);
-      var ey = gridStartY + row * (EQ_H + 16);
+      var baseX = gridStartX + col * (EQ_W + EQ_GAP_X);
+      var baseY = gridStartY + row * (EQ_H + 16);
+      var off = ddGetCardOff(node.id, idx);
+      var ex = baseX + off.dx;
+      var ey = baseY + off.dy;
 
       var phCol = item.isFixed ? (item.foColor || '#3498db') : (PH_ITEM[item.phase] || '#1a3a57');
       var phLt  = item.isFixed ? (item.foColor || '#3498db') + '22' : (PH_ITEM_LT[item.phase] || 'rgba(31,78,121,0.2)');
 
       // Equipment card
       var eg = document.createElementNS(ns, 'g');
-      eg.style.cursor = 'pointer';
-      eg.addEventListener('click', (function(sk){ return function(){ closeDistroDesigner(); activeSheet=sk; buildSheetTabs(); renderDistro(); }; })(node.sheetKey));
+      eg.style.cursor = 'grab';
+      eg.addEventListener('mousedown', (function(nid, cidx, bx, by){ return function(e) {
+        if (dd.connecting) return;
+        e.stopPropagation();
+        var pt = ddSvgPoint(e);
+        var off = ddGetCardOff(nid, cidx);
+        dd.draggingCard = {nodeId:nid, cardIdx:cidx, baseX:bx, baseY:by,
+          offX: pt.x - (bx + off.dx), offY: pt.y - (by + off.dy)};
+        eg.style.cursor = 'grabbing';
+      }; })(node.id, idx, baseX, baseY));
+      eg.addEventListener('click', (function(sk){ return function(e){ if (dd.draggingCard) return; closeDistroDesigner(); activeSheet=sk; buildSheetTabs(); renderDistro(); }; })(node.sheetKey));
 
       // Card background
       var ebg = document.createElementNS(ns, 'rect');
