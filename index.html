@@ -404,8 +404,11 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
       <div class="add-target-sub" id="targetSub">Click any + button on the distro sheet</div>
     </div>
     <div class="multi-assign-wrap" id="multiAssignWrap" style="display:none">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:0 0 4px">Additional outputs (same equipment)</div>
-      <div class="multi-way-grid" id="multiWayGrid"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleMultiAssign()">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Additional outputs (same equipment)</div>
+        <span id="multiAssignToggle" style="font-size:11px;color:var(--muted)">&#9660;</span>
+      </div>
+      <div class="multi-way-grid" id="multiWayGrid" style="margin-top:4px"></div>
     </div>
     <div class="add-form">
       <div class="form-group">
@@ -512,6 +515,16 @@ var PH_DK = ['','#7d3c98','#c0622a','#0e7c7b'];
 var PH_LT = ['','#f4ecfd','#fdf0e6','#e0f5f5'];
 var region = 'US';
 var activeSheet = '18-Way (32A)';
+var multiAssignCollapsed = false;
+
+function toggleMultiAssign() {
+  multiAssignCollapsed = !multiAssignCollapsed;
+  var grid = document.getElementById('multiWayGrid');
+  var arrow = document.getElementById('multiAssignToggle');
+  if (grid) grid.style.display = multiAssignCollapsed ? 'none' : 'flex';
+  if (arrow) arrow.textContent = multiAssignCollapsed ? '▶' : '▼';
+}
+
 var multiExtraTargets = []; // array of "bi:wayNum" strings for multi-assign
 var selectedTarget = null;
 var selectedSlot = 0;
@@ -1224,6 +1237,10 @@ function selectTarget(bi, wayNum, subRow) {
     });
     multiExtraTargets = [];
     multiWrap.style.display = cfg.banks.length > 1 || cfg.ways > 1 ? 'block' : 'none';
+    if (!multiAssignCollapsed) {
+      var mg = document.getElementById('multiWayGrid');
+      if (mg) mg.style.display = 'flex';
+    }
     document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
   }
 
@@ -4353,12 +4370,14 @@ function ddExport() {
           <li>Click <strong>Update &amp; Clear</strong> — saves unit details, pushes to Flight Case Labels if ticked, and resets the panel</li>
         </ol>
         <p><strong>Editing:</strong> Click any populated output to reload it into the panel. Make changes and click Update &amp; Clear to save.</p>
+        <p><strong>Assigning to multiple outputs at once:</strong> After clicking <strong>+</strong> on any output, an <strong>Additional outputs</strong> section appears below the target showing every way in the sheet. Click any to also assign the same equipment there — selected outputs turn navy. The write button updates to show the total count (e.g. <em>Add to 4 outputs</em>). Click the section header to collapse it when not needed.</p>
         <p><strong>Fixed outlets</strong> (on 48-Way, 72-Way, PDR, and Lasearray) appear in their own section below the bank grid. Click <strong>+ Assign</strong> on any 1-phase fixed outlet to assign equipment to it. 3-phase outlets link to another distro sheet via the dropdown — their full rated amps are reserved on all 3 phases once linked.</p>
       </div>
 
       <div class="help-section">
-        <h3>&#128196; Import from PDF</h3>
-        <p>Click <strong>Import PDF</strong> to extract equipment from any PDF — stage plots, riders, CAD drawings, or equipment lists. Matched lines appear in a popup:</p>
+        <h3>&#128196; Import from PDF or Spreadsheet</h3>
+        <p>Click <strong>Import ▾</strong> to choose a source:</p>
+        <p><strong>PDF</strong> — extract equipment from any PDF (stage plots, riders, CAD drawings, equipment lists). Matched lines appear in a popup:</p>
         <ul>
           <li><span class="help-badge ok">&#10003;</span> <strong>Green border</strong> — confident inventory match. The dropdown shows the matched item; change it if needed.</li>
           <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match. Open the dropdown to pick from <em>Best matches</em> or <em>All inventory</em>.</li>
@@ -4366,6 +4385,7 @@ function ddExport() {
         </ul>
         <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set.</p>
         <p>Once matches and quantities look right: tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, set quantity, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
+        <p><strong>Spreadsheet (.xlsx or .csv)</strong> — imports a structured equipment list. Columns are detected automatically by header name — it looks for: <em>Name / Equipment / Fixture</em>, <em>Qty / Quantity</em>, <em>Unit ID / Unit No / Serial</em>, <em>Address / Patch / DMX / Channel</em>, <em>Placement / Location / Position</em>. If Unit ID, Placement, or Address columns are found they show as coloured badges on each row and are written automatically when assigned — no re-entry needed. Quantities from the spreadsheet are pre-filled. The same assign panel is used as for PDF import.</p>
       </div>
 
       <div class="help-section">
