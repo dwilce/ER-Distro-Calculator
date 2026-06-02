@@ -101,10 +101,10 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 .sheet-title h2{font-size:20px;font-weight:700}
 .sheet-title .limit-badge{font-size:12px;font-weight:600;color:rgba(255,255,255,.6)}
 .region-cell{background:rgba(255,255,255,.15);color:white;font-size:11px;font-weight:600;padding:4px 10px;border-radius:4px}
-.bank-card{border-radius:8px;overflow:hidden;border:1px solid var(--border)}
-.bank-hdr{padding:6px 10px;font-weight:700;font-size:13px;color:white;display:flex;align-items:center;justify-content:space-between}
+.bank-card{border-radius:8px;overflow:hidden;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.bank-hdr{padding:7px 10px;font-weight:700;font-size:13px;color:white;display:flex;align-items:center;justify-content:space-between;letter-spacing:.3px}
 .bank-hdr .ph-tag{font-size:10px;opacity:.75}
-.way-row{display:grid;grid-template-columns:28px 1fr 52px;align-items:center;border-bottom:1px solid var(--faint)}
+.way-row{display:grid;grid-template-columns:28px 1fr 52px;align-items:center;border-bottom:1px solid var(--faint);transition:background .1s}.way-row:hover{background:var(--blue-lt)}
 .way-row:last-child{border-bottom:none}
 .way-label{text-align:center;font-weight:700;font-size:12px;color:white;padding:6px 0;align-self:stretch;display:flex;align-items:center;justify-content:center}
 .way-items{padding:4px 8px}
@@ -165,6 +165,23 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 .close-fields-btn:hover{border-color:var(--navy3);color:var(--navy3)}
 .save-btn{padding:6px 12px;font-size:11px;font-weight:600;color:rgba(255,255,255,.75);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;cursor:pointer}
 .save-btn:hover{background:rgba(255,255,255,.2);color:white}
+
+
+.multi-assign-wrap { padding:8px 12px;background:var(--faint);border-bottom:1px solid var(--border); }
+.multi-way-grid { display:flex;flex-wrap:wrap;gap:4px;margin-top:4px; }
+.mw-btn { padding:3px 7px;font-size:11px;font-weight:700;border-radius:4px;cursor:pointer;
+  border:1px solid var(--border);background:white;color:var(--text);transition:all .1s; }
+.mw-btn.sel { background:var(--navy3);color:white;border-color:var(--navy3); }
+.mw-btn.primary { background:var(--blue);color:white;border-color:var(--blue);cursor:default; }
+
+.tc-group { display:flex; align-items:center; gap:4px; }
+.tc-label { font-size:8px; font-weight:700; letter-spacing:1.5px; color:rgba(255,255,255,.35); text-transform:uppercase; margin-right:2px; user-select:none; }
+.tc-divider { width:1px; height:24px; background:rgba(255,255,255,.15); margin:0 6px; flex-shrink:0; }
+.tc-btn { padding:5px 10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:white; border-radius:4px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background .15s; }
+.tc-btn:hover { background:rgba(255,255,255,.18); }
+.tc-btn-purple { background:rgba(91,44,138,.5); border-color:rgba(140,100,200,.5); }
+.tc-btn-purple:hover { background:rgba(91,44,138,.8); }
+
 .report-btn-top{padding:6px 12px;font-size:11px;font-weight:600;color:white;background:#375623;border:1px solid #375623;border-radius:4px;cursor:pointer}
 .report-btn-top:hover{background:#2d4a1c}
 #unitFields{margin-top:4px}
@@ -318,26 +335,39 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
     <div class="sheet-tabs" id="sheetTabs">
       <select id="sheetSelect" class="sheet-select" onchange="switchSheet(this.value)"></select>
     </div>
-    <button class="help-btn" onclick="openHelp()">&#63; Help</button>
-    <button class="save-btn" onclick="saveToFile()">&#128190; Save</button>
-    <button class="save-btn" onclick="loadFromFile()">&#128194; Load</button>
-    <input type="file" id="fileInput" accept=".erdistro,.json" style="display:none" onchange="handleFileLoad(event)">
-    <div class="labels-drop-wrap">
-      <button class="labels-btn" onclick="toggleLabelMenu()">&#128424; Labels &#9660;</button>
-      <div class="labels-drop" id="labelDrop">
-        <button onclick="openLabels('5163');closeLabelMenu()">Avery 5163 &nbsp;<small>US Letter &bull; 2&times;5 &bull; 4&quot;&times;2&quot; &bull; Distro labels</small></button>
-        <button onclick="openLabels('L7173');closeLabelMenu()">Avery L7173 &nbsp;<small>A4 &bull; 2&times;5 &bull; 99.1&times;57mm &bull; Distro labels</small></button>
-        <button onclick="openEquipmentLabels();closeLabelMenu()">P-touch 24mm &nbsp;<small>Brother PT-P710BT &bull; 50mm per label &bull; Equipment labels</small></button>
-        <button onclick="window.open('luminex_labels.html','_blank');closeLabelMenu()">&#127760; Port Labels &nbsp;<small>PT-P710BT &bull; 12mm tape &bull; Gigacore / Luminode</small></button>
-      </div>
+    <div class="tc-divider"></div>
+    <div class="tc-group">
+      <span class="tc-label">FILE</span>
+      <button class="tc-btn" onclick="saveToFile()" title="Save show file">&#128190; Save</button>
+      <button class="tc-btn" onclick="loadFromFile()" title="Load show file">&#128194; Load</button>
+      <input type="file" id="fileInput" accept=".erdistro,.json" style="display:none" onchange="handleFileLoad(event)">
     </div>
-    <button class="save-btn" onclick="window.open('flightcase.html','_blank')">&#128230; Case Labels</button>
-    <button class="save-btn" onclick="triggerPdfImport()">&#128196; Import PDF</button>
-    <input type="file" id="pdfInput" accept=".pdf" style="display:none" onchange="handlePdfImport(event)">
-    <button class="save-btn" onclick="triggerLogoUpload()">&#128444; Logo</button>
-    <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
-    <button class="report-btn-top" onclick="openReport()">&#128438; Report</button>
-    <button class="report-btn-top" style="background:#5b2c8a;border-color:#5b2c8a" onclick="openDistroDesigner()">&#9889; Distro Designer</button>
+    <div class="tc-divider"></div>
+    <div class="tc-group">
+      <span class="tc-label">PRINT</span>
+      <div class="labels-drop-wrap">
+        <button class="tc-btn labels-btn" onclick="toggleLabelMenu()">&#128424; Labels &#9660;</button>
+        <div class="labels-drop" id="labelDrop">
+          <button onclick="openLabels('5163');closeLabelMenu()">Avery 5163 &nbsp;<small>US Letter &bull; Distro labels</small></button>
+          <button onclick="openLabels('L7173');closeLabelMenu()">Avery L7173 &nbsp;<small>A4 &bull; Distro labels</small></button>
+          <button onclick="openEquipmentLabels();closeLabelMenu()">&#128218; Equipment Labels &nbsp;<small>P-touch 24mm &bull; 50mm per label</small></button>
+          <button onclick="window.open('luminex_labels.html','_blank');closeLabelMenu()">&#127760; Port Labels &nbsp;<small>P-touch 12mm &bull; Gigacore / Luminode</small></button>
+          <button onclick="window.open('flightcase.html','_blank');closeLabelMenu()">&#128230; Case Labels &nbsp;<small>Avery 5126 &bull; 177&times;127mm</small></button>
+        </div>
+      </div>
+      <button class="tc-btn" onclick="openReport()" title="Equipment report">&#128438; Report</button>
+    </div>
+    <div class="tc-divider"></div>
+    <div class="tc-group">
+      <span class="tc-label">TOOLS</span>
+      <button class="tc-btn tc-btn-purple" onclick="openDistroDesigner()" title="Distro Designer">&#9889; Designer</button>
+      <button class="tc-btn" onclick="triggerPdfImport()" title="Import from PDF">&#128196; Import</button>
+      <input type="file" id="pdfInput" accept=".pdf" style="display:none" onchange="handlePdfImport(event)">
+      <button class="tc-btn" onclick="triggerLogoUpload()" title="Upload logo" id="logoBtn">&#128444; Logo</button>
+      <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+    </div>
+    <div class="tc-divider"></div>
+    <button class="help-btn" onclick="openHelp()">&#63; Help</button>
   </div>
   <button id="mob-bar" onclick="mobMenu()">&#9776;</button>
 </header>
@@ -365,13 +395,17 @@ body{margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
       <div class="add-target-val" id="targetVal">Select an output &#8594;</div>
       <div class="add-target-sub" id="targetSub">Click any + button on the distro sheet</div>
     </div>
+    <div class="multi-assign-wrap" id="multiAssignWrap" style="display:none">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:0 0 4px">Additional outputs (same equipment)</div>
+      <div class="multi-way-grid" id="multiWayGrid"></div>
+    </div>
     <div class="add-form">
       <div class="form-group">
         <label>Equipment</label>
         <select id="addEqSel" onchange="updateAddPreview()"></select>
       </div>
       <div class="form-group">
-        <label>Quantity</label>
+        <label>Quantity per output</label>
         <input type="number" id="addQty" value="1" min="1" max="99" oninput="updateAddPreview();autoFcCount()">
       </div>
       <div class="amp-preview">
@@ -470,6 +504,7 @@ var PH_DK = ['','#7d3c98','#c0622a','#0e7c7b'];
 var PH_LT = ['','#f4ecfd','#fdf0e6','#e0f5f5'];
 var region = 'US';
 var activeSheet = '18-Way (32A)';
+var multiExtraTargets = []; // array of "bi:wayNum" strings for multi-assign
 var selectedTarget = null;
 var selectedSlot = 0;
 var eqSections = [];
@@ -1148,6 +1183,42 @@ function selectTarget(bi, wayNum, subRow) {
   }
   selectedSlot = subRow;
 
+  // Build multi-way grid — all ways across all banks
+  var multiGrid = document.getElementById('multiWayGrid');
+  var multiWrap = document.getElementById('multiAssignWrap');
+  if (multiGrid && cfg.banks && cfg.ways) {
+    multiGrid.innerHTML = '';
+    multiExtraTargets = [];
+    cfg.banks.forEach(function(bLetter, bIdx) {
+      for (var wn = 1; wn <= cfg.ways; wn++) {
+        var isPrimary = (bIdx === bi && wn === wayNum);
+        var btn = document.createElement('button');
+        btn.className = 'mw-btn' + (isPrimary ? ' primary' : '');
+        btn.textContent = bLetter + wn;
+        btn.title = isPrimary ? 'Primary (selected)' : 'Click to also assign here';
+        if (!isPrimary) {
+          btn.addEventListener('click', (function(bI, wN, b) {
+            return function() {
+              b.classList.toggle('sel');
+              var key = bI + ':' + wN;
+              var idx = multiExtraTargets.indexOf(key);
+              if (idx >= 0) multiExtraTargets.splice(idx, 1);
+              else multiExtraTargets.push(key);
+              document.getElementById('writeBtn').textContent =
+                multiExtraTargets.length > 0
+                  ? 'Add to ' + (multiExtraTargets.length + 1) + ' outputs'
+                  : 'Add Device & Enter Information';
+            };
+          })(bIdx, wn, btn));
+        }
+        multiGrid.appendChild(btn);
+      }
+    });
+    multiExtraTargets = [];
+    multiWrap.style.display = cfg.banks.length > 1 || cfg.ways > 1 ? 'block' : 'none';
+    document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
+  }
+
   // If slot is populated, load existing data into the form for editing
   var slot = slots[subRow];
   if (slot) {
@@ -1258,17 +1329,31 @@ function writeToSheet() {
   var bi = selectedTarget.bi, wayNum = selectedTarget.wayNum, subRow = selectedTarget.subRow;
   var w = eqWatts(name);
   var e = eqMap[name] || {};
-  distroData[activeSheet][bi][wayNum][subRow] = {eq:name, watts:w, qty:qty, units:[], v120only: e.v120only||false, v240only: e.v240only||false};
+  var slotData = {eq:name, watts:w, qty:qty, units:[], v120only: e.v120only||false, v240only: e.v240only||false};
+  distroData[activeSheet][bi][wayNum][subRow] = slotData;
+
+  // Write to extra selected outputs too
+  var extraWritten = [];
+  multiExtraTargets.forEach(function(key) {
+    var parts = key.split(':');
+    var eBi = parseInt(parts[0]), eWn = parseInt(parts[1]);
+    distroData[activeSheet][eBi][eWn][subRow] = {eq:name, watts:w, qty:qty, units:[], v120only: e.v120only||false, v240only: e.v240only||false};
+    extraWritten.push(SHEETS[activeSheet].banks[eBi] + eWn);
+  });
+
   renderUnitFields(bi, wayNum, subRow);
 
   var fcCb = document.getElementById('addToFlightCase');
-  var bankLabel = SHEETS[activeSheet].banks[bi] + wayNum + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow);
+  var bankLabel = SHEETS[activeSheet].banks[bi] + wayNum + (extraWritten.length ? ' + ' + extraWritten.join(', ') : '') + ' \u2014 ' + (subRow === 0 ? 'Master' : 'Sub ' + subRow);
   if (fcCb && fcCb.checked) {
     document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + bankLabel + '</div><div style="font-size:11px;color:var(--amber);margin-top:4px;font-weight:600">&#128230; Fill unit details below then click Update &amp; Clear to add to Flight Case Labels</div>';
   } else {
     document.getElementById('writeStatus').innerHTML = '<div class="write-success">\u2713 Written to ' + bankLabel + '</div>';
   }
 
+  // Reset multi-select
+  multiExtraTargets = [];
+  document.getElementById('multiWayGrid').querySelectorAll('.mw-btn.sel').forEach(function(b){ b.classList.remove('sel'); });
   document.getElementById('writeBtn').textContent = 'Add Device & Enter Information';
   renderDistro();
 }
