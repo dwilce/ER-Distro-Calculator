@@ -3761,98 +3761,6 @@ function ddRender() {
 
     nodeLayer.appendChild(g);
 
-    // ── FIXED OUTLETS (72-way / 48-way) ──────────────────────
-    var fixedOutlets = DD_FIXED_OUTLETS[node.type] || [];
-    if (fixedOutlets.length) {
-      var OUT_W = 72, OUT_H = 28, OUT_GAP = 8;
-      var outTotalW = fixedOutlets.reduce(function(s, o){ return s + OUT_W + OUT_GAP; }, 0) - OUT_GAP;
-      var outStartX = node.x + node.w/2 - outTotalW/2;
-      var outY = node.y + node.h + 18;
-
-      // Dashed line from node bottom
-      var outTrunk = document.createElementNS(ns, 'line');
-      outTrunk.setAttribute('x1', node.x + node.w/2); outTrunk.setAttribute('y1', node.y + node.h);
-      outTrunk.setAttribute('x2', node.x + node.w/2); outTrunk.setAttribute('y2', outY - 2);
-      outTrunk.setAttribute('stroke', 'rgba(255,255,255,0.12)');
-      outTrunk.setAttribute('stroke-width', '1'); outTrunk.setAttribute('stroke-dasharray', '3 3');
-      connLayer.appendChild(outTrunk);
-
-      // Section label
-      var secLbl = document.createElementNS(ns, 'text');
-      secLbl.setAttribute('x', node.x + node.w/2); secLbl.setAttribute('y', outY - 5);
-      secLbl.setAttribute('text-anchor', 'middle'); secLbl.setAttribute('font-size', '7');
-      secLbl.setAttribute('fill', 'rgba(255,255,255,0.3)'); secLbl.setAttribute('font-family', 'monospace');
-      secLbl.setAttribute('letter-spacing', '1'); secLbl.textContent = 'FIXED OUTLETS';
-      nodeLayer.appendChild(secLbl);
-
-      var ox = outStartX;
-      fixedOutlets.forEach(function(outlet) {
-        var og = document.createElementNS(ns, 'g');
-
-        var obg = document.createElementNS(ns, 'rect');
-        obg.setAttribute('x', ox); obg.setAttribute('y', outY);
-        obg.setAttribute('width', OUT_W); obg.setAttribute('height', OUT_H);
-        obg.setAttribute('rx', 4); obg.setAttribute('fill', outlet.color);
-        obg.setAttribute('fill-opacity', '0.18');
-        obg.setAttribute('stroke', outlet.color); obg.setAttribute('stroke-width', '1.2');
-        og.appendChild(obg);
-
-        // Count bubble
-        if (outlet.count > 1) {
-          var cb = document.createElementNS(ns, 'rect');
-          cb.setAttribute('x', ox+4); cb.setAttribute('y', outY+4);
-          cb.setAttribute('width', 14); cb.setAttribute('height', 14);
-          cb.setAttribute('rx', 7); cb.setAttribute('fill', outlet.color);
-          og.appendChild(cb);
-          var ct = document.createElementNS(ns, 'text');
-          ct.setAttribute('x', ox+11); ct.setAttribute('y', outY+14);
-          ct.setAttribute('text-anchor', 'middle'); ct.setAttribute('font-size', '9');
-          ct.setAttribute('font-weight', '900'); ct.setAttribute('fill', '#000');
-          ct.setAttribute('font-family', 'monospace'); ct.textContent = outlet.count;
-          og.appendChild(ct);
-        }
-
-        var olt = document.createElementNS(ns, 'text');
-        olt.setAttribute('x', ox + OUT_W/2 + (outlet.count>1?4:0)); olt.setAttribute('y', outY+18);
-        olt.setAttribute('text-anchor', 'middle'); olt.setAttribute('font-size', '10');
-        olt.setAttribute('font-weight', '800'); olt.setAttribute('fill', outlet.color);
-        olt.setAttribute('font-family', 'sans-serif'); olt.textContent = outlet.label;
-        og.appendChild(olt);
-
-        // Phase label
-        var plt = document.createElementNS(ns, 'text');
-        plt.setAttribute('x', ox + OUT_W - 4); plt.setAttribute('y', outY + OUT_H - 3);
-        plt.setAttribute('text-anchor', 'end'); plt.setAttribute('font-size', '7');
-        plt.setAttribute('fill', outlet.color); plt.setAttribute('fill-opacity', '0.7');
-        plt.setAttribute('font-family', 'monospace');
-        plt.textContent = outlet.ph === 3 ? '3\u03c6' : '1\u03c6';
-        og.appendChild(plt);
-
-        // For 3-phase outlets, show connected label below badge
-        if (outlet.ph === 3) {
-          var key3f = outlet.label.replace(/\s/g,'_') + '_1';
-          var tppData = node.sheetKey && distroData[node.sheetKey] && distroData[node.sheetKey].threePhasePorts;
-          var connLabel = tppData && tppData[key3f] ? tppData[key3f].connected : '';
-          if (connLabel) {
-            var clt = document.createElementNS(ns, 'text');
-            clt.setAttribute('x', ox + OUT_W/2); clt.setAttribute('y', outY + OUT_H + 9);
-            clt.setAttribute('text-anchor', 'middle'); clt.setAttribute('font-size', '8');
-            clt.setAttribute('fill', outlet.color); clt.setAttribute('font-family', 'sans-serif');
-            clt.textContent = connLabel.length > 12 ? connLabel.substring(0,11)+'\u2026' : connLabel;
-            og.appendChild(clt);
-          }
-        }
-
-        nodeLayer.appendChild(og);
-        ox += OUT_W + OUT_GAP;
-      });
-
-      // Push equipment children down past the outlets row
-      var outRowH = OUT_H + 28;
-      var origNodeH = node.h;
-      node._outletRowH = outRowH; // store for equipment offset
-    }
-
     // ── EQUIPMENT FLOWCHART ITEMS ─────────────────────────────
     if (eqItems.length === 0) return;
 
@@ -3860,11 +3768,8 @@ function ddRender() {
     var cols = Math.min(eqItems.length, 4);
     var rows = Math.ceil(eqItems.length / cols);
     var gridW = cols * (EQ_W + EQ_GAP_X) - EQ_GAP_X;
-    var extraY = node._outletRowH || 0;
-    node._outletRowH = 0; // reset after use
-
     var gridStartX = node.x + node.w/2 - gridW/2;
-    var gridStartY = node.y + node.h + EQ_GAP_Y + extraY;
+    var gridStartY = node.y + node.h + EQ_GAP_Y;
 
     // Vertical trunk line from distro bottom to grid top
     var trunkX = node.x + node.w/2;
