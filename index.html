@@ -3078,6 +3078,28 @@ function ddOnMouseMove(e) {
   }
 }
 
+function ddSetConnBank(connId, bank) {
+  var conn = dd.conns.find(function(c){return c.id===connId;});
+  if (conn) { conn.fromBank = bank; conn.fromFixedOutlet = null; ddRender(); }
+}
+function ddSetConnSource(connId, val) {
+  var conn = dd.conns.find(function(c){return c.id===connId;});
+  if (!conn) return;
+  if (val.indexOf('bank:') === 0) { conn.fromBank = val.replace('bank:',''); conn.fromFixedOutlet = null; }
+  else if (val.indexOf('fo:') === 0) { conn.fromFixedOutlet = val.replace('fo:',''); conn.fromBank = null; }
+  ddRender(); ddRenderProps();
+}
+
+function ddPickBank(nodeName, banks) {
+  if (!banks || banks.length === 0) return null;
+  if (banks.length === 1) return banks[0];
+  var opts = banks.map(function(b, i){ return (i+1) + ': Bank ' + b; }).join('\n');
+  var ans = prompt('Which bank feeds this connection?\n' + nodeName + '\n\n' + opts + '\n\nEnter bank letter:', banks[0]);
+  if (!ans) return banks[0];
+  var b = ans.trim().toUpperCase();
+  return banks.indexOf(b) >= 0 ? b : banks[0];
+}
+
 function ddNodeMouseDown(e, nodeId) {
   if (dd.connecting) {
     if (dd.connFrom === null) {
@@ -3086,7 +3108,29 @@ function ddNodeMouseDown(e, nodeId) {
     } else if (dd.connFrom !== nodeId) {
       // Create connection
       var ct = DD_CONN_TYPES.find(function(c){return c.key===dd.connType;}) || DD_CONN_TYPES[0];
-      dd.conns.push({id: dd.nextId++, from: dd.connFrom, to: nodeId, type: dd.connType, label: ct.label, color: ct.color, marker: ct.marker});
+      var fromNode = dd.nodes.find(function(n){return n.id===dd.connFrom;});
+      var fromCfg = fromNode && fromNode.sheetKey && SHEETS[fromNode.sheetKey];
+      var fromBanks = fromCfg ? fromCfg.banks : [];
+      var foListCreate = getFixedOutlets(fromNode ? (fromNode.sheetKey||'') : '');
+      var fromBank = null, fromFixedOutlet = null;
+      if (foListCreate.length) {
+        // Ask: bank or fixed outlet?
+        var foGroups2 = [];
+        foListCreate.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) foGroups2.push({key:fo.label.replace(/\s/g,'_')+'_'+fi, label:fo.label+' #'+fi, ph:fo.ph}); });
+        var choices = ['[Banks]'].concat(foGroups2.map(function(f,i){ return (i+1)+': '+f.label; }));
+        var ans = prompt('Connection from ' + (fromNode?fromNode.label:'') + '\n\nSource type:\n0: Bank output\n' + foGroups2.map(function(f,i){ return (i+1)+': Fixed '+f.label; }).join('\n') + '\n\nEnter number (0 for bank):', '0');
+        var ansN = parseInt(ans);
+        if (!isNaN(ansN) && ansN > 0 && foGroups2[ansN-1]) {
+          fromFixedOutlet = foGroups2[ansN-1].key;
+        } else {
+          if (fromBanks.length > 1) fromBank = ddPickBank(fromNode?fromNode.label:'', fromBanks);
+          else fromBank = fromBanks[0] || null;
+        }
+      } else {
+        if (fromBanks.length > 1) fromBank = ddPickBank(fromNode?fromNode.label:'', fromBanks);
+        else fromBank = fromBanks[0] || null;
+      }
+      dd.conns.push({id: dd.nextId++, from: dd.connFrom, to: nodeId, type: dd.connType, label: ct.label, color: ct.color, marker: ct.marker, fromBank: fromBank, fromFixedOutlet: fromFixedOutlet});
       dd.connFrom = null;
       var dl = document.getElementById('ddDragLine');
       dl.setAttribute('opacity','0');
@@ -3193,6 +3237,12 @@ function ddRenderProps() {
   } else if (dd.selected.type === 'conn') {
     var conn = dd.conns.find(function(c){return c.id===dd.selected.id;});
     if (!conn) return;
+    var fromNodeP = dd.nodes.find(function(n){return n.id===conn.from;});
+    var fromCfgP = fromNodeP && fromNodeP.sheetKey && SHEETS[fromNodeP.sheetKey];
+    var fromBanksP = fromCfgP ? fromCfgP.banks : [];
+    var fromFoRawP = fromNodeP ? getFixedOutlets(fromNodeP.sheetKey||'') : [];
+    var fromFoListP = [];
+    fromFoRawP.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) fromFoListP.push({key:fo.label.replace(/\s/g,'_')+'_'+fi, label:fo.label+' #'+fi}); });
     var typeOpts = DD_CONN_TYPES.map(function(ct){
       return '<option value="' + ct.key + '"' + (conn.type===ct.key?' selected':'') + '>' + ct.label + '</option>';
     }).join('');
@@ -3201,6 +3251,13 @@ function ddRenderProps() {
       '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'type\',this.value)">' + typeOpts + '</select></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">CUSTOM LABEL</div>' +
       '<input class="dd-prop-input" placeholder="e.g. 63A feeder" value="' + ddEsc(conn.label||'') + '" onchange="ddUpdateConn(' + conn.id + ',\'label\',this.value)"></div>' +
+      (fromBanksP.length > 1 || fromFoListP.length ?
+        '<div class="dd-prop-row" style="margin-top:8px"><div class="dd-prop-label">FROM</div>' +
+        '<select class="dd-prop-select" onchange="ddSetConnSource(' + conn.id + ',this.value)">' +
+        (fromBanksP.length > 1 ? fromBanksP.map(function(b){ return '<option value="bank:' + b + '"' + (!conn.fromFixedOutlet && conn.fromBank===b?' selected':'') + '>Bank ' + b + '</option>'; }).join('') : '') +
+        (fromFoListP.length ? fromFoListP.map(function(fo){ return '<option value="fo:' + fo.key + '"' + (conn.fromFixedOutlet===fo.key?' selected':'') + '>Fixed: ' + fo.label + '</option>'; }).join('') : '') +
+        '</select></div>'
+      : '') +
       '<button class="dd-del-btn" onclick="ddDeleteConn(' + conn.id + ')">&#128465; Delete Connection</button>';
   }
 }
@@ -3397,12 +3454,28 @@ function ddRender() {
     if (!from || !to) return;
     var isSel = dd.selected && dd.selected.type==='conn' && dd.selected.id===conn.id;
 
-    var x1 = from.x + from.w/2, y1 = from.y + from.h;
+    // Calculate exit point from specific bank or fixed outlet on source node
+    var fromCfgC = from.sheetKey && SHEETS[from.sheetKey];
+    var fromBanksC = fromCfgC ? fromCfgC.banks : [];
+    var fromFoListC = getFixedOutlets(from.sheetKey || '');
+    var fromFoGroupsC = [];
+    fromFoListC.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) fromFoGroupsC.push({key:fo.label.replace(/\s/g,'_')+'_'+fi, color:fo.color}); });
+    var bankFrac = 0.5;
+    var foRowH = fromFoGroupsC.length ? 14 : 0;
+    if (conn.fromFixedOutlet && fromFoGroupsC.length) {
+      var foIdx = fromFoGroupsC.findIndex(function(f){ return f.key === conn.fromFixedOutlet; });
+      if (foIdx >= 0) bankFrac = (foIdx + 0.5) / fromFoGroupsC.length;
+    } else if (conn.fromBank && fromBanksC.length > 1) {
+      var bIdx = fromBanksC.indexOf(conn.fromBank);
+      if (bIdx >= 0) bankFrac = (bIdx + 0.5) / fromBanksC.length;
+    }
+    var x1 = from.x + from.w * bankFrac;
+    var y1 = conn.fromFixedOutlet ? from.y + from.h + foRowH : from.y + from.h;
     var x2 = to.x + to.w/2,   y2 = to.y;
     var dx = Math.abs(x2-x1), dy = Math.abs(y2-y1);
     if (dx > dy * 1.5) {
-      if (to.x > from.x) { x1 = from.x+from.w; y1 = from.y+from.h/2; x2 = to.x; y2 = to.y+to.h/2; }
-      else { x1 = from.x; y1 = from.y+from.h/2; x2 = to.x+to.w; y2 = to.y+to.h/2; }
+      if (to.x > from.x) { x1 = from.x+from.w; y1 = from.y + from.h * bankFrac; x2 = to.x; y2 = to.y+to.h/2; }
+      else { x1 = from.x; y1 = from.y + from.h * bankFrac; x2 = to.x+to.w; y2 = to.y+to.h/2; }
     }
     var cp1x = x1, cp1y = (y1+y2)/2, cp2x = x2, cp2y = (y1+y2)/2;
     if (dx > dy * 1.5) { cp1x = (x1+x2)/2; cp1y = y1; cp2x = (x1+x2)/2; cp2y = y2; }
@@ -3531,6 +3604,120 @@ function ddRender() {
     nameTxt.setAttribute('font-family', 'sans-serif');
     nameTxt.textContent = node.label.length > 18 ? node.label.substring(0,17)+'…' : node.label;
     g.appendChild(nameTxt);
+
+    // Draw bank indicators on the bottom of the node
+    var nodeCfg = node.sheetKey && SHEETS[node.sheetKey];
+    if (nodeCfg && nodeCfg.banks && nodeCfg.banks.length > 1) {
+      var nBanks = nodeCfg.banks.length;
+      var bankW = node.w / nBanks;
+      var phColors3 = ['#9b59b6','#e67e22','#1abc9c'];
+      for (var bki = 0; bki < nBanks; bki++) {
+        var bkX = node.x + bki * bankW;
+        var ph = bki % 3;
+        if (bki > 0) {
+          var divLine = document.createElementNS(ns, 'line');
+          divLine.setAttribute('x1', bkX); divLine.setAttribute('y1', node.y + node.h - 14);
+          divLine.setAttribute('x2', bkX); divLine.setAttribute('y2', node.y + node.h);
+          divLine.setAttribute('stroke', 'rgba(255,255,255,0.15)'); divLine.setAttribute('stroke-width', '0.8');
+          g.appendChild(divLine);
+        }
+        var bkBg = document.createElementNS(ns, 'rect');
+        bkBg.setAttribute('x', bkX + 1); bkBg.setAttribute('y', node.y + node.h - 14);
+        bkBg.setAttribute('width', bankW - 2); bkBg.setAttribute('height', 14);
+        bkBg.setAttribute('fill', 'rgba(0,0,0,0.3)');
+        g.appendChild(bkBg);
+        var bkTxt = document.createElementNS(ns, 'text');
+        bkTxt.setAttribute('x', bkX + bankW/2);
+        bkTxt.setAttribute('y', node.y + node.h - 4);
+        bkTxt.setAttribute('text-anchor', 'middle');
+        bkTxt.setAttribute('font-size', nBanks > 8 ? '6' : nBanks > 4 ? '7' : '8');
+        bkTxt.setAttribute('font-weight', '700');
+        bkTxt.setAttribute('fill', phColors3[ph]);
+        bkTxt.setAttribute('font-family', 'monospace');
+        bkTxt.textContent = nodeCfg.banks[bki];
+        g.appendChild(bkTxt);
+        var hasConn = dd.conns.some(function(c){ return c.from === node.id && c.fromBank === nodeCfg.banks[bki]; });
+        if (hasConn) {
+          var dot = document.createElementNS(ns, 'circle');
+          dot.setAttribute('cx', bkX + bankW/2);
+          dot.setAttribute('cy', node.y + node.h);
+          dot.setAttribute('r', 4);
+          dot.setAttribute('fill', '#FFD700');
+          dot.setAttribute('stroke', '#080e18');
+          dot.setAttribute('stroke-width', '1.5');
+          g.appendChild(dot);
+        }
+      }
+    }
+
+    // ── Fixed outlet row below bank strip ─────────────────────
+    var foList = getFixedOutlets(node.sheetKey || '');
+    if (foList.length) {
+      // Group outlets by label for compact display
+      var foGroups = [];
+      foList.forEach(function(fo) {
+        for (var fi = 1; fi <= fo.count; fi++) {
+          foGroups.push({label: fo.label, idx: fi, color: fo.color, ph: fo.ph,
+            key: fo.label.replace(/\s/g,'_') + '_' + fi});
+        }
+      });
+      var foRowH = 14;
+      var foY = node.y + node.h; // sits just below the node
+      var foW = node.w / foGroups.length;
+
+      // Background strip
+      var foBg = document.createElementNS(ns, 'rect');
+      foBg.setAttribute('x', node.x); foBg.setAttribute('y', foY);
+      foBg.setAttribute('width', node.w); foBg.setAttribute('height', foRowH);
+      foBg.setAttribute('rx', 0); foBg.setAttribute('fill', 'rgba(0,0,0,0.45)');
+      foBg.setAttribute('stroke', 'rgba(255,255,255,0.08)'); foBg.setAttribute('stroke-width', '0.5');
+      g.appendChild(foBg);
+
+      foGroups.forEach(function(fo, fIdx) {
+        var fX = node.x + fIdx * foW;
+        // Divider
+        if (fIdx > 0) {
+          var fDiv = document.createElementNS(ns, 'line');
+          fDiv.setAttribute('x1', fX); fDiv.setAttribute('y1', foY);
+          fDiv.setAttribute('x2', fX); fDiv.setAttribute('y2', foY + foRowH);
+          fDiv.setAttribute('stroke', 'rgba(255,255,255,0.1)'); fDiv.setAttribute('stroke-width', '0.5');
+          g.appendChild(fDiv);
+        }
+        // Colour pip
+        var pip = document.createElementNS(ns, 'rect');
+        pip.setAttribute('x', fX + foW/2 - 2.5); pip.setAttribute('y', foY + 2);
+        pip.setAttribute('width', 5); pip.setAttribute('height', 5);
+        pip.setAttribute('rx', 1); pip.setAttribute('fill', fo.color);
+        pip.setAttribute('opacity', '0.9');
+        g.appendChild(pip);
+        // Label (only show for groups with few outlets)
+        if (foGroups.length <= 12) {
+          var foTxt = document.createElementNS(ns, 'text');
+          foTxt.setAttribute('x', fX + foW/2);
+          foTxt.setAttribute('y', foY + foRowH - 2);
+          foTxt.setAttribute('text-anchor', 'middle');
+          foTxt.setAttribute('font-size', foGroups.length > 8 ? '5' : '6');
+          foTxt.setAttribute('font-weight', '600');
+          foTxt.setAttribute('fill', fo.color);
+          foTxt.setAttribute('font-family', 'monospace');
+          foTxt.setAttribute('opacity', '0.85');
+          foTxt.textContent = fo.ph === 3 ? '3φ' : fo.idx;
+          g.appendChild(foTxt);
+        }
+        // Departure dot if a connection leaves from this outlet
+        var hasFoConn = dd.conns.some(function(c){ return c.from === node.id && c.fromFixedOutlet === fo.key; });
+        if (hasFoConn) {
+          var foDot = document.createElementNS(ns, 'circle');
+          foDot.setAttribute('cx', fX + foW/2);
+          foDot.setAttribute('cy', foY + foRowH);
+          foDot.setAttribute('r', 3.5);
+          foDot.setAttribute('fill', fo.color);
+          foDot.setAttribute('stroke', '#080e18');
+          foDot.setAttribute('stroke-width', '1.5');
+          g.appendChild(foDot);
+        }
+      });
+    }
 
     // Note / parent output
     var noteText = node.type === 'pdr'
@@ -3814,7 +4001,7 @@ function ddAutoLayout() {
 
   // ── 2. Calculate actual height of each node incl. equipment ────
   var EQ_H = 36, EQ_GAP = 12, EQ_COLS = 4, EQ_TRUNK = 50;
-  var OUT_H = 28, OUT_ROW = 46; // fixed outlet row
+  var OUT_H = 28, OUT_ROW = 14; // fixed outlet strip row
 
   function nodeHeight(node) {
     var base = node.h; // 70px distro box
