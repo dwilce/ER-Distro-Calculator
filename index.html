@@ -1590,6 +1590,7 @@ function parseSpreadsheetRows(rows, filename) {
   // Reuse the PDF overlay with these items
   pdfItems = items;
   openPdfModal();
+  buildPdfSheetSelects();
   document.getElementById('pdfStatus').textContent =
     'Spreadsheet: ' + filename + ' — ' + items.length + ' rows imported' +
     (colUnitId >= 0 ? ' · Unit IDs detected' : '') +
