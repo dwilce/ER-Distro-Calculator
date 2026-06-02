@@ -3394,23 +3394,20 @@ function ddOnMouseMove(e) {
     var pt = ddSvgCoords(e);
     var node = dd.nodes.find(function(n){return n.id===dd.dragging;});
     if (node) {
-      node.x = Math.max(0, pt.x - dd.dragOffX);
-      node.y = Math.max(0, pt.y - dd.dragOffY);
+      node.x = pt.x - dd.dragOffX;
+      node.y = pt.y - dd.dragOffY;
       ddRender();
       if (dd.selected && dd.selected.type === 'node' && dd.selected.id === node.id) ddRenderProps();
     }
   }
-  // Card dragging
+  // Card dragging - fully free movement
   if (dd.draggingCard) {
     var pt = ddSvgCoords(e);
     var dc = dd.draggingCard;
     var newX = pt.x - dc.offX - dc.baseX;
     var newY = pt.y - dc.offY - dc.baseY;
-    // Limit drag range
-    newX = Math.max(-200, Math.min(200, newX));
-    newY = Math.max(-50,  Math.min(400, newY));
     ddSetCardOff(dc.nodeId, dc.cardIdx, newX, newY);
-    ddRender();
+    ddRender(); // full re-render so connection lines follow
   }
   // Zone dragging
   if (dd.draggingZone) {
@@ -4421,12 +4418,14 @@ function ddRender() {
         srcY = node.y + node.h;
       }
 
-      // Draw curved line from node bank/FO to card top
-      var cpY = (srcY + cardY) / 2;
+      // Draw curved line from node bank/FO to card's actual position
+      var cardCX = ex + EQ_W/2;
+      var cardCY = ey; // top of card
+      var cpY = (srcY + cardCY) / 2;
       var connPath = document.createElementNS(ns, 'path');
-      connPath.setAttribute('d', 'M'+srcX+' '+srcY+' C'+srcX+' '+cpY+','+cardCX+' '+cpY+','+cardCX+' '+cardY);
+      connPath.setAttribute('d', 'M'+srcX+' '+srcY+' C'+srcX+' '+cpY+','+cardCX+' '+cpY+','+cardCX+' '+cardCY);
       connPath.setAttribute('fill', 'none');
-      connPath.setAttribute('stroke', item.isFixed ? (item.foColor || 'rgba(255,255,255,0.12)') : 'rgba(255,255,255,0.12)');
+      connPath.setAttribute('stroke', item.isFixed ? (item.foColor || 'rgba(255,255,255,0.18)') : 'rgba(255,255,255,0.18)');
       connPath.setAttribute('stroke-width', '1.5');
       connPath.setAttribute('stroke-dasharray', '4 3');
       connLayer.appendChild(connPath);
