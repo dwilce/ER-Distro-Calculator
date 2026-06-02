@@ -4117,34 +4117,15 @@ function ddRender() {
     // Get equipment for this node's flowchart children
     var eqItems;
     if (node.type === 'socaswitch') {
-      // Show equipment from the parent distro's linked bank
-      // parentSheet stores the sheetKey (= label) of the parent node
-      eqItems = [];
-      if (node.parentSheet && node.parentBank) {
-        eqItems = ddGetEquipmentForSheet(node.parentSheet, node.parentBank);
-        // Fallback: try matching by node label if sheetKey lookup failed
-        if (!eqItems.length) {
-          var pNode = dd.nodes.find(function(n){ return n.label === node.parentSheet && n.type !== 'socaswitch'; });
-          if (pNode && pNode.sheetKey) {
-            eqItems = ddGetEquipmentForSheet(pNode.sheetKey, node.parentBank);
-          }
-        }
-      }
+      eqItems = (node.parentSheet && node.parentBank)
+        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank) : [];
     } else {
-      // For regular distro nodes: exclude any banks claimed by a SocaSwitch
-      var claimedBanks = {};
-      dd.nodes.forEach(function(n) {
-        if (n.type === 'socaswitch' && n.parentSheet === node.sheetKey && n.parentBank) {
-          claimedBanks[n.parentBank] = true;
-        }
-      });
+      // Regular distro: show all banks
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
       if (cfg) {
         eqItems = [];
         cfg.banks.forEach(function(b) {
-          if (!claimedBanks[b]) {
-            eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
-          }
+          eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
         });
       } else {
         eqItems = [];
@@ -4563,24 +4544,13 @@ function ddAutoLayout() {
     // Equipment cards
     var eqItems;
     if (node.type === 'socaswitch') {
-      eqItems = [];
-      if (node.parentSheet && node.parentBank) {
-        eqItems = ddGetEquipmentForSheet(node.parentSheet, node.parentBank);
-        if (!eqItems.length) {
-          var pNode2 = dd.nodes.find(function(n){ return n.label === node.parentSheet && n.type !== 'socaswitch'; });
-          if (pNode2 && pNode2.sheetKey) eqItems = ddGetEquipmentForSheet(pNode2.sheetKey, node.parentBank);
-        }
-      }
+      eqItems = (node.parentSheet && node.parentBank)
+        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank) : [];
     } else {
-      var claimed = {};
-      dd.nodes.forEach(function(n2){
-        if (n2.type==='socaswitch' && n2.parentSheet===node.sheetKey && n2.parentBank)
-          claimed[n2.parentBank] = true;
-      });
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
       eqItems = [];
       if (cfg) cfg.banks.forEach(function(b){
-        if (!claimed[b]) eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
+        eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
       });
     }
     if (eqItems.length) {
