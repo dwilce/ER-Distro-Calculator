@@ -2623,27 +2623,34 @@ if (document.readyState === 'loading') {
 <!-- ── DISTRO DESIGNER ──────────────────────────────────────── -->
 <div id="ddModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,18,30,0.95)">
   <div style="display:flex;flex-direction:column;height:100vh">
-    <div style="background:#0d1f35;border-bottom:2px solid #1f4e79;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0">
-      <span style="color:#FFD700;font-size:16px">⚡</span>
-      <span style="color:#fff;font-weight:800;font-size:13px;letter-spacing:1.5px">DISTRO DESIGNER</span>
-      <div style="height:18px;width:1px;background:#1f4e79"></div>
-      <button class="dd-btn" onclick="ddAddDistro()">＋ Add Distro</button>
-      <button class="dd-btn" id="ddConnBtn" onclick="ddToggleConnect()">&#128279; Connect</button>
-      <button class="dd-btn" onclick="ddAutoLayout()">&#9881; Auto Layout</button>
-      <button class="dd-btn dd-btn-danger" onclick="ddClearAll()">&#128465; Clear All</button>
-      <span id="ddStatus" style="font-size:11px;color:#FFD700;font-style:italic;margin-left:4px"></span>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <button class="dd-btn" onclick="ddZoom(0.2)" title="Zoom in">&#43;</button>
-        <button class="dd-btn" id="ddZoomLbl" onclick="ddResetView()" title="Reset view" style="min-width:44px;text-align:center">100%</button>
-        <button class="dd-btn" onclick="ddZoom(-0.2)" title="Zoom out">&#8722;</button>
-        <button class="dd-btn" onclick="ddFitAll()" title="Fit all to screen">&#9974;</button>
-        <button class="dd-btn" onclick="ddExport()">&#128438; Export SVG</button>
-        <button class="dd-btn dd-btn-danger" onclick="closeDistroDesigner()">&#10005; Close</button>
+    <div style="background:#070f1a;border-bottom:1px solid rgba(255,255,255,.08);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,.5)">
+      <div style="display:flex;align-items:center;gap:8px;margin-right:4px">
+        <span style="color:#FFD700;font-size:15px;filter:drop-shadow(0 0 6px rgba(255,215,0,.4))">⚡</span>
+        <span style="color:#fff;font-weight:700;font-size:12px;letter-spacing:2px;opacity:.9">DISTRO DESIGNER</span>
+      </div>
+      <div style="width:1px;height:20px;background:rgba(255,255,255,.1)"></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="dd-btn" onclick="ddAddDistro()">＋ Add</button>
+        <button class="dd-btn" id="ddConnBtn" onclick="ddToggleConnect()">&#128279; Connect</button>
+        <button class="dd-btn" onclick="ddAutoLayout()">⊞ Auto Layout</button>
+        <button class="dd-btn dd-btn-danger" onclick="ddClearAll()">&#128465;</button>
+      </div>
+      <span id="ddStatus" style="font-size:10px;color:rgba(255,215,0,.7);font-style:italic"></span>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <div style="display:flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;overflow:hidden">
+          <button class="dd-btn" style="border:none;border-radius:0;background:transparent;padding:5px 10px" onclick="ddZoom(-0.2)">&#8722;</button>
+          <button class="dd-btn" id="ddZoomLbl" onclick="ddResetView()" style="border:none;border-radius:0;background:transparent;min-width:46px;text-align:center;font-size:11px;padding:5px 4px">100%</button>
+          <button class="dd-btn" style="border:none;border-radius:0;background:transparent;padding:5px 10px" onclick="ddZoom(0.2)">&#43;</button>
+        </div>
+        <button class="dd-btn" onclick="ddFitAll()" title="Fit all">&#9974;</button>
+        <button class="dd-btn" onclick="ddExport()" title="Export SVG">&#128438; SVG</button>
+        <div style="width:1px;height:20px;background:rgba(255,255,255,.1)"></div>
+        <button class="dd-btn dd-btn-danger" onclick="closeDistroDesigner()" style="padding:5px 12px">&#10005; Close</button>
       </div>
     </div>
     <div style="flex:1;display:flex;overflow:hidden">
       <!-- Left: palette -->
-      <div style="width:190px;background:#091525;border-right:1px solid #1a3a57;overflow-y:auto;flex-shrink:0">
+      <div style="width:200px;background:#070f1a;border-right:1px solid rgba(255,255,255,.07);overflow-y:auto;flex-shrink:0">
         <div class="dd-panel-hdr">DISTRO UNITS</div>
         <div id="ddPalette" style="padding:8px;display:flex;flex-direction:column;gap:5px"></div>
         <div class="dd-panel-hdr" style="margin-top:4px">CONNECTOR TYPE</div>
@@ -2656,7 +2663,7 @@ if (document.readyState === 'loading') {
         <svg id="ddSvg" style="position:absolute;inset:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="ddGrid" width="28" height="28" patternUnits="userSpaceOnUse">
-              <path d="M28 0L0 0 0 28" fill="none" stroke="#0f2035" stroke-width="0.6"/>
+              <path d="M28 0L0 0 0 28" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
             </pattern>
             <marker id="arr" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#FFD700"/></marker>
             <marker id="arr-r" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#e74c3c"/></marker>
@@ -2664,7 +2671,7 @@ if (document.readyState === 'loading') {
             <marker id="arr-b" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#3498db"/></marker>
             <marker id="arr-w" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fff"/></marker>
           </defs>
-          <rect width="100%" height="100%" fill="#0a1520"/>
+          <rect width="100%" height="100%" fill="#080e18"/>
           <rect id="ddGridRect" width="100%" height="100%" fill="url(#ddGrid)"/>
           <g id="ddViewport">
             <g id="ddConnLayer"></g>
@@ -2673,13 +2680,13 @@ if (document.readyState === 'loading') {
           <line id="ddDragLine" stroke="#FFD700" stroke-width="2" stroke-dasharray="6 3" opacity="0" marker-end="url(#arr)"/>
         </svg>
         <div id="ddEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-          <div style="font-size:56px;opacity:0.07;line-height:1">⚡</div>
-          <div style="color:#1f4e79;font-size:12px;font-weight:700;margin-top:10px;letter-spacing:0.5px">Add distros from the panel to start mapping your power chain</div>
-          <div style="color:#0d2137;font-size:10px;margin-top:6px">Drag to position · Use Connect to wire distros · Click to open calculator</div>
+          <div style="font-size:72px;opacity:0.04;line-height:1;filter:blur(1px)">⚡</div>
+          <div style="color:rgba(255,255,255,.2);font-size:13px;font-weight:600;margin-top:16px;letter-spacing:.5px">Map your power chain</div>
+          <div style="color:rgba(255,255,255,.1);font-size:10px;margin-top:6px">Add distros from the left panel to begin</div>
         </div>
       </div>
       <!-- Right: properties -->
-      <div style="width:200px;background:#091525;border-left:1px solid #1a3a57;overflow-y:auto;flex-shrink:0">
+      <div style="width:220px;background:#070f1a;border-left:1px solid rgba(255,255,255,.07);overflow-y:auto;flex-shrink:0">
         <div class="dd-panel-hdr">SELECTED</div>
         <div id="ddProps" style="padding:10px;color:#2a5a7a;font-size:11px;font-style:italic">Nothing selected</div>
       </div>
@@ -2688,26 +2695,29 @@ if (document.readyState === 'loading') {
 </div>
 
 <style>
-.dd-btn{padding:4px 10px;background:#132233;border:1px solid #1f4e79;color:#7fb3d3;font-size:11px;font-weight:600;border-radius:3px;cursor:pointer}
-.dd-btn:hover{background:#1f4e79;color:#fff}
-.dd-btn.active{background:#FFD700;border-color:#FFD700;color:#000}
-.dd-btn-danger{border-color:#7b2222;color:#e74c3c}
-.dd-btn-danger:hover{background:#c0392b;color:#fff;border-color:#c0392b}
-.dd-panel-hdr{padding:7px 10px;font-size:9px;font-weight:700;color:#2a5a7a;letter-spacing:1.5px;border-bottom:1px solid #0f2035;background:#061018}
-.dd-palette-btn{width:100%;padding:6px 8px;background:#0d1f35;border:1px solid #1a3a57;color:#7fb3d3;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;text-align:left;transition:all .15s}
-.dd-palette-btn:hover{background:#1f4e79;color:#fff;border-color:#3498db}
-.dd-conn-type{display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:3px;border:1px solid transparent}
-.dd-conn-type:hover,.dd-conn-type.active{background:#0d1f35;border-color:#1f4e79}
-.dd-conn-type.active{border-color:#FFD700}
-.dd-prop-row{margin-bottom:8px}
-.dd-prop-label{font-size:9px;font-weight:700;color:#2a5a7a;letter-spacing:1px;margin-bottom:3px}
-.dd-prop-input{width:100%;padding:4px 6px;background:#0d1f35;border:1px solid #1a3a57;color:#c0d8f0;font-size:11px;border-radius:3px;box-sizing:border-box}
-.dd-prop-input:focus{outline:none;border-color:#FFD700}
-.dd-prop-select{width:100%;padding:4px 6px;background:#0d1f35;border:1px solid #1a3a57;color:#c0d8f0;font-size:11px;border-radius:3px;box-sizing:border-box}
-.dd-jump-btn{width:100%;padding:5px;background:#1f4e79;border:1px solid #2471a3;color:#fff;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;margin-top:4px}
-.dd-jump-btn:hover{background:#2471a3}
-.dd-del-btn{width:100%;padding:5px;background:#7b2222;border:1px solid #c0392b;color:#fff;font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;margin-top:4px}
-.dd-del-btn:hover{background:#c0392b}
+.dd-btn{padding:5px 11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.8);font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;transition:all .15s;letter-spacing:.2px}
+.dd-btn:hover{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)}
+.dd-btn.active{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.6);color:#FFD700}
+.dd-btn-danger{border-color:rgba(231,76,60,.3);color:rgba(231,76,60,.8)}
+.dd-btn-danger:hover{background:rgba(192,57,43,.3);color:#e74c3c;border-color:#e74c3c}
+.dd-panel-hdr{padding:10px 14px 6px;font-size:8px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:2.5px;text-transform:uppercase}
+.dd-palette-btn{width:100%;padding:8px 10px;background:transparent;border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.7);font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:8px}
+.dd-palette-btn:hover{background:rgba(255,255,255,.07);color:#fff;border-color:rgba(255,255,255,.2)}
+.dd-palette-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dd-palette-sub{font-size:9px;font-weight:400;opacity:.5;display:block;line-height:1.2;margin-top:1px}
+.dd-conn-type{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:6px;border:1px solid transparent;transition:all .15s}
+.dd-conn-type:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
+.dd-conn-type.active{background:rgba(255,215,0,.08);border-color:rgba(255,215,0,.4)}
+.dd-conn-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.75)}
+.dd-prop-row{margin-bottom:10px}
+.dd-prop-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.dd-prop-input{width:100%;padding:6px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.9);font-size:11px;border-radius:5px;box-sizing:border-box;transition:border .15s}
+.dd-prop-input:focus{outline:none;border-color:rgba(255,215,0,.5);background:rgba(255,255,255,.08)}
+.dd-prop-select{width:100%;padding:6px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.9);font-size:11px;border-radius:5px;box-sizing:border-box}
+.dd-jump-btn{width:100%;padding:7px;background:rgba(36,113,163,.4);border:1px solid rgba(36,113,163,.6);color:#7fc4e8;font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;margin-top:6px;letter-spacing:.3px;transition:all .15s}
+.dd-jump-btn:hover{background:rgba(36,113,163,.7);color:#fff}
+.dd-del-btn{width:100%;padding:7px;background:rgba(123,34,34,.3);border:1px solid rgba(192,57,43,.4);color:rgba(231,76,60,.8);font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;margin-top:4px;transition:all .15s}
+.dd-del-btn:hover{background:rgba(192,57,43,.5);color:#fff;border-color:#c0392b}
 </style>
 
 <script>
@@ -2928,8 +2938,12 @@ function ddBuildPalette() {
   DD_DISTRO_TYPES.forEach(function(dt) {
     var btn = document.createElement('button');
     btn.className = 'dd-palette-btn';
-    btn.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + dt.color + ';margin-right:5px;vertical-align:middle"></span>' +
-      '<strong>' + dt.label + '</strong><br><span style="color:#2a5a7a;font-size:9px;font-weight:400">' + dt.sub + '</span>';
+    btn.innerHTML =
+      '<div class="dd-palette-dot" style="background:' + dt.color + ';box-shadow:0 0 6px ' + dt.color + '55"></div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dt.label + '</div>' +
+        '<div style="font-size:9px;font-weight:400;color:rgba(255,255,255,.3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dt.sub + '</div>' +
+      '</div>';
     btn.onclick = function() { ddAddDistroOfType(dt); };
     p.appendChild(btn);
   });
@@ -2942,8 +2956,9 @@ function ddBuildConnTypes() {
     var row = document.createElement('div');
     row.className = 'dd-conn-type' + (dd.connType === ct.key ? ' active' : '');
     row.id = 'ddct-' + ct.key;
-    row.innerHTML = '<svg width="24" height="10"><line x1="2" y1="5" x2="18" y2="5" stroke="' + ct.color + '" stroke-width="2.5"/><polygon points="18 2,24 5,18 8" fill="' + ct.color + '"/></svg>' +
-      '<span style="font-size:10px;color:#c0d8f0">' + ct.label + '</span>';
+    row.innerHTML =
+      '<svg width="28" height="12" style="flex-shrink:0"><line x1="2" y1="6" x2="20" y2="6" stroke="' + ct.color + '" stroke-width="2.5" stroke-linecap="round"/><polygon points="20 3,28 6,20 9" fill="' + ct.color + '"/></svg>' +
+      '<div class="dd-conn-label">' + ct.label + '</div>';
     row.onclick = function() { dd.connType = ct.key; ddBuildConnTypes(); };
     c.appendChild(row);
     // Legend
@@ -3473,7 +3488,7 @@ function ddRender() {
     var shadow = document.createElementNS(ns, 'rect');
     shadow.setAttribute('x', node.x-3); shadow.setAttribute('y', node.y-3);
     shadow.setAttribute('width', node.w+6); shadow.setAttribute('height', node.h+6);
-    shadow.setAttribute('rx', 8); shadow.setAttribute('fill', 'none');
+    shadow.setAttribute('rx', 13); shadow.setAttribute('fill', 'none');
     if (isSel) { shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2'); shadow.setAttribute('filter', 'drop-shadow(0 0 6px #FFD700)'); }
     else if (isConnSrc) { shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2'); shadow.setAttribute('stroke-dasharray', '4 2'); }
     g.appendChild(shadow);
@@ -3481,7 +3496,7 @@ function ddRender() {
     var rect = document.createElementNS(ns, 'rect');
     rect.setAttribute('x', node.x); rect.setAttribute('y', node.y);
     rect.setAttribute('width', node.w); rect.setAttribute('height', node.h);
-    rect.setAttribute('rx', 6); rect.setAttribute('fill', node.color);
+    rect.setAttribute('rx', 10); rect.setAttribute('fill', node.color);
     rect.setAttribute('stroke', isSel ? '#FFD700' : '#fff');
     rect.setAttribute('stroke-width', isSel ? 2 : 0.5);
     rect.setAttribute('stroke-opacity', isSel ? 1 : 0.2);
@@ -3491,7 +3506,7 @@ function ddRender() {
     var stripe = document.createElementNS(ns, 'rect');
     stripe.setAttribute('x', node.x); stripe.setAttribute('y', node.y);
     stripe.setAttribute('width', node.w); stripe.setAttribute('height', 16);
-    stripe.setAttribute('rx', 6); stripe.setAttribute('fill', 'rgba(0,0,0,0.35)');
+    stripe.setAttribute('rx', 10); stripe.setAttribute('fill', 'rgba(0,0,0,0.4)');
     g.appendChild(stripe);
     var stripe2 = document.createElementNS(ns, 'rect');
     stripe2.setAttribute('x', node.x); stripe2.setAttribute('y', node.y+10);
