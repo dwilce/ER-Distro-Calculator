@@ -2670,6 +2670,8 @@ if (document.readyState === 'loading') {
             <marker id="arr-g" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#27ae60"/></marker>
             <marker id="arr-b" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#3498db"/></marker>
             <marker id="arr-w" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fff"/></marker>
+            <marker id="arr-o" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#e67e22"/></marker>
+            <marker id="arr-e" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#e74c3c"/></marker>
           </defs>
           <rect width="100%" height="100%" fill="#080e18"/>
           <rect id="ddGridRect" width="100%" height="100%" fill="url(#ddGrid)"/>
@@ -3445,6 +3447,70 @@ function ddRender() {
     lt.setAttribute('font-weight','700'); lt.setAttribute('fill','#fff');
     lt.setAttribute('font-family','monospace'); lt.textContent = lbl;
     connLayer.appendChild(lt);
+  });
+
+  // ── Draw 3-phase fixed outlet links (from threePhasePorts data) ─
+  dd.nodes.forEach(function(fromNode) {
+    var foList = getFixedOutlets(fromNode.sheetKey || '');
+    if (!foList.length) return;
+    var tpp = fromNode.sheetKey && distroData[fromNode.sheetKey] && distroData[fromNode.sheetKey].threePhasePorts;
+    if (!tpp) return;
+
+    // Build the FO groups (same order as the strip on the node)
+    var foGroupsLink = [];
+    foList.forEach(function(fo) {
+      for (var fi = 1; fi <= fo.count; fi++) {
+        foGroupsLink.push({ key: fo.label.replace(/\s/g,'_') + '_' + fi, color: fo.color, ph: fo.ph, label: fo.label });
+      }
+    });
+
+    foGroupsLink.forEach(function(fo, fIdx) {
+      if (fo.ph !== 3) return; // only 3-phase outlets create auto-links
+      var conn = tpp[fo.key];
+      if (!conn || !conn.connected) return;
+      // Find destination node by sheetKey
+      var toNode = dd.nodes.find(function(n){ return n.sheetKey === conn.connected || n.label === conn.connected; });
+      if (!toNode) return;
+
+      // Source X = FO strip position
+      var foW = fromNode.w / foGroupsLink.length;
+      var x1 = fromNode.x + fIdx * foW + foW / 2;
+      var y1 = fromNode.y + fromNode.h + 14; // below FO strip
+
+      // Destination = top centre of target node
+      var x2 = toNode.x + toNode.w / 2;
+      var y2 = toNode.y;
+
+      var cp = Math.abs(y2 - y1) * 0.5;
+      var arrowMap = {'#e67e22':'arr-o','#27ae60':'arr-g','#e74c3c':'arr-e','#3498db':'arr-b'};
+      var arrowId = arrowMap[fo.color] || 'arr-g';
+      var path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', 'M'+x1+' '+y1+' C'+x1+' '+(y1+cp)+','+x2+' '+(y2-cp)+','+x2+' '+y2);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', fo.color);
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-dasharray', '6 3');
+      path.setAttribute('marker-end', 'url(#' + arrowId + ')');
+      path.setAttribute('opacity', '0.85');
+      connLayer.appendChild(path);
+
+      // Mid-label showing outlet type
+      var midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+      var lblW = fo.label.length * 5.5 + 10;
+      var lbg = document.createElementNS(ns, 'rect');
+      lbg.setAttribute('x', midX - lblW/2); lbg.setAttribute('y', midY - 8);
+      lbg.setAttribute('width', lblW); lbg.setAttribute('height', 14);
+      lbg.setAttribute('rx', 3); lbg.setAttribute('fill', '#080e18');
+      lbg.setAttribute('stroke', fo.color); lbg.setAttribute('stroke-width', '1');
+      connLayer.appendChild(lbg);
+      var lt = document.createElementNS(ns, 'text');
+      lt.setAttribute('x', midX); lt.setAttribute('y', midY + 4);
+      lt.setAttribute('text-anchor', 'middle'); lt.setAttribute('font-size', '8');
+      lt.setAttribute('font-weight', '700'); lt.setAttribute('fill', fo.color);
+      lt.setAttribute('font-family', 'monospace');
+      lt.textContent = fo.label;
+      connLayer.appendChild(lt);
+    });
   });
 
   // ── Draw distro-to-distro connections ────────────────────────
