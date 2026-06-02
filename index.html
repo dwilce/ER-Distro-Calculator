@@ -3933,8 +3933,7 @@ function ddRender() {
   // ── Draw Socapex feed lines for SocaSwitch nodes ─────────────
   dd.nodes.forEach(function(node) {
     if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentBank) return;
-    var parentNode = dd.nodes.find(function(n){ return n.sheetKey === node.parentSheet; });
-    // Fallback: match by label if sheetKey doesn't match directly
+    var parentNode = dd.nodes.find(function(n){ return n.sheetKey === node.parentSheet && n.type !== 'socaswitch'; });
     if (!parentNode) parentNode = dd.nodes.find(function(n){ return n.label === node.parentSheet && n.type !== 'socaswitch'; });
     if (!parentNode) return;
     // Emerge from the correct bank column
@@ -4117,8 +4116,14 @@ function ddRender() {
     // Get equipment for this node's flowchart children
     var eqItems;
     if (node.type === 'socaswitch') {
-      eqItems = (node.parentSheet && node.parentBank)
-        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank) : [];
+      eqItems = [];
+      if (node.parentSheet && node.parentBank) {
+        eqItems = ddGetEquipmentForSheet(node.parentSheet, node.parentBank);
+        if (!eqItems.length) {
+          var pnEq = dd.nodes.find(function(nx){ return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet); });
+          if (pnEq && pnEq.sheetKey) eqItems = ddGetEquipmentForSheet(pnEq.sheetKey, node.parentBank);
+        }
+      }
     } else {
       // Regular distro: show all banks
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
@@ -4510,8 +4515,28 @@ function ddAutoLayout() {
   // ── 1. Assign levels via topological sort ──────────────────────
   var hasIncoming = {};
   dd.conns.forEach(function(c){ hasIncoming[c.to] = true; });
+  // SocaSwitch nodes are downstream of their parent — mark them as having incoming
+  dd.nodes.forEach(function(n) {
+    if (n.type === 'socaswitch' && n.parentSheet) hasIncoming[n.id] = true;
+  });
   var roots = dd.nodes.filter(function(n){ return !hasIncoming[n.id]; });
   if (!roots.length) roots = [dd.nodes[0]];
+
+  function assignLevel(nodeId, level) {
+    if (assigned[nodeId] !== undefined && assigned[nodeId] >= level) return;
+    assigned[nodeId] = level;
+    if (!levels[level]) levels[level] = [];
+    if (levels[level].indexOf(nodeId) < 0) levels[level].push(nodeId);
+    dd.conns.filter(function(c){ return c.from === nodeId; })
+      .forEach(function(c){ assignLevel(c.to, level + 1); });
+    // SocaSwitch children go one level below their parent
+    dd.nodes.filter(function(n){ return n.type === 'socaswitch' && n.parentSheet; })
+      .forEach(function(n) {
+        var parentNode = dd.nodes.find(function(p){ return p.sheetKey === n.parentSheet || p.label === n.parentSheet; });
+        if (parentNode && parentNode.id === nodeId) assignLevel(n.id, level + 1);
+      });
+  }
+  roots.forEach(function(r){ assignLevel(r.id, 0); });
 
   var levels = {}, assigned = {};
   function assignLevel(nodeId, level) {
@@ -4544,8 +4569,14 @@ function ddAutoLayout() {
     // Equipment cards
     var eqItems;
     if (node.type === 'socaswitch') {
-      eqItems = (node.parentSheet && node.parentBank)
-        ? ddGetEquipmentForSheet(node.parentSheet, node.parentBank) : [];
+      eqItems = [];
+      if (node.parentSheet && node.parentBank) {
+        eqItems = ddGetEquipmentForSheet(node.parentSheet, node.parentBank);
+        if (!eqItems.length) {
+          var pnNh = dd.nodes.find(function(nx){ return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet); });
+          if (pnNh && pnNh.sheetKey) eqItems = ddGetEquipmentForSheet(pnNh.sheetKey, node.parentBank);
+        }
+      }
     } else {
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
       eqItems = [];
