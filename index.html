@@ -4670,53 +4670,56 @@ function ddExport() {
 }
 
 function ddPrintPdf() {
-  // Fit all nodes before exporting so the full diagram is visible
   ddFitAll();
 
-  var svg = document.getElementById('ddSvg');
-  var clone = svg.cloneNode(true);
-  // Remove interactive elements
-  var dl = clone.querySelector('#ddDragLine'); if(dl) dl.remove();
-  // Remove click handlers - not needed in print
-  clone.style.cursor = 'default';
-
-  // Get natural bounding box of all content
   var allNodes = dd.nodes;
   if (!allNodes.length) { alert('Nothing to print — add some distros first.'); return; }
 
-  // Calculate content bounds
+  // Calculate content bounding box
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   allNodes.forEach(function(n) {
-    minX = Math.min(minX, n.x - 10);
-    minY = Math.min(minY, n.y - 10);
-    // Rough estimate of max extent including equipment cards below
-    maxX = Math.max(maxX, n.x + n.w + 10);
-    maxY = Math.max(maxY, n.y + n.h + 400);
+    minX = Math.min(minX, n.x - 20);
+    minY = Math.min(minY, n.y - 20);
+    maxX = Math.max(maxX, n.x + n.w + 20);
+    maxY = Math.max(maxY, n.y + n.h + 500); // extra for equipment cards
   });
   dd.zones.forEach(function(z) {
-    minX = Math.min(minX, z.x - 10);
-    minY = Math.min(minY, z.y - 10);
-    maxX = Math.max(maxX, z.x + z.w + 10);
-    maxY = Math.max(maxY, z.y + z.h + 10);
+    minX = Math.min(minX, z.x - 20);
+    minY = Math.min(minY, z.y - 20);
+    maxX = Math.max(maxX, z.x + z.w + 20);
+    maxY = Math.max(maxY, z.y + z.h + 20);
   });
-
   var contentW = maxX - minX;
   var contentH = maxY - minY;
 
-  // Set SVG to show full content without pan/zoom transform interference
-  clone.setAttribute('viewBox', minX + ' ' + minY + ' ' + contentW + ' ' + contentH);
-  clone.setAttribute('width', '100%');
-  clone.setAttribute('height', 'auto');
-  clone.style.transform = '';
-  // Remove the transform group wrapper if present
-  var g = clone.querySelector('#ddTransformGroup');
-  if (g) {
-    g.removeAttribute('transform');
-    g.style.transform = '';
-  }
+  // Build a clean SVG with white background from the content layers only
+  var ns = 'http://www.w3.org/2000/svg';
+  var connLayer = document.getElementById('ddConnLayer');
+  var nodeLayer = document.getElementById('ddNodeLayer');
+
+  // Clone both layers
+  var connClone = connLayer.cloneNode(true);
+  var nodeClone = nodeLayer.cloneNode(true);
+
+  // Get defs (markers)
+  var origSvg = document.getElementById('ddSvg');
+  var defsClone = origSvg.querySelector('defs').cloneNode(true);
+
+  // Build clean SVG
+  var cleanSvg = '<svg xmlns="http://www.w3.org/2000/svg" ' +
+    'width="100%" height="auto" ' +
+    'viewBox="' + minX + ' ' + minY + ' ' + contentW + ' ' + contentH + '" ' +
+    'style="display:block;background:white">' +
+    defsClone.outerHTML +
+    '<rect x="' + minX + '" y="' + minY + '" width="' + contentW + '" height="' + contentH + '" fill="white"/>' +
+    connClone.outerHTML +
+    nodeClone.outerHTML +
+    '</svg>';
+
+  // Recolour dark text/strokes for print (optional - keep dark theme but on white)
+  // The SVG elements use explicit fill/stroke so they'll show on white bg
 
   var logoTag = logoDataURL ? '<img src="' + logoDataURL + '" style="height:24px;object-fit:contain;vertical-align:middle;margin-right:8px">' : '';
-  var svgStr = clone.outerHTML;
   var date = new Date().toLocaleDateString();
 
   var css = '* { box-sizing:border-box; margin:0; padding:0; }' +
@@ -4726,11 +4729,10 @@ function ddPrintPdf() {
     '  border-bottom:2px solid #0d2137; padding-bottom:6pt; margin-bottom:8pt; }' +
     '.hdr-title { font-size:16pt; font-weight:800; color:#0d2137; }' +
     '.hdr-meta { font-size:9pt; color:#555; text-align:right; }' +
-    '.diagram { width:100%; border:0.5pt solid #ddd; border-radius:4pt; overflow:hidden; }' +
-    '.diagram svg { display:block; width:100%; height:auto; max-height:85vh; }' +
+    '.diagram { width:100%; }' +
     '.no-print { position:fixed; top:12px; right:12px; display:flex; gap:8px; z-index:99; }' +
     '.no-print button { padding:8px 16px; border-radius:4px; font-weight:700; font-size:12px; cursor:pointer; }' +
-    '@media print { .no-print { display:none !important; } @page { margin:8mm; } }';
+    '@media print { .no-print { display:none !important; } }';
 
   var htm = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<title>ER Distro Map</title><style>' + css + '</style></head><body>' +
@@ -4742,7 +4744,7 @@ function ddPrintPdf() {
       '<div>' + logoTag + '<span class="hdr-title">Distro Power Map</span></div>' +
       '<div class="hdr-meta">ER Productions &nbsp;|&nbsp; ' + date + '</div>' +
     '</div>' +
-    '<div class="diagram">' + svgStr + '</div>' +
+    '<div class="diagram">' + cleanSvg + '</div>' +
     '</body></html>';
 
   var win = window.open('', '_blank');
