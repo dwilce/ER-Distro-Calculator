@@ -1503,7 +1503,7 @@ function handleSpreadsheetImport(event) {
         var data = new Uint8Array(e.target.result);
         var wb = XLSX.read(data, {type:'array'});
         var ws = wb.Sheets[wb.SheetNames[0]];
-        rows = XLSX.utils.sheet_to_array(ws, {defval:''});
+        rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
       }
       parseSpreadsheetRows(rows, file.name);
     } catch(err) {
