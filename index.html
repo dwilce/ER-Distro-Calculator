@@ -4125,15 +4125,9 @@ function ddRender() {
     // Get equipment for this node's flowchart children
     var eqItems;
     if (node.type === 'socaswitch') {
+      // SocaSwitch is a dumb breakout - no equipment cards shown
+      // Equipment is visible on the parent distro node
       eqItems = [];
-      if (node.parentSheet && node.parentBank) {
-        // Find parent node to get its exact sheetKey
-        var socaPn = dd.nodes.find(function(nx){
-          return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet || nx.label.trim() === node.parentSheet.trim());
-        });
-        var socaKey = socaPn ? socaPn.sheetKey : node.parentSheet;
-        eqItems = ddGetEquipmentForSheet(socaKey, node.parentBank);
-      }
     } else {
       // Regular distro: show all banks
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
@@ -4335,13 +4329,30 @@ function ddRender() {
     }
 
     // Sheet link indicator + item count badge
-    if (node.sheetKey) {
-      var countBadge = document.createElementNS(ns, 'text');
-      countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
-      countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
-      countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
-      countBadge.textContent = eqItems.length ? '⚡ '+eqItems.length : '⚡';
-      g.appendChild(countBadge);
+    if (node.sheetKey || node.type === 'socaswitch') {
+      if (node.type === 'socaswitch' && node.parentSheet && node.parentBank) {
+        // Show count of items in parent bank for SocaSwitch
+        var socaPnBadge = dd.nodes.find(function(nx){
+          return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet);
+        });
+        var socaKeyBadge = socaPnBadge ? socaPnBadge.sheetKey : node.parentSheet;
+        var socaItems = ddGetEquipmentForSheet(socaKeyBadge, node.parentBank);
+        if (socaItems.length) {
+          var countBadge = document.createElementNS(ns, 'text');
+          countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
+          countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
+          countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
+          countBadge.textContent = '⚡ '+socaItems.length;
+          g.appendChild(countBadge);
+        }
+      } else if (node.sheetKey) {
+        var countBadge = document.createElementNS(ns, 'text');
+        countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
+        countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
+        countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
+        countBadge.textContent = eqItems.length ? '⚡ '+eqItems.length : '⚡';
+        g.appendChild(countBadge);
+      }
     }
 
     // Connection ports
@@ -4579,14 +4590,8 @@ function ddAutoLayout() {
     // Equipment cards
     var eqItems;
     if (node.type === 'socaswitch') {
+      // No equipment cards - breakout only
       eqItems = [];
-      if (node.parentSheet && node.parentBank) {
-        var socaPn2 = dd.nodes.find(function(nx){
-          return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet || nx.label.trim() === node.parentSheet.trim());
-        });
-        var socaKey2 = socaPn2 ? socaPn2.sheetKey : node.parentSheet;
-        eqItems = ddGetEquipmentForSheet(socaKey2, node.parentBank);
-      }
     } else {
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
       eqItems = [];
