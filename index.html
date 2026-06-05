@@ -476,6 +476,7 @@ var SHEETS = {
   '48-Way (63A)':  {ways:6, banks:['A','B','C','D','E','F','G','H'],                    limit:63,  altLimit:125},
   '72-Way (400A)': {ways:6, banks:['A','B','C','D','E','F','G','H','I','J','K','L'],    limit:400, altLimit:0}
 };
+var STATIC_SHEETS = Object.keys(SHEETS); // original entries - never delete these
 
 // Fixed physical outlets per distro type — accessible from both script blocks
 var DD_FIXED_OUTLETS = {
@@ -3113,10 +3114,10 @@ function ddSyncSheets() {
     }
   });
 
-  // Remove sheets no longer in designer (only when designer has at least one distro node)
+  // Remove designer-created sheets no longer in designer (never remove static base sheets)
   if (hasDistroNodes) {
     Object.keys(SHEETS).forEach(function(name) {
-      if (!desired[name]) {
+      if (!desired[name] && STATIC_SHEETS.indexOf(name) < 0) {
         delete SHEETS[name];
         delete distroData[name];
         delete limits[name];
@@ -3933,8 +3934,9 @@ function ddRender() {
   // ── Draw Socapex feed lines for SocaSwitch nodes ─────────────
   dd.nodes.forEach(function(node) {
     if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentBank) return;
-    var parentNode = dd.nodes.find(function(n){ return n.sheetKey === node.parentSheet && n.type !== 'socaswitch'; });
-    if (!parentNode) parentNode = dd.nodes.find(function(n){ return n.label === node.parentSheet && n.type !== 'socaswitch'; });
+    var parentNode = dd.nodes.find(function(n){
+      return n.type !== 'socaswitch' && (n.sheetKey === node.parentSheet || n.label === node.parentSheet || n.label.trim() === node.parentSheet.trim());
+    });
     if (!parentNode) return;
     // Emerge from the correct bank column
     var pCfg = parentNode.sheetKey && SHEETS[parentNode.sheetKey];
@@ -4118,11 +4120,12 @@ function ddRender() {
     if (node.type === 'socaswitch') {
       eqItems = [];
       if (node.parentSheet && node.parentBank) {
-        eqItems = ddGetEquipmentForSheet(node.parentSheet, node.parentBank);
-        if (!eqItems.length) {
-          var pnEq = dd.nodes.find(function(nx){ return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet); });
-          if (pnEq && pnEq.sheetKey) eqItems = ddGetEquipmentForSheet(pnEq.sheetKey, node.parentBank);
-        }
+        // Find parent node to get its exact sheetKey
+        var socaPn = dd.nodes.find(function(nx){
+          return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet || nx.label.trim() === node.parentSheet.trim());
+        });
+        var socaKey = socaPn ? socaPn.sheetKey : node.parentSheet;
+        eqItems = ddGetEquipmentForSheet(socaKey, node.parentBank);
       }
     } else {
       // Regular distro: show all banks
@@ -4571,11 +4574,11 @@ function ddAutoLayout() {
     if (node.type === 'socaswitch') {
       eqItems = [];
       if (node.parentSheet && node.parentBank) {
-        eqItems = ddGetEquipmentForSheet(node.parentSheet, node.parentBank);
-        if (!eqItems.length) {
-          var pnNh = dd.nodes.find(function(nx){ return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet); });
-          if (pnNh && pnNh.sheetKey) eqItems = ddGetEquipmentForSheet(pnNh.sheetKey, node.parentBank);
-        }
+        var socaPn2 = dd.nodes.find(function(nx){
+          return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet || nx.label.trim() === node.parentSheet.trim());
+        });
+        var socaKey2 = socaPn2 ? socaPn2.sheetKey : node.parentSheet;
+        eqItems = ddGetEquipmentForSheet(socaKey2, node.parentBank);
       }
     } else {
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
