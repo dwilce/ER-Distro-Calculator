@@ -4114,6 +4114,13 @@ function ddRender() {
   dd.nodes.forEach(function(node) {
     var isSel = dd.selected && dd.selected.type==='node' && dd.selected.id===node.id;
     var isConnSrc = dd.connecting && dd.connFrom === node.id;
+    // Ensure node has required properties
+    if (!node.color) {
+      var dtDef = DD_DISTRO_TYPES.find(function(d){ return d.key === node.type; });
+      node.color = dtDef ? dtDef.color : '#1f4e79';
+    }
+    if (!node.w) node.w = 160;
+    if (!node.h) node.h = 70;
 
     // Get equipment for this node's flowchart children
     var eqItems;
@@ -4157,7 +4164,7 @@ function ddRender() {
     var rect = document.createElementNS(ns, 'rect');
     rect.setAttribute('x', node.x); rect.setAttribute('y', node.y);
     rect.setAttribute('width', node.w); rect.setAttribute('height', node.h);
-    rect.setAttribute('rx', 10); rect.setAttribute('fill', node.color);
+    rect.setAttribute('rx', 10); rect.setAttribute('fill', node.color || '#8b5e00');
     rect.setAttribute('stroke', isSel ? '#FFD700' : '#fff');
     rect.setAttribute('stroke-width', isSel ? 2 : 0.5);
     rect.setAttribute('stroke-opacity', isSel ? 1 : 0.2);
@@ -4626,6 +4633,21 @@ function ddAutoLayout() {
       node.x = startX + i * (nodeW + PAD_X);
       node.y = levelY[lvl];
     });
+  });
+
+  // ── 4b. Fine-tune SocaSwitch positions near their parent bank ──
+  dd.nodes.forEach(function(node) {
+    if (node.type !== 'socaswitch' || !node.parentSheet) return;
+    var pNode = dd.nodes.find(function(n){ return n.type !== 'socaswitch' && (n.sheetKey === node.parentSheet || n.label === node.parentSheet); });
+    if (!pNode) return;
+    var pCfg = pNode.sheetKey && SHEETS[pNode.sheetKey];
+    var pBanks = pCfg ? pCfg.banks : [];
+    var bIdx = pNode.parentBank ? pBanks.indexOf(node.parentBank) : 0;
+    if (bIdx < 0) bIdx = 0;
+    var bankFrac = pBanks.length > 1 ? (bIdx + 0.5) / pBanks.length : 0.5;
+    // Place SocaSwitch below parent, aligned to its bank column
+    node.x = pNode.x + pNode.w * bankFrac - node.w / 2;
+    node.y = pNode.y + nodeHeight(pNode) + PAD_Y;
   });
 
   // ── 5. Fit to viewport ─────────────────────────────────────────
