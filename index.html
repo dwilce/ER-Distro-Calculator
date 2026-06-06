@@ -3200,11 +3200,11 @@ function ddFitAll() {
   var W = wrap.clientWidth, H = wrap.clientHeight;
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   dd.nodes.forEach(function(n) {
-    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
-    // Account for equipment cards below — rough estimate
-    var eqCount = n.sheetKey ? Object.keys(distroData[n.sheetKey] || {}).length * 3 : 0;
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
     maxX = Math.max(maxX, n.x + n.w);
-    maxY = Math.max(maxY, n.y + n.h + (eqCount > 0 ? 200 : 0));
+    // Use node box only - cards will be visible once we fit to node bounds
+    maxY = Math.max(maxY, n.y + n.h + 20);
   });
   var pad = 40;
   var scaleX = (W - pad*2) / (maxX - minX || 1);
@@ -3864,7 +3864,7 @@ function ddRender() {
   connLayer.innerHTML = '';
 
   var ns = 'http://www.w3.org/2000/svg';
-  var SHOW_CARDS = dd.scale >= 0.45; // auto-hide equipment cards when zoomed out
+  var SHOW_CARDS = dd.scale >= 0.25; // auto-hide equipment cards when very zoomed out
 
   // ── Draw zones (behind everything) ───────────────────────────
   dd.zones.forEach(function(zone) {
