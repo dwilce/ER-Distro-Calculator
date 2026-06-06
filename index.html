@@ -3862,68 +3862,74 @@ function ddRender() {
   var connLayer = document.getElementById('ddConnLayer');
   nodeLayer.innerHTML = '';
   connLayer.innerHTML = '';
+  var empty = document.getElementById('ddEmpty');
+  if (empty) empty.style.display = dd.nodes.length ? 'none' : 'flex';
 
   var ns = 'http://www.w3.org/2000/svg';
-  var SHOW_CARDS = dd.scale >= 0.25; // auto-hide equipment cards when very zoomed out
+  var SHOW_CARDS = dd.scale >= 0.25;
 
-  // ── Draw zones (behind everything) ───────────────────────────
+  // Node dimensions
+  var NW = 180, NH = 56;           // node width, header height
+  var CARD_W = 160, CARD_H = 40;   // equipment card
+  var CARD_GAP_X = 10, CARD_GAP_Y = 10;
+  var CARD_COLS = 3;
+  var TRUNK_GAP = 28;              // space between node bottom and first card row
+
+  // Phase colours (vibrant, works on white)
+  var PH_COL  = ['', '#7c3aed', '#ea580c', '#059669'];
+  var PH_LITE = ['', '#ede9fe', '#ffedd5', '#d1fae5'];
+  var PH_MID  = ['', '#7c3aed', '#ea580c', '#059669'];
+
+  // ── Draw zones ───────────────────────────────────────────────
   dd.zones.forEach(function(zone) {
     var zg = document.createElementNS(ns, 'g');
     zg.style.cursor = 'move';
-
-    // Zone fill
     var zr = document.createElementNS(ns, 'rect');
     zr.setAttribute('x', zone.x); zr.setAttribute('y', zone.y);
     zr.setAttribute('width', zone.w); zr.setAttribute('height', zone.h);
-    zr.setAttribute('rx', 12); zr.setAttribute('fill', zone.color);
-    zr.setAttribute('stroke', zone.border); zr.setAttribute('stroke-width', '1.5');
-    zr.setAttribute('stroke-dasharray', '8 4');
+    zr.setAttribute('rx', 10);
+    zr.setAttribute('fill', zone.color);
+    zr.setAttribute('stroke', zone.border);
+    zr.setAttribute('stroke-width', '1.5');
+    zr.setAttribute('stroke-dasharray', '6 4');
     zg.appendChild(zr);
-
-    // Zone label
     var zt = document.createElementNS(ns, 'text');
-    zt.setAttribute('x', zone.x + 14); zt.setAttribute('y', zone.y + 20);
-    zt.setAttribute('font-size', '12'); zt.setAttribute('font-weight', '700');
+    zt.setAttribute('x', zone.x + 12); zt.setAttribute('y', zone.y + 18);
+    zt.setAttribute('font-size', '11'); zt.setAttribute('font-weight', '700');
     zt.setAttribute('fill', zone.border); zt.setAttribute('font-family', 'sans-serif');
-    zt.setAttribute('letter-spacing', '1'); zt.setAttribute('opacity', '0.85');
-    zt.textContent = zone.label.toUpperCase();
+    zt.setAttribute('letter-spacing', '0.5');
+    zt.textContent = zone.label;
     zg.appendChild(zt);
-
-    // Resize handle (bottom-right corner)
+    // Resize handle
     var rh = document.createElementNS(ns, 'rect');
     rh.setAttribute('x', zone.x+zone.w-12); rh.setAttribute('y', zone.y+zone.h-12);
     rh.setAttribute('width', 12); rh.setAttribute('height', 12);
-    rh.setAttribute('rx', 2); rh.setAttribute('fill', zone.border);
-    rh.setAttribute('opacity', '0.5'); rh.style.cursor = 'se-resize';
+    rh.setAttribute('rx', 2); rh.setAttribute('fill', zone.border); rh.setAttribute('opacity', '0.5');
+    rh.style.cursor = 'se-resize';
     zg.appendChild(rh);
-
-    // Rename + delete controls (top right)
     var isSel = dd.selected && dd.selected.type==='zone' && dd.selected.id===zone.id;
     if (isSel) {
       var delBtn = document.createElementNS(ns, 'text');
       delBtn.setAttribute('x', zone.x+zone.w-8); delBtn.setAttribute('y', zone.y+16);
-      delBtn.setAttribute('text-anchor','end'); delBtn.setAttribute('font-size','13');
-      delBtn.setAttribute('fill','#e74c3c'); delBtn.setAttribute('cursor','pointer');
-      delBtn.textContent = '✕';
+      delBtn.setAttribute('text-anchor','end'); delBtn.setAttribute('font-size','14');
+      delBtn.setAttribute('fill','#ef4444'); delBtn.setAttribute('cursor','pointer');
+      delBtn.textContent = '×';
       delBtn.addEventListener('click', function(e){ e.stopPropagation(); ddDeleteZone(zone.id); });
       zg.appendChild(delBtn);
       var renBtn = document.createElementNS(ns, 'text');
       renBtn.setAttribute('x', zone.x+zone.w-24); renBtn.setAttribute('y', zone.y+16);
-      renBtn.setAttribute('text-anchor','end'); renBtn.setAttribute('font-size','11');
+      renBtn.setAttribute('text-anchor','end'); renBtn.setAttribute('font-size','12');
       renBtn.setAttribute('fill', zone.border); renBtn.setAttribute('cursor','pointer');
       renBtn.textContent = '✎';
       renBtn.addEventListener('click', function(e){ e.stopPropagation(); ddRenameZone(zone.id); });
       zg.appendChild(renBtn);
     }
-
-    // Zone drag
     zg.addEventListener('mousedown', (function(zid){ return function(e) {
       dd.selected = {type:'zone', id:zid};
       e.stopPropagation();
       var pt = ddSvgCoords(e);
       var z = dd.zones.find(function(z2){return z2.id===zid;});
       if (!z) return;
-      // Check if clicking resize handle (bottom-right 16x16)
       if (pt.x >= z.x+z.w-16 && pt.y >= z.y+z.h-16) {
         dd.resizingZone = {id:zid};
       } else {
@@ -3934,598 +3940,463 @@ function ddRender() {
     nodeLayer.insertBefore(zg, nodeLayer.firstChild);
   });
 
-  // ── Draw Socapex feed lines for SocaSwitch nodes ─────────────
-  dd.nodes.forEach(function(node) {
-    if (node.type !== 'socaswitch' || !node.parentSheet || !node.parentBank) return;
-    var parentNode = dd.nodes.find(function(n){
-      return n.type !== 'socaswitch' && (n.sheetKey === node.parentSheet || n.label === node.parentSheet || n.label.trim() === node.parentSheet.trim());
-    });
-    if (!parentNode) return;
-    // Emerge from the correct bank column
-    var pCfg = parentNode.sheetKey && SHEETS[parentNode.sheetKey];
-    var pBanks = pCfg ? pCfg.banks : [];
-    var bIdx = pBanks.indexOf(node.parentBank);
-    var bankFracS = pBanks.length > 1 && bIdx >= 0 ? (bIdx + 0.5) / pBanks.length : 0.5;
-    var x1 = parentNode.x + parentNode.w * bankFracS, y1 = parentNode.y + parentNode.h;
-    var x2 = node.x + node.w/2, y2 = node.y;
-    var cp = (y2-y1)/2;
-    var path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', 'M'+x1+' '+y1+' C'+x1+' '+(y1+cp)+','+x2+' '+(y2-cp)+','+x2+' '+y2);
-    path.setAttribute('fill','none');
-    path.setAttribute('stroke','#334155');
-    path.setAttribute('stroke-width','2');
-    path.setAttribute('stroke-dasharray','5 3');
-    path.setAttribute('marker-end','url(#arr-w)');
-    path.setAttribute('opacity','0.7');
-    connLayer.appendChild(path);
-    var midX = (x1+x2)/2, midY = (y1+y2)/2;
-    var lbl = 'SOCA Bank ' + node.parentBank;
-    var lw = lbl.length*6+10;
-    var lbg = document.createElementNS(ns,'rect');
-    lbg.setAttribute('x',midX-lw/2); lbg.setAttribute('y',midY-8);
-    lbg.setAttribute('width',lw); lbg.setAttribute('height',14);
-    lbg.setAttribute('rx',3); lbg.setAttribute('fill','#091525');
-    lbg.setAttribute('stroke','#fff'); lbg.setAttribute('stroke-width','1');
-    connLayer.appendChild(lbg);
-    var lt = document.createElementNS(ns,'text');
-    lt.setAttribute('x',midX); lt.setAttribute('y',midY+4);
-    lt.setAttribute('text-anchor','middle'); lt.setAttribute('font-size','8');
-    lt.setAttribute('font-weight','700'); lt.setAttribute('fill','#fff');
-    lt.setAttribute('font-family','monospace'); lt.textContent = lbl;
-    connLayer.appendChild(lt);
-  });
-
-  // ── Draw 3-phase fixed outlet links (from threePhasePorts data) ─
-  dd.nodes.forEach(function(fromNode) {
-    var foList = getFixedOutlets(fromNode.sheetKey || '');
-    if (!foList.length) return;
-    var tpp = fromNode.sheetKey && distroData[fromNode.sheetKey] && distroData[fromNode.sheetKey].threePhasePorts;
-    if (!tpp) return;
-
-    // Build the FO groups (same order as the strip on the node)
-    var foGroupsLink = [];
-    foList.forEach(function(fo) {
-      for (var fi = 1; fi <= fo.count; fi++) {
-        foGroupsLink.push({ key: fo.label.replace(/\s/g,'_') + '_' + fi, color: fo.color, ph: fo.ph, label: fo.label });
-      }
-    });
-
-    foGroupsLink.forEach(function(fo, fIdx) {
-      if (fo.ph !== 3) return; // only 3-phase outlets create auto-links
-      var conn = tpp[fo.key];
-      if (!conn || !conn.connected) return;
-      // Find destination node by sheetKey
-      var toNode = dd.nodes.find(function(n){ return n.sheetKey === conn.connected || n.label === conn.connected; });
-      if (!toNode) return;
-
-      // Source X = FO strip position
-      var foW = fromNode.w / foGroupsLink.length;
-      var x1 = fromNode.x + fIdx * foW + foW / 2;
-      var y1 = fromNode.y + fromNode.h + 14; // below FO strip
-
-      // Destination = top centre of target node
-      var x2 = toNode.x + toNode.w / 2;
-      var y2 = toNode.y;
-
-      var cp = Math.abs(y2 - y1) * 0.5;
-      var arrowMap = {'#e67e22':'arr-o','#27ae60':'arr-g','#e74c3c':'arr-e','#3498db':'arr-b'};
-      var arrowId = arrowMap[fo.color] || 'arr-g';
-      var path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', 'M'+x1+' '+y1+' C'+x1+' '+(y1+cp)+','+x2+' '+(y2-cp)+','+x2+' '+y2);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', fo.color);
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('stroke-dasharray', '6 3');
-      path.setAttribute('marker-end', 'url(#' + arrowId + ')');
-      path.setAttribute('opacity', '0.85');
-      connLayer.appendChild(path);
-
-      // Mid-label showing outlet type
-      var midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
-      var lblW = fo.label.length * 5.5 + 10;
-      var lbg = document.createElementNS(ns, 'rect');
-      lbg.setAttribute('x', midX - lblW/2); lbg.setAttribute('y', midY - 8);
-      lbg.setAttribute('width', lblW); lbg.setAttribute('height', 14);
-      lbg.setAttribute('rx', 3); lbg.setAttribute('fill', '#080e18');
-      lbg.setAttribute('stroke', fo.color); lbg.setAttribute('stroke-width', '1');
-      connLayer.appendChild(lbg);
-      var lt = document.createElementNS(ns, 'text');
-      lt.setAttribute('x', midX); lt.setAttribute('y', midY + 4);
-      lt.setAttribute('text-anchor', 'middle'); lt.setAttribute('font-size', '8');
-      lt.setAttribute('font-weight', '700'); lt.setAttribute('fill', fo.color);
-      lt.setAttribute('font-family', 'monospace');
-      lt.textContent = fo.label;
-      connLayer.appendChild(lt);
-    });
-  });
-
-  // ── Draw distro-to-distro connections ────────────────────────
-  dd.conns.forEach(function(conn) {
-    var from = dd.nodes.find(function(n){return n.id===conn.from;});
-    var to   = dd.nodes.find(function(n){return n.id===conn.to;});
-    if (!from || !to) return;
-    var isSel = dd.selected && dd.selected.type==='conn' && dd.selected.id===conn.id;
-
-    // Calculate exit point from specific bank or fixed outlet on source node
-    var fromCfgC = from.sheetKey && SHEETS[from.sheetKey];
-    var fromBanksC = fromCfgC ? fromCfgC.banks : [];
-    var fromFoListC = getFixedOutlets(from.sheetKey || '');
-    var fromFoGroupsC = [];
-    fromFoListC.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) fromFoGroupsC.push({key:fo.label.replace(/\s/g,'_')+'_'+fi, color:fo.color}); });
-    var bankFrac = 0.5;
-    var foRowH = fromFoGroupsC.length ? 14 : 0;
-    if (conn.fromFixedOutlet && fromFoGroupsC.length) {
-      var foIdx = fromFoGroupsC.findIndex(function(f){ return f.key === conn.fromFixedOutlet; });
-      if (foIdx >= 0) bankFrac = (foIdx + 0.5) / fromFoGroupsC.length;
-    } else if (conn.fromBank && fromBanksC.length > 1) {
-      var bIdx = fromBanksC.indexOf(conn.fromBank);
-      if (bIdx >= 0) bankFrac = (bIdx + 0.5) / fromBanksC.length;
-    }
-    var x1 = from.x + from.w * bankFrac;
-    var y1 = conn.fromFixedOutlet ? from.y + from.h + foRowH : from.y + from.h;
-    var x2 = to.x + to.w/2,   y2 = to.y;
-    var dx = Math.abs(x2-x1), dy = Math.abs(y2-y1);
-    if (dx > dy * 1.5) {
-      // Side exit — use bankFrac to determine exit height on source
-      var exitY = from.y + from.h * bankFrac;
-      if (to.x > from.x) { x1 = from.x+from.w; y1 = exitY; x2 = to.x; y2 = to.y+to.h/2; }
-      else                { x1 = from.x;         y1 = exitY; x2 = to.x+to.w; y2 = to.y+to.h/2; }
-    }
-    var cp1x = x1, cp1y = (y1+y2)/2, cp2x = x2, cp2y = (y1+y2)/2;
-    if (dx > dy * 1.5) { cp1x = (x1+x2)/2; cp1y = y1; cp2x = (x1+x2)/2; cp2y = y2; }
-
-    var path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', 'M'+x1+' '+y1+' C'+cp1x+' '+cp1y+','+cp2x+' '+cp2y+','+x2+' '+y2);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', conn.color || '#FFD700');
-    path.setAttribute('stroke-width', isSel ? 4 : 2.5);
-    path.setAttribute('marker-end', 'url(#' + (conn.marker||'arr') + ')');
-    if (isSel) path.setAttribute('filter', 'drop-shadow(0 0 4px ' + conn.color + ')');
-    path.style.cursor = 'pointer';
-    path.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
-    connLayer.appendChild(path);
-
-    // Connector label
-    var midX = (x1+x2)/2, midY = (y1+y2)/2;
-    var lbl = conn.label || '';
-    if (lbl) {
-      var lblW = lbl.length * 6 + 10;
-      var lbg = document.createElementNS(ns, 'rect');
-      lbg.setAttribute('x', midX-lblW/2); lbg.setAttribute('y', midY-8);
-      lbg.setAttribute('width', lblW); lbg.setAttribute('height', 14);
-      lbg.setAttribute('rx', 3); lbg.setAttribute('fill', '#091525');
-      lbg.setAttribute('stroke', conn.color); lbg.setAttribute('stroke-width', '1');
-      lbg.style.cursor = 'pointer';
-      lbg.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
-      connLayer.appendChild(lbg);
-      var lt = document.createElementNS(ns, 'text');
-      lt.setAttribute('x', midX); lt.setAttribute('y', midY+4);
-      lt.setAttribute('text-anchor', 'middle'); lt.setAttribute('font-size', '9');
-      lt.setAttribute('font-weight', '700'); lt.setAttribute('fill', conn.color);
-      lt.setAttribute('font-family', 'monospace'); lt.textContent = lbl;
-      lt.style.cursor = 'pointer';
-      lt.addEventListener('click', (function(cid){ return function(e){ ddConnClick(e,cid); }; })(conn.id));
-      connLayer.appendChild(lt);
-    }
-  });
-
-  // ── Phase colours for equipment items ────────────────────────
-  var PH_ITEM    = ['','#c084fc','#fb923c','#34d399'];  // bright phase colours for dark bg
-  var PH_ITEM_LT = ['','rgba(192,132,252,0.15)','rgba(251,146,60,0.15)','rgba(52,211,153,0.15)'];
-
-  // ── Draw distro nodes + their equipment flowchart ─────────────
-  dd.nodes.forEach(function(node) {
+  // ── Helper: draw a node box ─────────────────────────────────
+  function drawNode(node) {
+    var cfg = node.sheetKey && SHEETS[node.sheetKey];
+    var banks = cfg ? cfg.banks : [];
+    var nBanks = banks.length;
     var isSel = dd.selected && dd.selected.type==='node' && dd.selected.id===node.id;
-    var isConnSrc = dd.connecting && dd.connFrom === node.id;
-    // Ensure node has required properties
-    if (!node.color) {
-      var dtDef = DD_DISTRO_TYPES.find(function(d){ return d.key === node.type; });
-      node.color = dtDef ? dtDef.color : '#1f4e79';
-    }
-    if (!node.w) node.w = 160;
-    if (!node.h) node.h = 70;
-
-    // Get equipment for this node's flowchart children
-    var eqItems;
-    if (node.type === 'socaswitch') {
-      // SocaSwitch is a dumb breakout - no equipment cards shown
-      // Equipment is visible on the parent distro node
-      eqItems = [];
-    } else {
-      // Regular distro: show all banks
-      var cfg = node.sheetKey && SHEETS[node.sheetKey];
-      if (cfg) {
-        eqItems = [];
-        cfg.banks.forEach(function(b) {
-          eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
-        });
-      } else {
-        eqItems = [];
-      }
-    }
-
-    // ── DISTRO NODE BOX ──────────────────────────────────────
     var g = document.createElementNS(ns, 'g');
     g.style.cursor = dd.connecting ? 'crosshair' : 'grab';
-    g.addEventListener('mousedown', (function(nid){ return function(e){ ddNodeMouseDown(e,nid); }; })(node.id));
 
-    // Glow/selection ring
-    var shadow = document.createElementNS(ns, 'rect');
-    shadow.setAttribute('x', node.x-3); shadow.setAttribute('y', node.y-3);
-    shadow.setAttribute('width', node.w+6); shadow.setAttribute('height', node.h+6);
-    shadow.setAttribute('rx', 13); shadow.setAttribute('fill', 'none');
-    if (isSel) { shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2'); shadow.setAttribute('filter', 'drop-shadow(0 0 6px #FFD700)'); }
-    else if (isConnSrc) { shadow.setAttribute('stroke', '#FFD700'); shadow.setAttribute('stroke-width', '2'); shadow.setAttribute('stroke-dasharray', '4 2'); }
-    g.appendChild(shadow);
+    // Drop shadow
+    var sh = document.createElementNS(ns, 'rect');
+    sh.setAttribute('x', node.x+2); sh.setAttribute('y', node.y+3);
+    sh.setAttribute('width', NW); sh.setAttribute('height', NH);
+    sh.setAttribute('rx', 8); sh.setAttribute('fill', 'rgba(0,0,0,0.10)');
+    g.appendChild(sh);
 
-    var rect = document.createElementNS(ns, 'rect');
-    rect.setAttribute('x', node.x); rect.setAttribute('y', node.y);
-    rect.setAttribute('width', node.w); rect.setAttribute('height', node.h);
-    rect.setAttribute('rx', 10); rect.setAttribute('fill', node.color || '#8b5e00');
-    rect.setAttribute('stroke', isSel ? '#FFD700' : '#fff');
-    rect.setAttribute('stroke-width', isSel ? 2 : 0.5);
-    rect.setAttribute('stroke-opacity', isSel ? 1 : 0.2);
-    g.appendChild(rect);
+    // Card body
+    var bg = document.createElementNS(ns, 'rect');
+    bg.setAttribute('x', node.x); bg.setAttribute('y', node.y);
+    bg.setAttribute('width', NW); bg.setAttribute('height', NH);
+    bg.setAttribute('rx', 8); bg.setAttribute('fill', '#ffffff');
+    bg.setAttribute('stroke', isSel ? '#f59e0b' : '#e2e8f0');
+    bg.setAttribute('stroke-width', isSel ? '2.5' : '1.5');
+    g.appendChild(bg);
 
-    // Header stripe
-    var stripe = document.createElementNS(ns, 'rect');
-    stripe.setAttribute('x', node.x); stripe.setAttribute('y', node.y);
-    stripe.setAttribute('width', node.w); stripe.setAttribute('height', 16);
-    stripe.setAttribute('rx', 10); stripe.setAttribute('fill', 'rgba(0,0,0,0.4)');
-    g.appendChild(stripe);
-    var stripe2 = document.createElementNS(ns, 'rect');
-    stripe2.setAttribute('x', node.x); stripe2.setAttribute('y', node.y+10);
-    stripe2.setAttribute('width', node.w); stripe2.setAttribute('height', 6);
-    stripe2.setAttribute('fill', 'rgba(0,0,0,0.35)');
-    g.appendChild(stripe2);
+    // Coloured top header strip
+    var hdr = document.createElementNS(ns, 'rect');
+    hdr.setAttribute('x', node.x); hdr.setAttribute('y', node.y);
+    hdr.setAttribute('width', NW); hdr.setAttribute('height', 20);
+    hdr.setAttribute('rx', 8); hdr.setAttribute('fill', node.color || '#1e293b');
+    g.appendChild(hdr);
+    // Square bottom corners of header
+    var hdr2 = document.createElementNS(ns, 'rect');
+    hdr2.setAttribute('x', node.x); hdr2.setAttribute('y', node.y+12);
+    hdr2.setAttribute('width', NW); hdr2.setAttribute('height', 8);
+    hdr2.setAttribute('fill', node.color || '#1e293b');
+    g.appendChild(hdr2);
 
-    // Type label
-    var typeTxt = document.createElementNS(ns, 'text');
-    typeTxt.setAttribute('x', node.x+node.w/2); typeTxt.setAttribute('y', node.y+11);
-    typeTxt.setAttribute('text-anchor', 'middle'); typeTxt.setAttribute('font-size', '8');
-    typeTxt.setAttribute('font-weight', '700'); typeTxt.setAttribute('fill', 'rgba(255,255,255,0.6)');
-    typeTxt.setAttribute('font-family', 'monospace'); typeTxt.setAttribute('letter-spacing', '1');
-    typeTxt.textContent = node.type.toUpperCase();
-    g.appendChild(typeTxt);
+    // Type label in header
+    var typeMap = {
+      '72way':'72-WAY','48way':'48-WAY','18way':'18-WAY',
+      'socaswitch':'SOCASWITCH','pdr':'PDR','lasearray':'LASEARRAY',
+      'dist':'DISTRO','gen':'GENERATOR','custom':'CUSTOM'
+    };
+    var typeLbl = document.createElementNS(ns, 'text');
+    typeLbl.setAttribute('x', node.x+8); typeLbl.setAttribute('y', node.y+13);
+    typeLbl.setAttribute('font-size', '7'); typeLbl.setAttribute('font-weight', '700');
+    typeLbl.setAttribute('fill', 'rgba(255,255,255,0.75)');
+    typeLbl.setAttribute('font-family', 'sans-serif');
+    typeLbl.setAttribute('letter-spacing', '1.5');
+    typeLbl.textContent = typeMap[node.type] || node.type.toUpperCase();
+    g.appendChild(typeLbl);
 
-    // Main name
-    var nameTxt = document.createElementNS(ns, 'text');
-    nameTxt.setAttribute('x', node.x+node.w/2); nameTxt.setAttribute('y', node.y+34);
-    nameTxt.setAttribute('text-anchor', 'middle'); nameTxt.setAttribute('font-size', '12');
-    nameTxt.setAttribute('font-weight', '800'); nameTxt.setAttribute('fill', '#ffffff');
-    nameTxt.setAttribute('font-family', 'sans-serif');
-    nameTxt.textContent = node.label.length > 18 ? node.label.substring(0,17)+'…' : node.label;
-    g.appendChild(nameTxt);
+    // Equipment count badge in header
+    var eqCount = 0;
+    if (node.sheetKey) {
+      cfg.banks.forEach(function(b){ eqCount += ddGetEquipmentForSheet(node.sheetKey, b).length; });
+    } else if (node.type === 'socaswitch' && node.parentSheet && node.parentBank) {
+      var sn = dd.nodes.find(function(nx){ return nx.type!=='socaswitch' && (nx.sheetKey===node.parentSheet||nx.label===node.parentSheet); });
+      if (sn) eqCount = ddGetEquipmentForSheet(sn.sheetKey, node.parentBank).length;
+    }
+    if (eqCount > 0) {
+      var bdg = document.createElementNS(ns, 'text');
+      bdg.setAttribute('x', node.x+NW-7); bdg.setAttribute('y', node.y+13);
+      bdg.setAttribute('text-anchor', 'end'); bdg.setAttribute('font-size', '8');
+      bdg.setAttribute('font-weight', '700'); bdg.setAttribute('fill', 'rgba(255,255,255,0.9)');
+      bdg.setAttribute('font-family', 'sans-serif');
+      bdg.textContent = eqCount + ' ×';
+      g.appendChild(bdg);
+    }
 
-    // Draw bank indicators on the bottom of the node
-    var nodeCfg = node.sheetKey && SHEETS[node.sheetKey];
-    if (nodeCfg && nodeCfg.banks && nodeCfg.banks.length > 1) {
-      var nBanks = nodeCfg.banks.length;
-      var bankW = node.w / nBanks;
-      var phColors3 = ['#9b59b6','#e67e22','#1abc9c'];
-      for (var bki = 0; bki < nBanks; bki++) {
-        var bkX = node.x + bki * bankW;
-        var ph = bki % 3;
-        if (bki > 0) {
-          var divLine = document.createElementNS(ns, 'line');
-          divLine.setAttribute('x1', bkX); divLine.setAttribute('y1', node.y + node.h - 14);
-          divLine.setAttribute('x2', bkX); divLine.setAttribute('y2', node.y + node.h);
-          divLine.setAttribute('stroke', 'rgba(0,0,0,0.2)'); divLine.setAttribute('stroke-width', '0.8');
-          g.appendChild(divLine);
+    // Node label
+    var lbl = node.label.length > 20 ? node.label.substring(0,19)+'…' : node.label;
+    var lblTxt = document.createElementNS(ns, 'text');
+    lblTxt.setAttribute('x', node.x+8); lblTxt.setAttribute('y', node.y+35);
+    lblTxt.setAttribute('font-size', '13'); lblTxt.setAttribute('font-weight', '700');
+    lblTxt.setAttribute('fill', '#0f172a'); lblTxt.setAttribute('font-family', 'sans-serif');
+    g.appendChild(lblTxt);
+    lblTxt.textContent = lbl;
+
+    // Note / sublabel
+    var noteText = node.type==='pdr' ? ((node.inputRating||'63A')+' 3φ')
+      : node.type==='socaswitch' ? (node.parentBank ? 'Socapex ← Bank '+node.parentBank : 'No feed')
+      : node.note || '';
+    if (noteText) {
+      var noteTxt = document.createElementNS(ns, 'text');
+      noteTxt.setAttribute('x', node.x+NW-8); noteTxt.setAttribute('y', node.y+35);
+      noteTxt.setAttribute('text-anchor', 'end'); noteTxt.setAttribute('font-size', '9');
+      noteTxt.setAttribute('fill', '#64748b'); noteTxt.setAttribute('font-family', 'sans-serif');
+      noteTxt.textContent = noteText;
+      g.appendChild(noteTxt);
+    }
+
+    // Bank strip at bottom of node
+    if (nBanks > 1) {
+      var bw = NW / nBanks;
+      var phC = ['#7c3aed','#ea580c','#059669'];
+      for (var bi2=0; bi2<nBanks; bi2++) {
+        var bx = node.x + bi2*bw;
+        if (bi2 > 0) {
+          var dl2 = document.createElementNS(ns,'line');
+          dl2.setAttribute('x1',bx); dl2.setAttribute('y1',node.y+NH-10);
+          dl2.setAttribute('x2',bx); dl2.setAttribute('y2',node.y+NH);
+          dl2.setAttribute('stroke','#e2e8f0'); dl2.setAttribute('stroke-width','1');
+          g.appendChild(dl2);
         }
-        var bkBg = document.createElementNS(ns, 'rect');
-        bkBg.setAttribute('x', bkX + 1); bkBg.setAttribute('y', node.y + node.h - 14);
-        bkBg.setAttribute('width', bankW - 2); bkBg.setAttribute('height', 14);
-        bkBg.setAttribute('fill', 'rgba(0,0,0,0.3)');
-        g.appendChild(bkBg);
-        var bkTxt = document.createElementNS(ns, 'text');
-        bkTxt.setAttribute('x', bkX + bankW/2);
-        bkTxt.setAttribute('y', node.y + node.h - 4);
-        bkTxt.setAttribute('text-anchor', 'middle');
-        bkTxt.setAttribute('font-size', nBanks > 8 ? '6' : nBanks > 4 ? '7' : '8');
-        bkTxt.setAttribute('font-weight', '700');
-        bkTxt.setAttribute('fill', phColors3[ph]);
-        bkTxt.setAttribute('font-family', 'monospace');
-        bkTxt.textContent = nodeCfg.banks[bki];
-        g.appendChild(bkTxt);
-        var hasConn = dd.conns.some(function(c){ return c.from === node.id && c.fromBank === nodeCfg.banks[bki]; });
-        if (hasConn) {
-          var dot = document.createElementNS(ns, 'circle');
-          dot.setAttribute('cx', bkX + bankW/2);
-          dot.setAttribute('cy', node.y + node.h);
-          dot.setAttribute('r', 4);
-          dot.setAttribute('fill', '#FFD700');
-          dot.setAttribute('stroke', '#080e18');
-          dot.setAttribute('stroke-width', '1.5');
+        var bt2 = document.createElementNS(ns,'text');
+        bt2.setAttribute('x', bx+bw/2); bt2.setAttribute('y', node.y+NH-2);
+        bt2.setAttribute('text-anchor','middle'); bt2.setAttribute('font-size', nBanks>8?'5':'6');
+        bt2.setAttribute('font-weight','700'); bt2.setAttribute('fill', phC[bi2%3]);
+        bt2.setAttribute('font-family','monospace');
+        bt2.textContent = banks[bi2];
+        g.appendChild(bt2);
+        // Departure dot
+        var hasCon = dd.conns.some(function(c){ return c.from===node.id && c.fromBank===banks[bi2]; });
+        if (hasCon) {
+          var dot = document.createElementNS(ns,'circle');
+          dot.setAttribute('cx', bx+bw/2); dot.setAttribute('cy', node.y+NH);
+          dot.setAttribute('r',3.5); dot.setAttribute('fill',phC[bi2%3]);
+          dot.setAttribute('stroke','#fff'); dot.setAttribute('stroke-width','1.5');
           g.appendChild(dot);
         }
       }
     }
 
-    // ── Fixed outlet row below bank strip ─────────────────────
-    var foList = getFixedOutlets(node.sheetKey || '');
-    if (foList.length) {
-      // Group outlets by label for compact display
-      var foGroups = [];
-      foList.forEach(function(fo) {
-        for (var fi = 1; fi <= fo.count; fi++) {
-          foGroups.push({label: fo.label, idx: fi, color: fo.color, ph: fo.ph,
-            key: fo.label.replace(/\s/g,'_') + '_' + fi});
-        }
-      });
-      var foRowH = 14;
-      var foY = node.y + node.h; // sits just below the node
-      var foW = node.w / foGroups.length;
-
-      // Background strip
-      var foBg = document.createElementNS(ns, 'rect');
-      foBg.setAttribute('x', node.x); foBg.setAttribute('y', foY);
-      foBg.setAttribute('width', node.w); foBg.setAttribute('height', foRowH);
-      foBg.setAttribute('rx', 0); foBg.setAttribute('fill', 'rgba(0,0,0,0.45)');
-      foBg.setAttribute('stroke', 'rgba(255,255,255,0.08)'); foBg.setAttribute('stroke-width', '0.5');
-      g.appendChild(foBg);
-
-      foGroups.forEach(function(fo, fIdx) {
-        var fX = node.x + fIdx * foW;
-        // Divider
-        if (fIdx > 0) {
-          var fDiv = document.createElementNS(ns, 'line');
-          fDiv.setAttribute('x1', fX); fDiv.setAttribute('y1', foY);
-          fDiv.setAttribute('x2', fX); fDiv.setAttribute('y2', foY + foRowH);
-          fDiv.setAttribute('stroke', 'rgba(255,255,255,0.1)'); fDiv.setAttribute('stroke-width', '0.5');
-          g.appendChild(fDiv);
-        }
-        // Colour pip
-        var pip = document.createElementNS(ns, 'rect');
-        pip.setAttribute('x', fX + foW/2 - 2.5); pip.setAttribute('y', foY + 2);
-        pip.setAttribute('width', 5); pip.setAttribute('height', 5);
-        pip.setAttribute('rx', 1); pip.setAttribute('fill', fo.color);
-        pip.setAttribute('opacity', '0.9');
-        g.appendChild(pip);
-        // Label (only show for groups with few outlets)
-        if (foGroups.length <= 12) {
-          var foTxt = document.createElementNS(ns, 'text');
-          foTxt.setAttribute('x', fX + foW/2);
-          foTxt.setAttribute('y', foY + foRowH - 2);
-          foTxt.setAttribute('text-anchor', 'middle');
-          foTxt.setAttribute('font-size', foGroups.length > 8 ? '5' : '6');
-          foTxt.setAttribute('font-weight', '600');
-          foTxt.setAttribute('fill', fo.color);
-          foTxt.setAttribute('font-family', 'monospace');
-          foTxt.setAttribute('opacity', '0.85');
-          foTxt.textContent = fo.ph === 3 ? '3φ' : fo.idx;
-          g.appendChild(foTxt);
-        }
-        // Departure dot if a connection leaves from this outlet
-        var hasFoConn = dd.conns.some(function(c){ return c.from === node.id && c.fromFixedOutlet === fo.key; });
-        if (hasFoConn) {
-          var foDot = document.createElementNS(ns, 'circle');
-          foDot.setAttribute('cx', fX + foW/2);
-          foDot.setAttribute('cy', foY + foRowH);
-          foDot.setAttribute('r', 3.5);
-          foDot.setAttribute('fill', fo.color);
-          foDot.setAttribute('stroke', '#080e18');
-          foDot.setAttribute('stroke-width', '1.5');
-          g.appendChild(foDot);
-        }
+    // FO strip
+    var foList2 = getFixedOutlets(node.sheetKey||'');
+    if (foList2.length) {
+      var foGroups2 = [];
+      foList2.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) foGroups2.push({key:fo.label.replace(/\s/g,'_')+'_'+fi,color:fo.color,ph:fo.ph,label:fo.label,idx:fi}); });
+      var foY2 = node.y+NH;
+      var fw2 = NW/foGroups2.length;
+      var fobg = document.createElementNS(ns,'rect');
+      fobg.setAttribute('x',node.x); fobg.setAttribute('y',foY2);
+      fobg.setAttribute('width',NW); fobg.setAttribute('height',12);
+      fobg.setAttribute('fill','#f1f5f9');
+      fobg.setAttribute('stroke','#e2e8f0'); fobg.setAttribute('stroke-width','0.5');
+      g.appendChild(fobg);
+      foGroups2.forEach(function(fo2,fi2){
+        var fx2 = node.x+fi2*fw2;
+        if (fi2>0){var fdl=document.createElementNS(ns,'line');fdl.setAttribute('x1',fx2);fdl.setAttribute('y1',foY2);fdl.setAttribute('x2',fx2);fdl.setAttribute('y2',foY2+12);fdl.setAttribute('stroke','#e2e8f0');fdl.setAttribute('stroke-width','0.5');g.appendChild(fdl);}
+        var pip=document.createElementNS(ns,'rect');pip.setAttribute('x',fx2+fw2/2-2);pip.setAttribute('y',foY2+3.5);pip.setAttribute('width',4);pip.setAttribute('height',4);pip.setAttribute('rx',1);pip.setAttribute('fill',fo2.color);g.appendChild(pip);
+        var hasFoCon=dd.conns.some(function(c){return c.from===node.id&&c.fromFixedOutlet===fo2.key;});
+        if(hasFoCon){var fod=document.createElementNS(ns,'circle');fod.setAttribute('cx',fx2+fw2/2);fod.setAttribute('cy',foY2+12);fod.setAttribute('r',3);fod.setAttribute('fill',fo2.color);fod.setAttribute('stroke','#fff');fod.setAttribute('stroke-width','1.5');g.appendChild(fod);}
       });
     }
 
-    // Note / parent output
-    var noteText = node.type === 'pdr'
-      ? ((node.inputRating || '63A') + ' 3φ Input')
-      : node.type === 'lasearray'
-      ? '32A 1φ → 8× Powercon'
-      : node.type === 'socaswitch'
-      ? (node.parentSheet && node.parentBank
-          ? 'Socapex \u2190 Bank ' + node.parentBank
-          : 'No feed assigned')
-      : (node.note || '');
-    if (noteText) {
-      var noteTxt = document.createElementNS(ns, 'text');
-      noteTxt.setAttribute('x', node.x+node.w/2); noteTxt.setAttribute('y', node.y+50);
-      noteTxt.setAttribute('text-anchor', 'middle'); noteTxt.setAttribute('font-size', '9');
-      noteTxt.setAttribute('fill', node.type==='socaswitch' && (!node.parentSheet||!node.parentBank) ? '#e74c3c' : 'rgba(255,255,255,0.65)');
-      noteTxt.setAttribute('font-family', 'sans-serif');
-      noteTxt.textContent = noteText.length > 22 ? noteText.substring(0,21)+'…' : noteText;
-      g.appendChild(noteTxt);
-    }
-
-    // Sheet link indicator + item count badge
-    if (node.sheetKey || node.type === 'socaswitch') {
-      if (node.type === 'socaswitch' && node.parentSheet && node.parentBank) {
-        // Show count of items in parent bank for SocaSwitch
-        var socaPnBadge = dd.nodes.find(function(nx){
-          return nx.type !== 'socaswitch' && (nx.sheetKey === node.parentSheet || nx.label === node.parentSheet);
-        });
-        var socaKeyBadge = socaPnBadge ? socaPnBadge.sheetKey : node.parentSheet;
-        var socaItems = ddGetEquipmentForSheet(socaKeyBadge, node.parentBank);
-        if (socaItems.length) {
-          var countBadge = document.createElementNS(ns, 'text');
-          countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
-          countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
-          countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
-          countBadge.textContent = '⚡ '+socaItems.length;
-          g.appendChild(countBadge);
-        }
-      } else if (node.sheetKey) {
-        var countBadge = document.createElementNS(ns, 'text');
-        countBadge.setAttribute('x', node.x+node.w-8); countBadge.setAttribute('y', node.y+12);
-        countBadge.setAttribute('text-anchor', 'end'); countBadge.setAttribute('font-size', '9');
-        countBadge.setAttribute('fill', '#FFD700'); countBadge.setAttribute('font-family', 'monospace');
-        countBadge.textContent = eqItems.length ? '⚡ '+eqItems.length : '⚡';
-        g.appendChild(countBadge);
-      }
-    }
-
-    // Connection ports
-    [[node.x+node.w/2, node.y], [node.x+node.w/2, node.y+node.h],
-     [node.x, node.y+node.h/2], [node.x+node.w, node.y+node.h/2]].forEach(function(pt) {
-      var dot = document.createElementNS(ns, 'circle');
-      dot.setAttribute('cx', pt[0]); dot.setAttribute('cy', pt[1]); dot.setAttribute('r', 4);
-      dot.setAttribute('fill', dd.connecting ? '#FFD700' : 'rgba(255,255,255,0.2)');
-      dot.setAttribute('stroke', dd.connecting ? '#fff' : 'none'); dot.setAttribute('stroke-width', '1');
-      g.appendChild(dot);
+    // Connection ports (subtle dots)
+    var portY = node.y + NH/2;
+    [[node.x, portY],[node.x+NW, portY],[node.x+NW/2, node.y],[node.x+NW/2, node.y+NH]].forEach(function(pt){
+      var dot2 = document.createElementNS(ns,'circle');
+      dot2.setAttribute('cx',pt[0]); dot2.setAttribute('cy',pt[1]); dot2.setAttribute('r',4);
+      dot2.setAttribute('fill', dd.connecting ? '#f59e0b' : 'transparent');
+      dot2.setAttribute('stroke', dd.connecting ? '#f59e0b' : '#cbd5e1');
+      dot2.setAttribute('stroke-width','1.5');
+      g.appendChild(dot2);
     });
+
+    // Mouse events
+    g.addEventListener('mousedown', function(e){ ddNodeMouseDown(e, node.id); });
+    g.addEventListener('click', function(e){ if(!dd.dragging && !dd.connecting) { dd.selected={type:'node',id:node.id}; ddRenderProps(); } });
 
     nodeLayer.appendChild(g);
+  }
 
-    // ── EQUIPMENT FLOWCHART ITEMS ─────────────────────────────
-    if (eqItems.length === 0) return;
-
-    // Auto-hide at low zoom — show count badge instead
-    if (!SHOW_CARDS) {
-      var badge = document.createElementNS(ns, 'g');
-      var br = document.createElementNS(ns, 'rect');
-      br.setAttribute('x', node.x+node.w/2-18); br.setAttribute('y', node.y+node.h+6);
-      br.setAttribute('width', 36); br.setAttribute('height', 16);
-      br.setAttribute('rx', 8); br.setAttribute('fill', 'rgba(255,255,255,0.15)');
-      badge.appendChild(br);
-      var bt = document.createElementNS(ns, 'text');
-      bt.setAttribute('x', node.x+node.w/2); bt.setAttribute('y', node.y+node.h+18);
-      bt.setAttribute('text-anchor','middle'); bt.setAttribute('font-size','9');
-      bt.setAttribute('fill','rgba(0,0,0,0.5)'); bt.setAttribute('font-family','sans-serif');
-      bt.textContent = eqItems.length + ' item' + (eqItems.length>1?'s':'');
-      badge.appendChild(bt);
-      nodeLayer.appendChild(badge);
-      return;
+  // ── Draw nodes ───────────────────────────────────────────────
+  dd.nodes.forEach(function(node) {
+    if (!node.color) {
+      var dtf = DD_DISTRO_TYPES.find(function(d){return d.key===node.type;});
+      node.color = dtf ? dtf.color : '#475569';
     }
+    if (!node.w) node.w = NW;
+    if (!node.h) node.h = NH;
+    node.w = NW; node.h = NH; // always use current dimensions
+    drawNode(node);
+  });
 
-    var EQ_W = 150, EQ_H = 36, EQ_GAP_X = 16, EQ_GAP_Y = 50;
-    var cols = Math.min(eqItems.length, 4);
-    var rows = Math.ceil(eqItems.length / cols);
-    var gridW = cols * (EQ_W + EQ_GAP_X) - EQ_GAP_X;
-    var gridStartX = node.x + node.w/2 - gridW/2;
-    var gridStartY = node.y + node.h + EQ_GAP_Y;
+  // ── Draw equipment cards ──────────────────────────────────────
+  if (SHOW_CARDS) {
+    dd.nodes.forEach(function(node) {
+      if (node.type === 'socaswitch') return; // breakout only
 
-    // ── Per-item trunk lines from correct bank/FO position ───────
-    var nodeCfgEq = node.sheetKey && SHEETS[node.sheetKey];
-    var nBanksEq = nodeCfgEq ? nodeCfgEq.banks.length : 1;
-    var foListEq = getFixedOutlets(node.sheetKey || '');
-    var foGroupsEq = [];
-    foListEq.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) foGroupsEq.push({key:fo.label.replace(/\s/g,'_')+'_'+fi}); });
-    var foRowHEq = foGroupsEq.length ? 14 : 0;
+      var cfg = node.sheetKey && SHEETS[node.sheetKey];
+      if (!cfg) return;
+      var eqItems = [];
+      cfg.banks.forEach(function(b){ eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b)); });
+      if (!eqItems.length) return;
 
-    eqItems.forEach(function(item, eIdx) {
-      var col = eIdx % cols;
-      var row2 = Math.floor(eIdx / cols);
-      var cardX = gridStartX + col * (EQ_W + EQ_GAP_X);
-      var cardY = gridStartY + row2 * (EQ_H + 16);
-      var cardCX = cardX + EQ_W/2;
+      var foH2 = getFixedOutlets(node.sheetKey||'').length ? 12 : 0;
+      var nodeBottomY = node.y + NH + foH2;
+      var cols = Math.min(eqItems.length, CARD_COLS);
+      var gridW = cols*(CARD_W+CARD_GAP_X)-CARD_GAP_X;
+      var gridX = node.x + NW/2 - gridW/2;
+      var gridY = nodeBottomY + TRUNK_GAP;
 
-      // Source X on node
-      var srcX, srcY;
-      if (item.isFixed) {
-        // From FO strip position
-        var foIdx = foGroupsEq.findIndex(function(f){ return f.key === item.output.replace(/\s/g,'_').replace(/#/,'_'); });
-        if (foIdx < 0 && foGroupsEq.length) foIdx = 0;
-        srcX = foIdx >= 0 ? node.x + (foIdx + 0.5) / foGroupsEq.length * node.w : node.x + node.w/2;
-        srcY = node.y + node.h + foRowHEq;
-      } else {
-        var bankFracEq;
-        if (node.type === 'socaswitch') {
-          // SocaSwitch: spread 6 outputs evenly (way 1-6)
-          bankFracEq = item.wayNum ? (item.wayNum - 0.5) / 6 : (eIdx + 0.5) / Math.max(eqItems.length, 1);
-        } else if (nBanksEq > 1 && item.bankIdx >= 0) {
-          // Multi-bank: use bank position
-          bankFracEq = (item.bankIdx + 0.5) / nBanksEq;
-        } else if (item.wayNum && item.totalWays && item.totalWays > 1) {
-          // Single-bank multi-way (e.g. Lasearray): spread by way number
-          bankFracEq = (item.wayNum - 0.5) / item.totalWays;
-        } else {
-          bankFracEq = 0.5;
-        }
-        srcX = node.x + node.w * bankFracEq;
-        srcY = node.y + node.h;
+      // Trunk line
+      var trunk = document.createElementNS(ns,'line');
+      trunk.setAttribute('x1', node.x+NW/2); trunk.setAttribute('y1', nodeBottomY);
+      trunk.setAttribute('x2', node.x+NW/2); trunk.setAttribute('y2', gridY-4);
+      trunk.setAttribute('stroke','#cbd5e1'); trunk.setAttribute('stroke-width','1.5');
+      trunk.setAttribute('stroke-dasharray','4 3');
+      connLayer.appendChild(trunk);
+
+      // Horizontal bus if multiple columns
+      if (cols > 1) {
+        var bus = document.createElementNS(ns,'line');
+        bus.setAttribute('x1', gridX+CARD_W/2); bus.setAttribute('y1', gridY-4);
+        bus.setAttribute('x2', gridX+(cols-1)*(CARD_W+CARD_GAP_X)+CARD_W/2); bus.setAttribute('y2', gridY-4);
+        bus.setAttribute('stroke','#cbd5e1'); bus.setAttribute('stroke-width','1.5');
+        connLayer.appendChild(bus);
       }
 
-      // Draw curved line from node bank/FO to card's actual position
-      var cardCX = ex + EQ_W/2;
-      var cardCY = ey; // top of card
-      var cpY = (srcY + cardCY) / 2;
-      var connPath = document.createElementNS(ns, 'path');
-      connPath.setAttribute('d', 'M'+srcX+' '+srcY+' C'+srcX+' '+cpY+','+cardCX+' '+cpY+','+cardCX+' '+cardCY);
-      connPath.setAttribute('fill', 'none');
-      connPath.setAttribute('stroke', item.isFixed ? (item.foColor || 'rgba(100,130,180,0.5)') : 'rgba(100,130,180,0.5)');
-      connPath.setAttribute('stroke-width', '1.5');
-      connPath.setAttribute('stroke-dasharray', '4 3');
-      connLayer.appendChild(connPath);
+      eqItems.forEach(function(item, idx) {
+        var col = idx % cols;
+        var row = Math.floor(idx / cols);
+        var baseX = gridX + col*(CARD_W+CARD_GAP_X);
+        var baseY = gridY + row*(CARD_H+CARD_GAP_Y);
+        var off = ddGetCardOff(node.id, idx);
+        var cx = baseX+off.dx, cy = baseY+off.dy;
+
+        var ph = item.phase || 1;
+        var phColor = PH_COL[ph] || '#475569';
+        var phLight = PH_LITE[ph] || '#f1f5f9';
+
+        // Drop line to card
+        var dl = document.createElementNS(ns,'line');
+        dl.setAttribute('x1', baseX+CARD_W/2); dl.setAttribute('y1', gridY-4);
+        dl.setAttribute('x2', baseX+CARD_W/2); dl.setAttribute('y2', cy);
+        dl.setAttribute('stroke','#cbd5e1'); dl.setAttribute('stroke-width','1');
+        connLayer.appendChild(dl);
+
+        // Card group
+        var cg = document.createElementNS(ns,'g');
+        cg.style.cursor = 'grab';
+
+        // Shadow
+        var csh = document.createElementNS(ns,'rect');
+        csh.setAttribute('x',cx+1); csh.setAttribute('y',cy+2);
+        csh.setAttribute('width',CARD_W); csh.setAttribute('height',CARD_H);
+        csh.setAttribute('rx',6); csh.setAttribute('fill','rgba(0,0,0,0.06)');
+        cg.appendChild(csh);
+
+        // Card body
+        var cbg = document.createElementNS(ns,'rect');
+        cbg.setAttribute('x',cx); cbg.setAttribute('y',cy);
+        cbg.setAttribute('width',CARD_W); cbg.setAttribute('height',CARD_H);
+        cbg.setAttribute('rx',6); cbg.setAttribute('fill','#ffffff');
+        cbg.setAttribute('stroke','#e2e8f0'); cbg.setAttribute('stroke-width','1.5');
+        cg.appendChild(cbg);
+
+        // Phase colour left bar
+        var cbar = document.createElementNS(ns,'rect');
+        cbar.setAttribute('x',cx); cbar.setAttribute('y',cy);
+        cbar.setAttribute('width',5); cbar.setAttribute('height',CARD_H);
+        cbar.setAttribute('rx',6); cbar.setAttribute('fill',phColor);
+        cg.appendChild(cbar);
+        var cbar2 = document.createElementNS(ns,'rect');
+        cbar2.setAttribute('x',cx); cbar2.setAttribute('y',cy);
+        cbar2.setAttribute('width',3); cbar2.setAttribute('height',CARD_H);
+        cbar2.setAttribute('fill',phColor);
+        cg.appendChild(cbar2);
+
+        // Output label
+        var outL = document.createElementNS(ns,'text');
+        outL.setAttribute('x',cx+12); outL.setAttribute('y',cy+14);
+        outL.setAttribute('font-size','8'); outL.setAttribute('font-weight','700');
+        outL.setAttribute('fill',phColor); outL.setAttribute('font-family','monospace');
+        outL.textContent = item.output;
+        cg.appendChild(outL);
+
+        // Equipment name
+        var name = (item.qty>1?item.qty+'× ':'')+item.eq;
+        if (name.length>22) name=name.substring(0,21)+'…';
+        var nameL = document.createElementNS(ns,'text');
+        nameL.setAttribute('x',cx+12); nameL.setAttribute('y',cy+27);
+        nameL.setAttribute('font-size','10'); nameL.setAttribute('font-weight','600');
+        nameL.setAttribute('fill','#0f172a'); nameL.setAttribute('font-family','sans-serif');
+        nameL.textContent = name;
+        cg.appendChild(nameL);
+
+        // Drag and click
+        cg.addEventListener('mousedown', (function(nid,cidx,bx,by){ return function(e){
+          if(dd.connecting) return;
+          e.stopPropagation();
+          var pt=ddSvgCoords(e);
+          var o=ddGetCardOff(nid,cidx);
+          dd.draggingCard={nodeId:nid,cardIdx:cidx,baseX:bx,baseY:by,offX:pt.x-(bx+o.dx),offY:pt.y-(by+o.dy)};
+          cg.style.cursor='grabbing';
+        }; })(node.id,idx,baseX,baseY));
+        cg.addEventListener('click', (function(sk){ return function(e){
+          if(dd.draggingCard) return;
+          closeDistroDesigner(); activeSheet=sk; buildSheetTabs(); renderDistro();
+        }; })(node.sheetKey));
+
+        nodeLayer.appendChild(cg);
+      });
     });
-
-    eqItems.forEach(function(item, idx) {
-      var col = idx % cols;
-      var row = Math.floor(idx / cols);
-      var baseX = gridStartX + col * (EQ_W + EQ_GAP_X);
-      var baseY = gridStartY + row * (EQ_H + 16);
-      var off = ddGetCardOff(node.id, idx);
-      var ex = baseX + off.dx;
-      var ey = baseY + off.dy;
-
-      var phCol = item.isFixed ? (item.foColor || '#3498db') : (PH_ITEM[item.phase] || '#1a3a57');
-      var phLt  = item.isFixed ? (item.foColor || '#3498db') + '22' : (PH_ITEM_LT[item.phase] || 'rgba(31,78,121,0.2)');
-
-      // Equipment card
-      var eg = document.createElementNS(ns, 'g');
-      eg.style.cursor = 'grab';
-      eg.addEventListener('mousedown', (function(nid, cidx, bx, by){ return function(e) {
-        if (dd.connecting) return;
-        e.stopPropagation();
-        var pt = ddSvgCoords(e);
-        var off = ddGetCardOff(nid, cidx);
-        dd.draggingCard = {nodeId:nid, cardIdx:cidx, baseX:bx, baseY:by,
-          offX: pt.x - (bx + off.dx), offY: pt.y - (by + off.dy)};
-        eg.style.cursor = 'grabbing';
-      }; })(node.id, idx, baseX, baseY));
-      eg.addEventListener('click', (function(sk){ return function(e){ if (dd.draggingCard) return; closeDistroDesigner(); activeSheet=sk; buildSheetTabs(); renderDistro(); }; })(node.sheetKey));
-
-      // Card background
-      var ebg = document.createElementNS(ns, 'rect');
-      ebg.setAttribute('x', ex); ebg.setAttribute('y', ey);
-      ebg.setAttribute('width', EQ_W); ebg.setAttribute('height', EQ_H);
-      ebg.setAttribute('rx', 4); ebg.setAttribute('fill', '#ffffff');
-      ebg.setAttribute('stroke', phCol); ebg.setAttribute('stroke-width', '1.5');
-      eg.appendChild(ebg);
-
-      // Phase stripe on left
-      var ps = document.createElementNS(ns, 'rect');
-      ps.setAttribute('x', ex); ps.setAttribute('y', ey);
-      ps.setAttribute('width', 4); ps.setAttribute('height', EQ_H);
-      ps.setAttribute('rx', 4); ps.setAttribute('fill', phCol);
-      eg.appendChild(ps);
-      var ps2 = document.createElementNS(ns, 'rect'); // square off right side of stripe
-      ps2.setAttribute('x', ex); ps2.setAttribute('y', ey);
-      ps2.setAttribute('width', 2); ps2.setAttribute('height', EQ_H);
-      ps2.setAttribute('fill', phCol);
-      eg.appendChild(ps2);
-
-      // Output label (e.g. A1)
-      var outTxt = document.createElementNS(ns, 'text');
-      outTxt.setAttribute('x', ex+9); outTxt.setAttribute('y', ey+13);
-      outTxt.setAttribute('font-size', '8'); outTxt.setAttribute('font-weight', '900');
-      outTxt.setAttribute('fill', phCol); outTxt.setAttribute('font-family', 'monospace');
-      outTxt.textContent = item.output;
-      eg.appendChild(outTxt);
-
-      // Equipment name
-      var eqTxt = document.createElementNS(ns, 'text');
-      var eqLabel = (item.qty > 1 ? item.qty+'× ' : '') + item.eq;
-      if (eqLabel.length > 20) eqLabel = eqLabel.substring(0,19)+'…';
-      eqTxt.setAttribute('x', ex+9); eqTxt.setAttribute('y', ey+26);
-      eqTxt.setAttribute('font-size', '10'); eqTxt.setAttribute('font-weight', '700');
-      eqTxt.setAttribute('fill', '#1e293b'); eqTxt.setAttribute('font-family', 'sans-serif');
-      eqTxt.textContent = eqLabel;
-      eg.appendChild(eqTxt);
-
-      // Click-to-open hint
-      var hint = document.createElementNS(ns, 'text');
-      hint.setAttribute('x', ex+EQ_W-6); hint.setAttribute('y', ey+14);
-      hint.setAttribute('text-anchor', 'end'); hint.setAttribute('font-size', '8');
-      hint.setAttribute('fill', 'rgba(255,255,255,0.3)'); hint.setAttribute('font-family', 'monospace');
-      hint.textContent = '→';
-      eg.appendChild(hint);
-
-      nodeLayer.appendChild(eg);
+  } else {
+    // Zoom badge
+    dd.nodes.forEach(function(node){
+      var cfg = node.sheetKey && SHEETS[node.sheetKey];
+      if (!cfg) return;
+      var cnt = 0;
+      cfg.banks.forEach(function(b){ cnt += ddGetEquipmentForSheet(node.sheetKey, b).length; });
+      if (!cnt) return;
+      var br = document.createElementNS(ns,'rect');
+      br.setAttribute('x',node.x+NW/2-16); br.setAttribute('y',node.y+NH+6);
+      br.setAttribute('width',32); br.setAttribute('height',14);
+      br.setAttribute('rx',7); br.setAttribute('fill','#e2e8f0');
+      nodeLayer.appendChild(br);
+      var bt = document.createElementNS(ns,'text');
+      bt.setAttribute('x',node.x+NW/2); bt.setAttribute('y',node.y+NH+17);
+      bt.setAttribute('text-anchor','middle'); bt.setAttribute('font-size','8');
+      bt.setAttribute('fill','#475569'); bt.setAttribute('font-family','sans-serif');
+      bt.setAttribute('font-weight','600');
+      bt.textContent = cnt+' items';
+      nodeLayer.appendChild(bt);
     });
+  }
+
+  // ── Draw Socapex lines ────────────────────────────────────────
+  dd.nodes.forEach(function(node) {
+    if (node.type!=='socaswitch'||!node.parentSheet||!node.parentBank) return;
+    var pNode = dd.nodes.find(function(n){ return n.type!=='socaswitch'&&(n.sheetKey===node.parentSheet||n.label===node.parentSheet); });
+    if (!pNode) return;
+    var pBanks2 = (pNode.sheetKey && SHEETS[pNode.sheetKey]) ? SHEETS[pNode.sheetKey].banks : [];
+    var bIdx2 = pBanks2.indexOf(node.parentBank);
+    var bFrac2 = pBanks2.length>1 && bIdx2>=0 ? (bIdx2+0.5)/pBanks2.length : 0.5;
+    var x1=pNode.x+pNode.w*bFrac2, y1=pNode.y+pNode.h;
+    var x2=node.x+NW/2, y2=node.y;
+    var cp=(y2-y1)/2;
+    var sp = document.createElementNS(ns,'path');
+    sp.setAttribute('d','M'+x1+' '+y1+' C'+x1+' '+(y1+cp)+','+x2+' '+(y2-cp)+','+x2+' '+y2);
+    sp.setAttribute('fill','none'); sp.setAttribute('stroke','#94a3b8');
+    sp.setAttribute('stroke-width','2'); sp.setAttribute('stroke-dasharray','5 3');
+    sp.setAttribute('marker-end','url(#arr-w)');
+    connLayer.appendChild(sp);
+    // Mid label
+    var mx=(x1+x2)/2, my=(y1+y2)/2;
+    var lt='SOCA Bank '+node.parentBank; var lw=lt.length*5.5+10;
+    var lbg=document.createElementNS(ns,'rect');
+    lbg.setAttribute('x',mx-lw/2); lbg.setAttribute('y',my-8);
+    lbg.setAttribute('width',lw); lbg.setAttribute('height',14);
+    lbg.setAttribute('rx',4); lbg.setAttribute('fill','#fff');
+    lbg.setAttribute('stroke','#cbd5e1'); lbg.setAttribute('stroke-width','1');
+    connLayer.appendChild(lbg);
+    var lt2=document.createElementNS(ns,'text');
+    lt2.setAttribute('x',mx); lt2.setAttribute('y',my+4);
+    lt2.setAttribute('text-anchor','middle'); lt2.setAttribute('font-size','8');
+    lt2.setAttribute('font-weight','700'); lt2.setAttribute('fill','#475569');
+    lt2.setAttribute('font-family','sans-serif');
+    lt2.textContent = lt;
+    connLayer.appendChild(lt2);
+  });
+
+  // ── Draw 3ph FO auto-lines ────────────────────────────────────
+  dd.nodes.forEach(function(fromNode) {
+    var foList3 = getFixedOutlets(fromNode.sheetKey||'');
+    if (!foList3.length) return;
+    var tpp3 = fromNode.sheetKey && distroData[fromNode.sheetKey] && distroData[fromNode.sheetKey].threePhasePorts;
+    if (!tpp3) return;
+    var foGroups3 = [];
+    foList3.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) foGroups3.push({key:fo.label.replace(/\s/g,'_')+'_'+fi,color:fo.color,label:fo.label}); });
+    foGroups3.forEach(function(fo3,fi3){
+      if (!fo3.key.match(/3φ|3ph|63A|125A|32A_3/i) && foList3.find(function(f){return fo3.key.indexOf(f.label.replace(/\s/g,'_'))===0;}).ph!==3) return;
+      var conn3=tpp3[fo3.key]; if(!conn3||!conn3.connected) return;
+      var toNode3=dd.nodes.find(function(n){return n.sheetKey===conn3.connected||n.label===conn3.connected;});
+      if(!toNode3) return;
+      var foH3=getFixedOutlets(fromNode.sheetKey||'').length?12:0;
+      var x1f=fromNode.x+(fi3+0.5)/foGroups3.length*NW, y1f=fromNode.y+NH+foH3;
+      var x2f=toNode3.x+NW/2, y2f=toNode3.y;
+      var cpf=(y2f-y1f)/2;
+      var pf=document.createElementNS(ns,'path');
+      var arrowMap2={'#e67e22':'arr-o','#27ae60':'arr-g','#e74c3c':'arr-e','#3498db':'arr-b'};
+      var arrId=arrowMap2[fo3.color]||'arr-g';
+      pf.setAttribute('d','M'+x1f+' '+y1f+' C'+x1f+' '+(y1f+cpf)+','+x2f+' '+(y2f-cpf)+','+x2f+' '+y2f);
+      pf.setAttribute('fill','none'); pf.setAttribute('stroke',fo3.color);
+      pf.setAttribute('stroke-width','2'); pf.setAttribute('stroke-dasharray','6 3');
+      pf.setAttribute('marker-end','url(#'+arrId+')');
+      connLayer.appendChild(pf);
+    });
+  });
+
+  // ── Draw dd.conns ─────────────────────────────────────────────
+  dd.conns.forEach(function(conn) {
+    var from = dd.nodes.find(function(n){return n.id===conn.from;});
+    var to   = dd.nodes.find(function(n){return n.id===conn.to;});
+    if (!from||!to) return;
+
+    var fromCfgC = from.sheetKey && SHEETS[from.sheetKey];
+    var fromBanksC = fromCfgC ? fromCfgC.banks : [];
+    var foGroupsC = [];
+    var foListC = getFixedOutlets(from.sheetKey||'');
+    foListC.forEach(function(fo){for(var fi=1;fi<=fo.count;fi++) foGroupsC.push({key:fo.label.replace(/\s/g,'_')+'_'+fi,color:fo.color});});
+    var foRowHC = foGroupsC.length ? 12 : 0;
+
+    var bankFrac = 0.5;
+    if (conn.fromFixedOutlet && foGroupsC.length) {
+      var foIdx=foGroupsC.findIndex(function(f){return f.key===conn.fromFixedOutlet;});
+      if(foIdx>=0) bankFrac=(foIdx+0.5)/foGroupsC.length;
+    } else if (conn.fromBank && fromBanksC.length>1) {
+      var bIdx3=fromBanksC.indexOf(conn.fromBank);
+      if(bIdx3>=0) bankFrac=(bIdx3+0.5)/fromBanksC.length;
+    }
+
+    var x1c=from.x+from.w*bankFrac;
+    var y1c=conn.fromFixedOutlet ? from.y+from.h+foRowHC : from.y+from.h;
+    var x2c=to.x+to.w/2, y2c=to.y;
+
+    var isSel2=dd.selected&&dd.selected.type==='conn'&&dd.selected.id===conn.id;
+    var dx=Math.abs(x2c-x1c), dy=Math.abs(y2c-y1c);
+    var cp1x,cp1y,cp2x,cp2y;
+    if (dx>dy*1.5) {
+      if(to.x>from.x){x1c=from.x+from.w;y1c=from.y+from.h*bankFrac;x2c=to.x;y2c=to.y+to.h/2;}
+      else {x1c=from.x;y1c=from.y+from.h*bankFrac;x2c=to.x+to.w;y2c=to.y+to.h/2;}
+      cp1x=(x1c+x2c)/2;cp1y=y1c;cp2x=(x1c+x2c)/2;cp2y=y2c;
+    } else {
+      cp1x=x1c;cp1y=(y1c+y2c)/2;cp2x=x2c;cp2y=(y1c+y2c)/2;
+    }
+
+    var path=document.createElementNS(ns,'path');
+    path.setAttribute('d','M'+x1c+' '+y1c+' C'+cp1x+' '+cp1y+','+cp2x+' '+cp2y+','+x2c+' '+y2c);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke', isSel2 ? '#f59e0b' : (conn.color||'#94a3b8'));
+    path.setAttribute('stroke-width', isSel2 ? '3' : '2');
+    var markerId = 'arr';
+    if (conn.marker==='r') markerId='arr-r';
+    else if (conn.marker==='g') markerId='arr-g';
+    else if (conn.marker==='b') markerId='arr-b';
+    else if (conn.marker==='w') markerId='arr-w';
+    path.setAttribute('marker-end','url(#'+markerId+')');
+    path.style.cursor='pointer';
+    path.addEventListener('click',(function(cid){return function(e){
+      e.stopPropagation();
+      dd.selected={type:'conn',id:cid};
+      ddRenderProps();
+      ddRender();
+    };})(conn.id));
+    connLayer.appendChild(path);
+
+    // Conn label
+    if (conn.label) {
+      var midX2=(x1c+x2c)/2, midY2=(y1c+y2c)/2;
+      var lw2=conn.label.length*5+10;
+      var clbg=document.createElementNS(ns,'rect');
+      clbg.setAttribute('x',midX2-lw2/2); clbg.setAttribute('y',midY2-8);
+      clbg.setAttribute('width',lw2); clbg.setAttribute('height',14);
+      clbg.setAttribute('rx',4); clbg.setAttribute('fill','#fff');
+      clbg.setAttribute('stroke',conn.color||'#cbd5e1'); clbg.setAttribute('stroke-width','1');
+      connLayer.appendChild(clbg);
+      var clt=document.createElementNS(ns,'text');
+      clt.setAttribute('x',midX2); clt.setAttribute('y',midY2+4);
+      clt.setAttribute('text-anchor','middle'); clt.setAttribute('font-size','8');
+      clt.setAttribute('font-weight','600'); clt.setAttribute('fill','#475569');
+      clt.setAttribute('font-family','sans-serif'); clt.textContent=conn.label;
+      connLayer.appendChild(clt);
+    }
   });
 }
 
