@@ -4228,8 +4228,20 @@ function ddRender() {
 
       var cfg = node.sheetKey && SHEETS[node.sheetKey];
       if (!cfg) return;
+      // Build set of banks claimed by SocaSwitches fed from this node
+      var claimedBySwitch = {};
+      dd.nodes.forEach(function(n) {
+        if (n.type === 'socaswitch' && n.parentBank &&
+            (n.parentSheet === node.sheetKey || n.parentSheet === node.label)) {
+          claimedBySwitch[n.parentBank] = true;
+        }
+      });
       var eqItems = [];
-      cfg.banks.forEach(function(b){ eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b)); });
+      cfg.banks.forEach(function(b) {
+        if (!claimedBySwitch[b]) {
+          eqItems = eqItems.concat(ddGetEquipmentForSheet(node.sheetKey, b));
+        }
+      });
       if (!eqItems.length) return;
 
       var foH2 = getFixedOutlets(node.sheetKey||'').length ? 12 : 0;
