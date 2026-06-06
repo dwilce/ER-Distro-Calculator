@@ -3623,6 +3623,12 @@ function ddRenderProps() {
           '<button class="dd-jump-btn" onclick="ddJumpToSheet(\'' + ddEsc(node.sheetKey || node.label) + '\')">&#8594; Open in Calculator</button>'
         : (!isSoca ? '<div style="font-size:9px;color:#4a7a9b;padding:3px 0 6px">No calculator sheet (source unit)</div>' : '')
       ) +
+      (isSoca ?
+        '<div class="dd-prop-row" style="margin-top:6px"><div class="dd-prop-label">CABLE LENGTH</div>' +
+        '<select class="dd-prop-select" onchange="var n=dd.nodes.find(function(x){return x.id===' + node.id + ';});if(n){n.socaCableLength=this.value||null;ddRender();}">' +
+        ['','1','2','3','5','10','20','30','50','100'].map(function(l){ return '<option value="' + l + '"'+(node.socaCableLength===l?' selected':'')+'>' + (l?l+'m':'— Not set') + '</option>'; }).join('') +
+        '</select></div>'
+      : '') +
       '<button class="dd-del-btn" onclick="ddDeleteNode(' + node.id + ')" style="margin-top:8px">&#128465; Delete Distro</button>' +
       (dd.cardOffsets[node.id] ? '<button class="dd-jump-btn" onclick="ddResetCards(' + node.id + ')" style="margin-top:4px">&#8635; Reset Card Positions</button>' : '');
   } else if (dd.selected.type === 'conn') {
@@ -3792,6 +3798,7 @@ function ddGetEquipmentForSheet(sheetKey, bankFilter) {
             output: banks[bi] + w + (sr > 0 ? '.' + sr : ''),
             eq: slot.eq,
             qty: slot.qty || 1,
+            units: slot.units || [],
             phase: ((w-1)%3)+1,
             bank: banks[bi],
             bankIdx: bi,
@@ -3874,6 +3881,21 @@ function ddSetCardOff(nodeId, idx, dx, dy) {
 }
 function ddResetCards(nodeId) {
   delete dd.cardOffsets[nodeId]; ddRender();
+}
+
+
+function ddBankStroke(sheetKey, bank) {
+  // Returns the primary colour for a bank, falling back to phase colour
+  var bc = bankColors[sheetKey] && bankColors[sheetKey][bank];
+  if (bc && bc.color && bc.color !== '#ffffff') return bc.color;
+  if (!sheetKey || !SHEETS[sheetKey]) return '#94a3b8';
+  var bi = SHEETS[sheetKey].banks.indexOf(bank);
+  var phColors = ['#7c3aed','#ea580c','#059669'];
+  return phColors[(bi < 0 ? 0 : bi) % 3];
+}
+
+function ddFoStroke(color) {
+  return color || '#94a3b8';
 }
 
 function ddRender() {
@@ -4251,112 +4273,184 @@ function ddRender() {
       var gridX = node.x + NW/2 - gridW/2;
       var gridY = nodeBottomY + TRUNK_GAP;
 
-      eqItems.forEach(function(item, idx) {
-        var col = idx % cols;
-        var row = Math.floor(idx / cols);
-        var baseX = gridX + col*(CARD_W+CARD_GAP_X);
-        var baseY = gridY + row*(CARD_H+CARD_GAP_Y);
-        var off = ddGetCardOff(node.id, idx);
-        var cx = baseX+off.dx, cy = baseY+off.dy;
+      // Group items by output (bankIdx+wayNum) so sub-slots stack in one card
+      var outputGroups = [];
+      var outputMap = {};
+      eqItems.forEach(function(item) {
+        var key = item.bankIdx + ':' + item.wayNum;
+        if (!outputMap[key]) {
+          outputMap[key] = {key:key, output:item.bank+item.wayNum, items:[], bankIdx:item.bankIdx, wayNum:item.wayNum, totalWays:item.totalWays, phase:item.phase, isFixed:item.isFixed, foColor:item.foColor};
+          outputGroups.push(outputMap[key]);
+        }
+        outputMap[key].items.push(item);
+      });
 
-        var ph = item.phase || 1;
-        var phColor = PH_COL[ph] || '#475569';
-        var phLight = PH_LITE[ph] || '#f1f5f9';
+      var CARD_W2 = 170;
+      var CARD_LINE_H = 30; // height per item line in card
+      var CARD_HDR_H = 18; // output label header
+      var CARD_PAD = 6;
+      var cols2 = Math.min(outputGroups.length, CARD_COLS);
+      var gridW2 = cols2*(CARD_W2+CARD_GAP_X)-CARD_GAP_X;
+      var gridX2 = node.x + NW/2 - gridW2/2;
+      var gridY2 = nodeBottomY + TRUNK_GAP;
 
-        // Source point - from specific bank column or FO position
-        var srcX, srcY;
-        if (item.isFixed) {
-          // From FO strip position
-          var foGroupsEq2 = [];
-          getFixedOutlets(node.sheetKey||'').forEach(function(fo){for(var fi=1;fi<=fo.count;fi++) foGroupsEq2.push({key:fo.label.replace(/\s/g,'_')+'_'+fi});});
-          var foIdxE = foGroupsEq2.findIndex(function(f){return f.key===item.output.replace(/\s/g,'_').replace('#','_');});
-          srcX = foIdxE>=0 ? node.x+(foIdxE+0.5)/foGroupsEq2.length*NW : node.x+NW/2;
-          srcY = nodeBottomY + (getFixedOutlets(node.sheetKey||'').length ? 12 : 0);
+      outputGroups.forEach(function(grp, gIdx) {
+        var col2 = gIdx % cols2;
+        var rowOff = 0;
+        // offset rows based on previous rows' heights
+        for (var gi=0; gi<gIdx; gi++) {
+          if (Math.floor(gi/cols2) < Math.floor(gIdx/cols2)) {
+            var prevRowMax = 0;
+            for (var gj=Math.floor(gIdx/cols2)*cols2-cols2; gj<Math.floor(gIdx/cols2)*cols2; gj++) {
+              if (outputGroups[gj]) {
+                var h2 = CARD_HDR_H + outputGroups[gj].items.length*CARD_LINE_H + CARD_PAD;
+                prevRowMax = Math.max(prevRowMax, h2);
+              }
+            }
+            rowOff += prevRowMax + CARD_GAP_Y;
+          }
+        }
+        var cardH2 = CARD_HDR_H + grp.items.length * CARD_LINE_H + CARD_PAD;
+        var baseX2 = gridX2 + col2*(CARD_W2+CARD_GAP_X);
+        var baseY2 = gridY2 + rowOff;
+        var off2 = ddGetCardOff(node.id, gIdx);
+        var cx2 = baseX2+off2.dx, cy2 = baseY2+off2.dy;
+
+        var ph2 = grp.phase || 1;
+        var phColor2 = PH_COL[ph2] || '#475569';
+
+        // Source point
+        var srcX2, srcY2;
+        if (grp.isFixed) {
+          var foGrpList = [];
+          getFixedOutlets(node.sheetKey||'').forEach(function(fo){for(var fi=1;fi<=fo.count;fi++) foGrpList.push({key:fo.label.replace(/\s/g,'_')+'_'+fi});});
+          var foI2 = foGrpList.findIndex(function(f){return f.key===grp.output.replace(/\s/g,'_').replace('#','_');});
+          srcX2 = foI2>=0 ? node.x+(foI2+0.5)/foGrpList.length*NW : node.x+NW/2;
+          srcY2 = nodeBottomY + 12;
         } else {
-          // From bank column
-          var nBanksEq2 = cfg.banks.length;
-          var bFracEq = nBanksEq2>1 && item.bankIdx>=0 ? (item.bankIdx+0.5)/nBanksEq2
-            : item.wayNum&&item.totalWays>1 ? (item.wayNum-0.5)/item.totalWays : 0.5;
-          srcX = node.x + NW * bFracEq;
-          srcY = nodeBottomY;
+          var nBk2 = cfg.banks.length;
+          var bF2 = nBk2>1 && grp.bankIdx>=0 ? (grp.bankIdx+0.5)/nBk2
+            : grp.wayNum&&grp.totalWays>1 ? (grp.wayNum-0.5)/grp.totalWays : 0.5;
+          srcX2 = node.x + NW * bF2;
+          srcY2 = nodeBottomY;
         }
 
-        // Bezier from bank/FO to card top-centre
-        var cardMidX = cx + CARD_W/2;
-        var cardTopY = cy;
-        var cpMidY = (srcY + cardTopY) / 2;
-        var connPath2 = document.createElementNS(ns,'path');
-        connPath2.setAttribute('d','M'+srcX+' '+srcY+' C'+srcX+' '+cpMidY+','+cardMidX+' '+cpMidY+','+cardMidX+' '+cardTopY);
-        connPath2.setAttribute('fill','none');
-        connPath2.setAttribute('stroke', item.isFixed ? (item.foColor||phColor) : phColor);
-        connPath2.setAttribute('stroke-width','1.5');
-        connPath2.setAttribute('opacity','0.5');
-        connLayer.appendChild(connPath2);
+        // Bezier line
+        var midX2 = cx2+CARD_W2/2, cp2Mid = (srcY2+cy2)/2;
+        var cp2 = document.createElementNS(ns,'path');
+        cp2.setAttribute('d','M'+srcX2+' '+srcY2+' C'+srcX2+' '+cp2Mid+','+midX2+' '+cp2Mid+','+midX2+' '+cy2);
+        var cardBankStroke = grp.isFixed ? (grp.foColor||phColor2) : ddBankStroke(node.sheetKey, cfg.banks[grp.bankIdx]);
+        cp2.setAttribute('fill','none'); cp2.setAttribute('stroke',cardBankStroke);
+        cp2.setAttribute('stroke-width','1.5'); cp2.setAttribute('opacity','0.4');
+        connLayer.appendChild(cp2);
 
-        // Card group
-        var cg = document.createElementNS(ns,'g');
-        cg.style.cursor = 'grab';
+        // Card
+        var cg2 = document.createElementNS(ns,'g'); cg2.style.cursor='grab';
 
         // Shadow
-        var csh = document.createElementNS(ns,'rect');
-        csh.setAttribute('x',cx+1); csh.setAttribute('y',cy+2);
-        csh.setAttribute('width',CARD_W); csh.setAttribute('height',CARD_H);
-        csh.setAttribute('rx',6); csh.setAttribute('fill','rgba(0,0,0,0.06)');
-        cg.appendChild(csh);
+        var sh2=document.createElementNS(ns,'rect');
+        sh2.setAttribute('x',cx2+1); sh2.setAttribute('y',cy2+2);
+        sh2.setAttribute('width',CARD_W2); sh2.setAttribute('height',cardH2);
+        sh2.setAttribute('rx',6); sh2.setAttribute('fill','rgba(0,0,0,0.05)');
+        cg2.appendChild(sh2);
 
-        // Card body
-        var cbg = document.createElementNS(ns,'rect');
-        cbg.setAttribute('x',cx); cbg.setAttribute('y',cy);
-        cbg.setAttribute('width',CARD_W); cbg.setAttribute('height',CARD_H);
-        cbg.setAttribute('rx',6); cbg.setAttribute('fill','#ffffff');
-        cbg.setAttribute('stroke','#e2e8f0'); cbg.setAttribute('stroke-width','1.5');
-        cg.appendChild(cbg);
+        // Body
+        var bg2=document.createElementNS(ns,'rect');
+        bg2.setAttribute('x',cx2); bg2.setAttribute('y',cy2);
+        bg2.setAttribute('width',CARD_W2); bg2.setAttribute('height',cardH2);
+        bg2.setAttribute('rx',6); bg2.setAttribute('fill','#fff');
+        bg2.setAttribute('stroke','#e2e8f0'); bg2.setAttribute('stroke-width','1.5');
+        cg2.appendChild(bg2);
 
-        // Phase colour left bar
-        var cbar = document.createElementNS(ns,'rect');
-        cbar.setAttribute('x',cx); cbar.setAttribute('y',cy);
-        cbar.setAttribute('width',5); cbar.setAttribute('height',CARD_H);
-        cbar.setAttribute('rx',6); cbar.setAttribute('fill',phColor);
-        cg.appendChild(cbar);
-        var cbar2 = document.createElementNS(ns,'rect');
-        cbar2.setAttribute('x',cx); cbar2.setAttribute('y',cy);
-        cbar2.setAttribute('width',3); cbar2.setAttribute('height',CARD_H);
-        cbar2.setAttribute('fill',phColor);
-        cg.appendChild(cbar2);
+        // Phase left bar
+        var bar2=document.createElementNS(ns,'rect');
+        bar2.setAttribute('x',cx2); bar2.setAttribute('y',cy2);
+        bar2.setAttribute('width',5); bar2.setAttribute('height',cardH2);
+        bar2.setAttribute('rx',6); bar2.setAttribute('fill',phColor2);
+        cg2.appendChild(bar2);
+        var bar2b=document.createElementNS(ns,'rect');
+        bar2b.setAttribute('x',cx2); bar2b.setAttribute('y',cy2);
+        bar2b.setAttribute('width',3); bar2b.setAttribute('height',cardH2);
+        bar2b.setAttribute('fill',phColor2);
+        cg2.appendChild(bar2b);
 
-        // Output label
-        var outL = document.createElementNS(ns,'text');
-        outL.setAttribute('x',cx+12); outL.setAttribute('y',cy+14);
-        outL.setAttribute('font-size','8'); outL.setAttribute('font-weight','700');
-        outL.setAttribute('fill',phColor); outL.setAttribute('font-family','monospace');
-        outL.textContent = item.output;
-        cg.appendChild(outL);
+        // Header: output ID
+        var hdrBg2=document.createElementNS(ns,'rect');
+        hdrBg2.setAttribute('x',cx2); hdrBg2.setAttribute('y',cy2);
+        hdrBg2.setAttribute('width',CARD_W2); hdrBg2.setAttribute('height',CARD_HDR_H);
+        hdrBg2.setAttribute('rx',6); hdrBg2.setAttribute('fill',phColor2);
+        cg2.appendChild(hdrBg2);
+        var hdrSq=document.createElementNS(ns,'rect');
+        hdrSq.setAttribute('x',cx2); hdrSq.setAttribute('y',cy2+10);
+        hdrSq.setAttribute('width',CARD_W2); hdrSq.setAttribute('height',8);
+        hdrSq.setAttribute('fill',phColor2);
+        cg2.appendChild(hdrSq);
+        var hdrTxt=document.createElementNS(ns,'text');
+        hdrTxt.setAttribute('x',cx2+10); hdrTxt.setAttribute('y',cy2+12);
+        hdrTxt.setAttribute('font-size','9'); hdrTxt.setAttribute('font-weight','700');
+        hdrTxt.setAttribute('fill','#fff'); hdrTxt.setAttribute('font-family','monospace');
+        hdrTxt.textContent = grp.output;
+        cg2.appendChild(hdrTxt);
 
-        // Equipment name
-        var name = (item.qty>1?item.qty+'× ':'')+item.eq;
-        if (name.length>22) name=name.substring(0,21)+'…';
-        var nameL = document.createElementNS(ns,'text');
-        nameL.setAttribute('x',cx+12); nameL.setAttribute('y',cy+27);
-        nameL.setAttribute('font-size','10'); nameL.setAttribute('font-weight','600');
-        nameL.setAttribute('fill','#0f172a'); nameL.setAttribute('font-family','sans-serif');
-        nameL.textContent = name;
-        cg.appendChild(nameL);
+        // Divider line under header
+        var hdiv=document.createElementNS(ns,'line');
+        hdiv.setAttribute('x1',cx2+6); hdiv.setAttribute('y1',cy2+CARD_HDR_H);
+        hdiv.setAttribute('x2',cx2+CARD_W2-2); hdiv.setAttribute('y2',cy2+CARD_HDR_H);
+        hdiv.setAttribute('stroke','#e2e8f0'); hdiv.setAttribute('stroke-width','0.8');
+        cg2.appendChild(hdiv);
 
-        // Drag and click
-        cg.addEventListener('mousedown', (function(nid,cidx,bx,by){ return function(e){
-          if(dd.connecting) return;
-          e.stopPropagation();
-          var pt=ddSvgCoords(e);
-          var o=ddGetCardOff(nid,cidx);
-          dd.draggingCard={nodeId:nid,cardIdx:cidx,baseX:bx,baseY:by,offX:pt.x-(bx+o.dx),offY:pt.y-(by+o.dy)};
-          cg.style.cursor='grabbing';
-        }; })(node.id,idx,baseX,baseY));
-        cg.addEventListener('click', (function(sk){ return function(e){
+        // Item rows
+        grp.items.forEach(function(item2, ii) {
+          var rowY = cy2 + CARD_HDR_H + ii * CARD_LINE_H;
+          if (ii > 0) {
+            var rdiv=document.createElementNS(ns,'line');
+            rdiv.setAttribute('x1',cx2+6); rdiv.setAttribute('y1',rowY);
+            rdiv.setAttribute('x2',cx2+CARD_W2-2); rdiv.setAttribute('y2',rowY);
+            rdiv.setAttribute('stroke','#f1f5f9'); rdiv.setAttribute('stroke-width','0.8');
+            cg2.appendChild(rdiv);
+          }
+          // Equipment name
+          var eqName2 = (item2.qty>1?item2.qty+'× ':'')+item2.eq;
+          if (eqName2.length>22) eqName2=eqName2.substring(0,21)+'…';
+          var eqT=document.createElementNS(ns,'text');
+          eqT.setAttribute('x',cx2+10); eqT.setAttribute('y',rowY+13);
+          eqT.setAttribute('font-size','10'); eqT.setAttribute('font-weight','600');
+          eqT.setAttribute('fill','#0f172a'); eqT.setAttribute('font-family','sans-serif');
+          eqT.textContent = eqName2;
+          cg2.appendChild(eqT);
+
+          // Unit details (id, placement, address) from units[]
+          var units2 = item2.units || [];
+          var details2 = [];
+          units2.forEach(function(u){ if(u.id) details2.push(u.id); });
+          // Show first unit's placement and address if set
+          var u0 = units2[0] || {};
+          if (u0.placement) details2.push(u0.placement);
+          if (u0.address) details2.push(u0.address);
+          if (details2.length) {
+            var detStr = details2.join(' · ');
+            if (detStr.length>26) detStr=detStr.substring(0,25)+'…';
+            var detT=document.createElementNS(ns,'text');
+            detT.setAttribute('x',cx2+10); detT.setAttribute('y',rowY+24);
+            detT.setAttribute('font-size','7.5'); detT.setAttribute('fill','#64748b');
+            detT.setAttribute('font-family','sans-serif');
+            detT.textContent = detStr;
+            cg2.appendChild(detT);
+          }
+        });
+
+        // Drag + click
+        cg2.addEventListener('mousedown',(function(nid,gidx,bx,by){return function(e){
+          if(dd.connecting) return; e.stopPropagation();
+          var pt=ddSvgCoords(e); var o=ddGetCardOff(nid,gidx);
+          dd.draggingCard={nodeId:nid,cardIdx:gidx,baseX:bx,baseY:by,offX:pt.x-(bx+o.dx),offY:pt.y-(by+o.dy)};
+          cg2.style.cursor='grabbing';
+        };})(node.id,gIdx,baseX2,baseY2));
+        cg2.addEventListener('click',(function(sk){return function(e){
           if(dd.draggingCard) return;
           closeDistroDesigner(); activeSheet=sk; buildSheetTabs(); renderDistro();
-        }; })(node.sheetKey));
-
-        nodeLayer.appendChild(cg);
+        };})(node.sheetKey));
+        nodeLayer.appendChild(cg2);
       });
     });
   } else {
@@ -4395,23 +4489,26 @@ function ddRender() {
     var cp=(y2-y1)/2;
     var sp = document.createElementNS(ns,'path');
     sp.setAttribute('d','M'+x1+' '+y1+' C'+x1+' '+(y1+cp)+','+x2+' '+(y2-cp)+','+x2+' '+y2);
-    sp.setAttribute('fill','none'); sp.setAttribute('stroke','#94a3b8');
-    sp.setAttribute('stroke-width','2'); sp.setAttribute('stroke-dasharray','5 3');
+    var socaStroke = ddBankStroke(pNode.sheetKey, node.parentBank);
+    sp.setAttribute('fill','none'); sp.setAttribute('stroke', socaStroke);
+    sp.setAttribute('stroke-width','2.5'); sp.setAttribute('stroke-dasharray','5 3');
     sp.setAttribute('marker-end','url(#arr-w)');
     connLayer.appendChild(sp);
-    // Mid label
+    // Mid label: bank + cable length if set
     var mx=(x1+x2)/2, my=(y1+y2)/2;
-    var lt='SOCA Bank '+node.parentBank; var lw=lt.length*5.5+10;
+    var socaLenStr = node.socaCableLength ? node.socaCableLength+'m' : '';
+    var lt='SOCA Bank '+node.parentBank + (socaLenStr ? ' · '+socaLenStr : '');
+    var lw=lt.length*5.2+10;
     var lbg=document.createElementNS(ns,'rect');
     lbg.setAttribute('x',mx-lw/2); lbg.setAttribute('y',my-8);
     lbg.setAttribute('width',lw); lbg.setAttribute('height',14);
     lbg.setAttribute('rx',4); lbg.setAttribute('fill','#fff');
-    lbg.setAttribute('stroke','#cbd5e1'); lbg.setAttribute('stroke-width','1');
+    lbg.setAttribute('stroke',socaStroke); lbg.setAttribute('stroke-width','1.5');
     connLayer.appendChild(lbg);
     var lt2=document.createElementNS(ns,'text');
     lt2.setAttribute('x',mx); lt2.setAttribute('y',my+4);
     lt2.setAttribute('text-anchor','middle'); lt2.setAttribute('font-size','8');
-    lt2.setAttribute('font-weight','700'); lt2.setAttribute('fill','#475569');
+    lt2.setAttribute('font-weight','700'); lt2.setAttribute('fill',socaStroke);
     lt2.setAttribute('font-family','sans-serif');
     lt2.textContent = lt;
     connLayer.appendChild(lt2);
@@ -4472,6 +4569,16 @@ function ddRender() {
     var x2c=to.x+to.w/2, y2c=to.y;
 
     var isSel2=dd.selected&&dd.selected.type==='conn'&&dd.selected.id===conn.id;
+    // Determine stroke colour from bank/FO of source
+    var autoStroke;
+    if (conn.fromFixedOutlet && foGroupsC.length) {
+      var foSt = foGroupsC.find(function(f){return f.key===conn.fromFixedOutlet;});
+      autoStroke = foSt ? foSt.color : '#94a3b8';
+    } else if (conn.fromBank) {
+      autoStroke = ddBankStroke(from.sheetKey, conn.fromBank);
+    } else {
+      autoStroke = conn.color || '#94a3b8';
+    }
     var dx=Math.abs(x2c-x1c), dy=Math.abs(y2c-y1c);
     var cp1x,cp1y,cp2x,cp2y;
     if (dx>dy*1.5) {
@@ -4485,7 +4592,7 @@ function ddRender() {
     var path=document.createElementNS(ns,'path');
     path.setAttribute('d','M'+x1c+' '+y1c+' C'+cp1x+' '+cp1y+','+cp2x+' '+cp2y+','+x2c+' '+y2c);
     path.setAttribute('fill','none');
-    path.setAttribute('stroke', isSel2 ? '#f59e0b' : (conn.color||'#94a3b8'));
+    path.setAttribute('stroke', isSel2 ? '#f59e0b' : autoStroke);
     path.setAttribute('stroke-width', isSel2 ? '3' : '2');
     var markerId = 'arr';
     if (conn.marker==='r') markerId='arr-r';
@@ -4511,12 +4618,12 @@ function ddRender() {
       clbg.setAttribute('x',midX2-lw2/2); clbg.setAttribute('y',midY2-8);
       clbg.setAttribute('width',lw2); clbg.setAttribute('height',14);
       clbg.setAttribute('rx',4); clbg.setAttribute('fill','#fff');
-      clbg.setAttribute('stroke',conn.color||'#cbd5e1'); clbg.setAttribute('stroke-width','1');
+      clbg.setAttribute('stroke',autoStroke); clbg.setAttribute('stroke-width','1.5');
       connLayer.appendChild(clbg);
       var clt=document.createElementNS(ns,'text');
       clt.setAttribute('x',midX2); clt.setAttribute('y',midY2+4);
       clt.setAttribute('text-anchor','middle'); clt.setAttribute('font-size','8');
-      clt.setAttribute('font-weight','600'); clt.setAttribute('fill','#475569');
+      clt.setAttribute('font-weight','700'); clt.setAttribute('fill',autoStroke);
       clt.setAttribute('font-family','sans-serif'); clt.textContent=connDisplayLabel;
       connLayer.appendChild(clt);
     }
