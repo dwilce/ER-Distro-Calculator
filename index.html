@@ -4110,8 +4110,8 @@ function ddRender() {
   });
 
   // ── Phase colours for equipment items ────────────────────────
-  var PH_ITEM = ['','#5b1a6b','#8b3a10','#0a5a5a'];
-  var PH_ITEM_LT = ['','rgba(125,60,152,0.18)','rgba(192,98,42,0.18)','rgba(14,124,123,0.18)'];
+  var PH_ITEM    = ['','#c084fc','#fb923c','#34d399'];  // bright phase colours for dark bg
+  var PH_ITEM_LT = ['','rgba(192,132,252,0.15)','rgba(251,146,60,0.15)','rgba(52,211,153,0.15)'];
 
   // ── Draw distro nodes + their equipment flowchart ─────────────
   dd.nodes.forEach(function(node) {
@@ -4482,8 +4482,8 @@ function ddRender() {
       var ebg = document.createElementNS(ns, 'rect');
       ebg.setAttribute('x', ex); ebg.setAttribute('y', ey);
       ebg.setAttribute('width', EQ_W); ebg.setAttribute('height', EQ_H);
-      ebg.setAttribute('rx', 4); ebg.setAttribute('fill', phLt);
-      ebg.setAttribute('stroke', phCol); ebg.setAttribute('stroke-width', '1');
+      ebg.setAttribute('rx', 4); ebg.setAttribute('fill', '#0d1f35');
+      ebg.setAttribute('stroke', phCol); ebg.setAttribute('stroke-width', '1.5');
       eg.appendChild(ebg);
 
       // Phase stripe on left
