@@ -2958,6 +2958,9 @@ if (document.readyState === 'loading') {
         <button class="dd-btn" onclick="ddFitAll()" title="Fit all">&#9974;</button>
         <button class="dd-btn" onclick="ddExport()" title="Export SVG">&#128438; SVG</button>
         <button class="dd-btn" onclick="ddPrintPdf()" title="Print / Save as PDF">&#128424; PDF</button>
+        <button class="dd-btn" onclick="ddBgImageLoad()" title="Set background image (stage plot / floor plan)">&#128444; BG</button>
+        <input type="file" id="ddBgInput" accept="image/*" style="display:none" onchange="ddBgImageApply(event)">
+        <button class="dd-btn" id="ddBgClearBtn" onclick="ddBgImageClear()" title="Remove background image" style="display:none">&#10005; BG</button>
         <div style="width:1px;height:20px;background:rgba(255,255,255,.1)"></div>
         <button class="dd-btn dd-btn-danger" onclick="closeDistroDesigner()" style="padding:5px 12px">&#10005; Close</button>
       </div>
@@ -2971,6 +2974,14 @@ if (document.readyState === 'loading') {
         <div id="ddConnTypes" style="padding:8px;display:flex;flex-direction:column;gap:4px"></div>
         <div class="dd-panel-hdr" style="margin-top:4px">LEGEND</div>
         <div id="ddLegend" style="padding:8px"></div>
+        <div id="ddBgCtrl" style="display:none;flex-direction:column;gap:6px;padding:8px 10px;border-top:1px solid rgba(255,255,255,.07)">
+          <div class="dd-prop-label">BG OPACITY</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input id="ddBgOpacitySlider" type="range" min="0.05" max="1" step="0.05" value="0.35"
+              style="flex:1;accent-color:#f59e0b" oninput="ddBgSetOpacity(this.value)">
+            <span id="ddBgOpacityLbl" style="font-size:10px;color:rgba(255,255,255,.6);min-width:28px">35%</span>
+          </div>
+        </div>
       </div>
       <!-- Canvas -->
       <div style="flex:1;position:relative;overflow:hidden" id="ddWrap">
@@ -2988,6 +2999,9 @@ if (document.readyState === 'loading') {
             <marker id="arr-e" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#e74c3c"/></marker>
           </defs>
           <rect width="100%" height="100%" fill="#f8f9fa"/>
+          <!-- Background image layer (stage plot / floor plan) -->
+          <image id="ddBgImage" href="" x="0" y="0" width="100%" height="100%"
+            preserveAspectRatio="xMidYMid meet" opacity="0.35" style="display:none"/>
           <rect id="ddGridRect" width="100%" height="100%" fill="url(#ddGrid)"/>
           <g id="ddViewport">
             <g id="ddConnLayer"></g>
@@ -3623,9 +3637,14 @@ function ddRenderProps() {
     var typeOpts = DD_CONN_TYPES.map(function(ct){
       return '<option value="' + ct.key + '"' + (conn.type===ct.key?' selected':'') + '>' + ct.label + '</option>';
     }).join('');
+    var lengthOpts = ['','1','2','3','5','10','20','30','50','100'].map(function(l){
+      return '<option value="' + l + '"' + (conn.cableLength===l?' selected':'') + '>' + (l ? l+'m' : '— Not set') + '</option>';
+    }).join('');
     panel.innerHTML =
       '<div class="dd-prop-row"><div class="dd-prop-label">CONNECTOR TYPE</div>' +
       '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'type\',this.value)">' + typeOpts + '</select></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">CABLE LENGTH</div>' +
+      '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'cableLength\',this.value)">' + lengthOpts + '</select></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">CUSTOM LABEL</div>' +
       '<input class="dd-prop-input" placeholder="e.g. 63A feeder" value="' + ddEsc(conn.label||'') + '" onchange="ddUpdateConn(' + conn.id + ',\'label\',this.value)"></div>' +
       (fromBanksP.length > 1 || fromFoListP.length ?
@@ -4471,10 +4490,11 @@ function ddRender() {
     };})(conn.id));
     connLayer.appendChild(path);
 
-    // Conn label
-    if (conn.label) {
+    // Conn label (custom label + cable length)
+    var connDisplayLabel = [conn.cableLength ? conn.cableLength+'m' : '', conn.label || ''].filter(Boolean).join(' · ');
+    if (connDisplayLabel) {
       var midX2=(x1c+x2c)/2, midY2=(y1c+y2c)/2;
-      var lw2=conn.label.length*5+10;
+      var lw2=connDisplayLabel.length*5+10;
       var clbg=document.createElementNS(ns,'rect');
       clbg.setAttribute('x',midX2-lw2/2); clbg.setAttribute('y',midY2-8);
       clbg.setAttribute('width',lw2); clbg.setAttribute('height',14);
@@ -4485,7 +4505,7 @@ function ddRender() {
       clt.setAttribute('x',midX2); clt.setAttribute('y',midY2+4);
       clt.setAttribute('text-anchor','middle'); clt.setAttribute('font-size','8');
       clt.setAttribute('font-weight','600'); clt.setAttribute('fill','#475569');
-      clt.setAttribute('font-family','sans-serif'); clt.textContent=conn.label;
+      clt.setAttribute('font-family','sans-serif'); clt.textContent=connDisplayLabel;
       connLayer.appendChild(clt);
     }
   });
@@ -4671,6 +4691,58 @@ function ddClearAll() {
   renderDistro();
   ddRender();
   ddRenderProps();
+}
+
+var dd_bgDataURL = null;
+var dd_bgOpacity = 0.35;
+
+function ddBgImageLoad() {
+  document.getElementById('ddBgInput').click();
+}
+
+function ddBgImageApply(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    dd_bgDataURL = e.target.result;
+    var img = document.getElementById('ddBgImage');
+    img.setAttribute('href', dd_bgDataURL);
+    img.style.display = '';
+    img.setAttribute('opacity', dd_bgOpacity);
+    document.getElementById('ddBgClearBtn').style.display = '';
+    ddUpdateBgOpacity();
+  };
+  reader.readAsDataURL(file);
+}
+
+function ddBgImageClear() {
+  dd_bgDataURL = null;
+  var img = document.getElementById('ddBgImage');
+  img.setAttribute('href', '');
+  img.style.display = 'none';
+  document.getElementById('ddBgClearBtn').style.display = 'none';
+  var slider = document.getElementById('ddBgOpacitySlider');
+  if (slider) slider.closest('.dd-bg-ctrl') && (slider.closest('.dd-bg-ctrl').style.display = 'none');
+}
+
+function ddUpdateBgOpacity() {
+  var slider = document.getElementById('ddBgOpacitySlider');
+  if (slider) {
+    var ctrl = document.getElementById('ddBgCtrl');
+    if (ctrl) ctrl.style.display = dd_bgDataURL ? 'flex' : 'none';
+  }
+  var img = document.getElementById('ddBgImage');
+  if (img) img.setAttribute('opacity', dd_bgOpacity);
+}
+
+function ddBgSetOpacity(val) {
+  dd_bgOpacity = parseFloat(val);
+  var img = document.getElementById('ddBgImage');
+  if (img) img.setAttribute('opacity', dd_bgOpacity);
+  var lbl = document.getElementById('ddBgOpacityLbl');
+  if (lbl) lbl.textContent = Math.round(dd_bgOpacity * 100) + '%';
 }
 
 function ddExport() {
