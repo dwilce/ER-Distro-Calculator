@@ -1186,7 +1186,10 @@ function renderDistro() {
   gs.innerHTML = '<div class="gs-title"><span>Grand Summary</span><span style="font-size:11px;opacity:.6">' + activeSheet + '</span></div>' + limRowHtml + '<div class="gs-phases">' + phHtml + '</div>';
   summaryDiv.appendChild(gs);
   // Refresh designer flowchart if open
-  if (document.getElementById('ddModal').style.display !== 'none') ddRender();
+  if (document.getElementById('ddModal').style.display !== 'none') {
+    ddRender();
+    ddFitAll();
+  }
 }
 
 // ── TARGET SELECTION ─────────────────────────────────────────
