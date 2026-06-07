@@ -2386,6 +2386,7 @@ function getShowState() {
       nodes: dd.nodes,
       conns: dd.conns,
       zones: dd.zones,
+      autoConns: dd.autoConns,
       cardOffsets: dd.cardOffsets,
       nextId: dd.nextId,
       scale: dd.scale,
@@ -2421,6 +2422,7 @@ function applyShowState(state) {
     dd.nodes       = state.designer.nodes       || [];
     dd.conns       = state.designer.conns       || [];
     dd.zones       = state.designer.zones       || [];
+    dd.autoConns   = state.designer.autoConns   || {};
     dd.cardOffsets = state.designer.cardOffsets || {};
     dd.nextId      = state.designer.nextId      || 1;
     dd.scale       = state.designer.scale       || 1;
@@ -3055,8 +3057,9 @@ if (document.readyState === 'loading') {
 var dd = {
   nodes: [],
   conns: [],
-  zones: [],         // {id, label, color, x, y, w, h}
-  cardOffsets: {},   // nodeId → {idx → {dx, dy}}
+  zones: [],
+  autoConns: {},     // nodeId (socaswitch) → {cableLength, cableType}
+  cardOffsets: {},
   nextId: 1,
   connecting: false,
   connFrom: null,
@@ -3558,6 +3561,42 @@ function ddRenderProps() {
       '<input class="dd-prop-input" value="' + ddEsc(zone.label) + '" oninput="var z=dd.zones.find(function(z){return z.id===' + zone.id + ';});if(z){z.label=this.value;ddRender();}"></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">COLOUR</div><div style="display:flex;gap:4px;flex-wrap:wrap">' + colorBtns + '</div></div>' +
       '<button class="dd-del-btn" onclick="ddDeleteZone(' + zone.id + ')">&#128465; Delete Zone</button>';
+    return;
+  }
+
+  // ── Auto-connection (Socapex) properties ────────────────────
+  if (dd.selected.type === 'autoconn') {
+    var acId = dd.selected.id;
+    if (!dd.autoConns[acId]) dd.autoConns[acId] = {};
+    var ac2 = dd.autoConns[acId];
+    var CABLE_TYPES = ['Tru','Tru/DMX','Tru/Ether','PowerCon','PowerCon/DMX','PowerCon/Ether'];
+    var typeOpts2 = ['<option value="">— Type</option>'].concat(CABLE_TYPES.map(function(t){
+      return '<option value="'+t+'"'+(ac2.cableType===t?' selected':'')+'>'+t+'</option>';
+    })).join('');
+    var lenOpts2 = ['','1','2','3','5','10','20','30','50','100'].map(function(l){
+      return '<option value="'+l+'"'+(ac2.cableLength===l?' selected':'')+'>'+(l?l+'m':'— Length')+'</option>';
+    }).join('');
+    // Determine label from key type
+    var acLabel = acId;
+    if (acId.indexOf('sc:') === 0) {
+      var scNode = dd.nodes.find(function(n){return n.id===parseInt(acId.slice(3));});
+      acLabel = 'Socapex: '+(scNode?scNode.label:'?')+' ← Bank '+(scNode?scNode.parentBank:'?');
+    } else if (acId.indexOf('fo:') === 0) {
+      var foParts2 = acId.split(':');
+      acLabel = 'Fixed Outlet: '+foParts2[2].replace(/_/g,' ');
+    } else if (acId.indexOf('eq:') === 0) {
+      var eqParts = acId.split(':');
+      var eqNode2 = dd.nodes.find(function(n){return n.id===parseInt(eqParts[1]);});
+      acLabel = 'Equipment line: '+(eqNode2?eqNode2.label:'?');
+    }
+    var safeId = JSON.stringify(acId);
+    panel.innerHTML =
+      '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:8px">CONNECTION</div>' +
+      '<div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:10px;line-height:1.4">'+ddEsc(acLabel)+'</div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">CABLE TYPE</div>' +
+      '<select class="dd-prop-select" onchange="if(!dd.autoConns['+safeId+'])dd.autoConns['+safeId+']={}; dd.autoConns['+safeId+'].cableType=this.value||null; ddRender();">'+typeOpts2+'</select></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">CABLE LENGTH</div>' +
+      '<select class="dd-prop-select" onchange="if(!dd.autoConns['+safeId+'])dd.autoConns['+safeId+']={}; dd.autoConns['+safeId+'].cableLength=this.value||null; ddRender();">'+lenOpts2+'</select></div>';
     return;
   }
 
@@ -4335,14 +4374,44 @@ function ddRender() {
           srcY2 = nodeBottomY;
         }
 
-        // Bezier line
+        // Bezier line (selectable)
+        var acKey2 = 'eq:'+node.id+':'+gIdx;
+        var acData2 = dd.autoConns[acKey2] || {};
+        var isAcSel2 = dd.selected && dd.selected.type==='autoconn' && dd.selected.id===acKey2;
         var midX2 = cx2+CARD_W2/2, cp2Mid = (srcY2+cy2)/2;
         var cp2 = document.createElementNS(ns,'path');
         cp2.setAttribute('d','M'+srcX2+' '+srcY2+' C'+srcX2+' '+cp2Mid+','+midX2+' '+cp2Mid+','+midX2+' '+cy2);
         var cardBankStroke = grp.isFixed ? (grp.foColor||phColor2) : ddBankStroke(node.sheetKey, cfg.banks[grp.bankIdx]);
-        cp2.setAttribute('fill','none'); cp2.setAttribute('stroke',cardBankStroke);
-        cp2.setAttribute('stroke-width','1.5'); cp2.setAttribute('opacity','0.4');
-        connLayer.appendChild(cp2);
+        cp2.setAttribute('fill','none');
+        cp2.setAttribute('stroke', isAcSel2 ? '#f59e0b' : cardBankStroke);
+        cp2.setAttribute('stroke-width', isAcSel2 ? '2.5' : '1.5');
+        cp2.setAttribute('opacity', isAcSel2 ? '1' : '0.5');
+        cp2.style.cursor = 'pointer';
+        var cpHit2 = document.createElementNS(ns,'path');
+        cpHit2.setAttribute('d','M'+srcX2+' '+srcY2+' C'+srcX2+' '+cp2Mid+','+midX2+' '+cp2Mid+','+midX2+' '+cy2);
+        cpHit2.setAttribute('fill','none'); cpHit2.setAttribute('stroke','transparent'); cpHit2.setAttribute('stroke-width','12');
+        cpHit2.style.cursor='pointer';
+        cpHit2.addEventListener('click',(function(k){return function(e){e.stopPropagation();dd.selected={type:'autoconn',id:k};ddRenderProps();ddRender();};})(acKey2));
+        connLayer.appendChild(cp2); connLayer.appendChild(cpHit2);
+        // Show label if cable info set
+        if (acData2.cableType || acData2.cableLength) {
+          var acMx=(srcX2+midX2)/2, acMy=(srcY2+cy2)/2;
+          var acLbl=(acData2.cableType||'')+(acData2.cableType&&acData2.cableLength?' · ':'')+
+            (acData2.cableLength?acData2.cableLength+'m':'');
+          var acLw=acLbl.length*4.5+8;
+          var acBg=document.createElementNS(ns,'rect');
+          acBg.setAttribute('x',acMx-acLw/2);acBg.setAttribute('y',acMy-7);
+          acBg.setAttribute('width',acLw);acBg.setAttribute('height',12);
+          acBg.setAttribute('rx',3);acBg.setAttribute('fill','#fff');
+          acBg.setAttribute('stroke',cardBankStroke);acBg.setAttribute('stroke-width','1');
+          connLayer.appendChild(acBg);
+          var acTxt=document.createElementNS(ns,'text');
+          acTxt.setAttribute('x',acMx);acTxt.setAttribute('y',acMy+3.5);
+          acTxt.setAttribute('text-anchor','middle');acTxt.setAttribute('font-size','7');
+          acTxt.setAttribute('font-weight','600');acTxt.setAttribute('fill',cardBankStroke);
+          acTxt.setAttribute('font-family','sans-serif');acTxt.textContent=acLbl;
+          connLayer.appendChild(acTxt);
+        }
 
         // Card
         var cg2 = document.createElementNS(ns,'g'); cg2.style.cursor='grab';
@@ -4493,7 +4562,7 @@ function ddRender() {
     });
   }
 
-  // ── Draw Socapex lines ────────────────────────────────────────
+  // ── Draw Socapex auto-lines (selectable) ────────────────────
   dd.nodes.forEach(function(node) {
     if (node.type!=='socaswitch'||!node.parentSheet||!node.parentBank) return;
     var pNode = dd.nodes.find(function(n){ return n.type!=='socaswitch'&&(n.sheetKey===node.parentSheet||n.label===node.parentSheet); });
@@ -4501,33 +4570,64 @@ function ddRender() {
     var pBanks2 = (pNode.sheetKey && SHEETS[pNode.sheetKey]) ? SHEETS[pNode.sheetKey].banks : [];
     var bIdx2 = pBanks2.indexOf(node.parentBank);
     var bFrac2 = pBanks2.length>1 && bIdx2>=0 ? (bIdx2+0.5)/pBanks2.length : 0.5;
-    var x1=pNode.x+pNode.w*bFrac2, y1=pNode.y+pNode.h;
+    var x1=pNode.x+NW*bFrac2, y1=pNode.y+NH;
     var x2=node.x+NW/2, y2=node.y;
     var cp=(y2-y1)/2;
+    var socaStroke = ddBankStroke(pNode.sheetKey, node.parentBank);
+    var ac = dd.autoConns[acKeySoca] || {};
+    var acKeySoca = 'sc:'+node.id;
+    var isSocaSel = dd.selected && dd.selected.type==='autoconn' && dd.selected.id===acKeySoca;
+
     var sp = document.createElementNS(ns,'path');
     sp.setAttribute('d','M'+x1+' '+y1+' C'+x1+' '+(y1+cp)+','+x2+' '+(y2-cp)+','+x2+' '+y2);
-    var socaStroke = ddBankStroke(pNode.sheetKey, node.parentBank);
-    sp.setAttribute('fill','none'); sp.setAttribute('stroke', socaStroke);
-    sp.setAttribute('stroke-width','2.5'); sp.setAttribute('stroke-dasharray','5 3');
+    sp.setAttribute('fill','none');
+    sp.setAttribute('stroke', isSocaSel ? '#f59e0b' : socaStroke);
+    sp.setAttribute('stroke-width', isSocaSel ? '3.5' : '2.5');
+    sp.setAttribute('stroke-dasharray','5 3');
     sp.setAttribute('marker-end','url(#arr-w)');
+    sp.style.cursor = 'pointer';
+    sp.addEventListener('click', (function(nid){ return function(e){
+      e.stopPropagation();
+      dd.selected = {type:'autoconn', id:'sc:'+nid};
+      ddRenderProps();
+      ddRender();
+    }; })(node.id));
     connLayer.appendChild(sp);
-    // Mid label: bank + cable length if set
+
+    // Mid label
     var mx=(x1+x2)/2, my=(y1+y2)/2;
-    var socaLenStr = node.socaCableLength ? node.socaCableLength+'m' : '';
-    var lt='SOCA Bank '+node.parentBank + (socaLenStr ? ' · '+socaLenStr : '');
-    var lw=lt.length*5.2+10;
+    var parts = ['SOCA Bank '+node.parentBank];
+    if (ac.cableType) parts.push(ac.cableType);
+    if (ac.cableLength) parts.push(ac.cableLength+'m');
+    var lt=parts.join(' · ');
+    var lw=lt.length*5.2+12;
     var lbg=document.createElementNS(ns,'rect');
     lbg.setAttribute('x',mx-lw/2); lbg.setAttribute('y',my-8);
     lbg.setAttribute('width',lw); lbg.setAttribute('height',14);
-    lbg.setAttribute('rx',4); lbg.setAttribute('fill','#fff');
-    lbg.setAttribute('stroke',socaStroke); lbg.setAttribute('stroke-width','1.5');
+    lbg.setAttribute('rx',4);
+    lbg.setAttribute('fill', isSocaSel ? '#fffbeb' : '#fff');
+    lbg.setAttribute('stroke', isSocaSel ? '#f59e0b' : socaStroke);
+    lbg.setAttribute('stroke-width', isSocaSel ? '2' : '1.5');
+    lbg.style.cursor = 'pointer';
+    lbg.addEventListener('click', (function(nid){ return function(e){
+      e.stopPropagation();
+      dd.selected = {type:'autoconn', id:'sc:'+nid};
+      ddRenderProps(); ddRender();
+    }; })(node.id));
     connLayer.appendChild(lbg);
     var lt2=document.createElementNS(ns,'text');
     lt2.setAttribute('x',mx); lt2.setAttribute('y',my+4);
     lt2.setAttribute('text-anchor','middle'); lt2.setAttribute('font-size','8');
-    lt2.setAttribute('font-weight','700'); lt2.setAttribute('fill',socaStroke);
+    lt2.setAttribute('font-weight','700');
+    lt2.setAttribute('fill', isSocaSel ? '#b45309' : socaStroke);
     lt2.setAttribute('font-family','sans-serif');
     lt2.textContent = lt;
+    lt2.style.cursor = 'pointer';
+    lt2.addEventListener('click', (function(nid){ return function(e){
+      e.stopPropagation();
+      dd.selected = {type:'autoconn', id:'sc:'+nid};
+      ddRenderProps(); ddRender();
+    }; })(node.id));
     connLayer.appendChild(lt2);
   });
 
@@ -4551,11 +4651,39 @@ function ddRender() {
       var pf=document.createElementNS(ns,'path');
       var arrowMap2={'#e67e22':'arr-o','#27ae60':'arr-g','#e74c3c':'arr-e','#3498db':'arr-b'};
       var arrId=arrowMap2[fo3.color]||'arr-g';
+      var foAcKey='fo:'+fromNode.id+':'+fo3.key;
+      var foAcData=dd.autoConns[foAcKey]||{};
+      var isFoSel=dd.selected&&dd.selected.type==='autoconn'&&dd.selected.id===foAcKey;
       pf.setAttribute('d','M'+x1f+' '+y1f+' C'+x1f+' '+(y1f+cpf)+','+x2f+' '+(y2f-cpf)+','+x2f+' '+y2f);
-      pf.setAttribute('fill','none'); pf.setAttribute('stroke',fo3.color);
-      pf.setAttribute('stroke-width','2'); pf.setAttribute('stroke-dasharray','6 3');
+      pf.setAttribute('fill','none');
+      pf.setAttribute('stroke', isFoSel?'#f59e0b':fo3.color);
+      pf.setAttribute('stroke-width', isFoSel?'3':'2');
+      pf.setAttribute('stroke-dasharray','6 3');
       pf.setAttribute('marker-end','url(#'+arrId+')');
-      connLayer.appendChild(pf);
+      pf.style.cursor='pointer';
+      var foHit=document.createElementNS(ns,'path');
+      foHit.setAttribute('d','M'+x1f+' '+y1f+' C'+x1f+' '+(y1f+cpf)+','+x2f+' '+(y2f-cpf)+','+x2f+' '+y2f);
+      foHit.setAttribute('fill','none');foHit.setAttribute('stroke','transparent');foHit.setAttribute('stroke-width','12');
+      foHit.style.cursor='pointer';
+      foHit.addEventListener('click',(function(k){return function(e){e.stopPropagation();dd.selected={type:'autoconn',id:k};ddRenderProps();ddRender();};})(foAcKey));
+      connLayer.appendChild(pf);connLayer.appendChild(foHit);
+      // Label
+      var foMx=(x1f+x2f)/2, foMy=(y1f+y2f)/2;
+      var foParts=[fo3.label];
+      if(foAcData.cableType) foParts.push(foAcData.cableType);
+      if(foAcData.cableLength) foParts.push(foAcData.cableLength+'m');
+      var foLt=foParts.join(' · '); var foLw=foLt.length*5+10;
+      var foLbg=document.createElementNS(ns,'rect');
+      foLbg.setAttribute('x',foMx-foLw/2);foLbg.setAttribute('y',foMy-8);foLbg.setAttribute('width',foLw);foLbg.setAttribute('height',14);
+      foLbg.setAttribute('rx',4);foLbg.setAttribute('fill', isFoSel?'#fffbeb':'#fff');
+      foLbg.setAttribute('stroke', isFoSel?'#f59e0b':fo3.color);foLbg.setAttribute('stroke-width', isFoSel?'2':'1');
+      connLayer.appendChild(foLbg);
+      var foLt2=document.createElementNS(ns,'text');
+      foLt2.setAttribute('x',foMx);foLt2.setAttribute('y',foMy+4);foLt2.setAttribute('text-anchor','middle');
+      foLt2.setAttribute('font-size','8');foLt2.setAttribute('font-weight','700');
+      foLt2.setAttribute('fill', isFoSel?'#b45309':fo3.color);foLt2.setAttribute('font-family','sans-serif');
+      foLt2.textContent=foLt;
+      connLayer.appendChild(foLt2);
     });
   });
 
@@ -5047,135 +5175,128 @@ function ddPrintPdf() {
       <div class="help-section">
         <h3>&#9889; Getting Started</h3>
         <p>Select your region (<strong>US 208V</strong> or <strong>ROW 230V</strong>) using the toggle in the top bar — all amp calculations update live. Switch between distro sheets using the <strong>dropdown selector</strong> next to the region toggle.</p>
-        <p>By default the calculator includes three standard sheets (18-Way, 48-Way, 72-Way). Opening the <strong>Distro Designer</strong> and adding your own distros replaces these with your custom rig — they restore automatically if you remove all designer distros.</p>
-        <p>On mobile, use the bottom tab bar to switch between <strong>Distro</strong>, <strong>Inventory</strong>, and <strong>Add Equipment</strong> panels. The &#9776; menu gives access to Labels, Reports, Designer, Save/Load, and Help.</p>
+        <p>By default the calculator includes three standard sheets (18-Way, 48-Way, 72-Way). Opening the <strong>Distro Designer</strong> and adding your own distros creates custom sheets for your rig — the defaults restore automatically if you remove all designer nodes.</p>
+        <p>On mobile, use the bottom tab bar to switch between <strong>Distro</strong>, <strong>Inventory</strong>, and <strong>Add Equipment</strong> panels. The &#9776; menu gives access to Labels, Reports, Designer, Import, Save/Load, and Help.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128266; Assigning Equipment</h3>
         <ol>
-          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) — the Add Equipment panel activates</li>
-          <li>Optionally tick <strong>Add to Flight Case Labels</strong> and set the number of cases</li>
-          <li>Select equipment from the dropdown and set the quantity</li>
-          <li>Choose a <strong>Sub-slot</strong> for multiple items on one output (Master + up to 3 subs)</li>
+          <li>Click <strong>+</strong> next to any output (e.g. A1, B3) — the Add Equipment panel activates on the right</li>
+          <li>Select equipment from the dropdown and set the quantity per output</li>
+          <li>Choose a <strong>Sub-slot</strong> if multiple different items share one output (Master + up to 3 subs)</li>
           <li>Click <strong>Add Device &amp; Enter Information</strong> — equipment is written to the distro sheet</li>
           <li>Fill in <strong>Unit ID</strong>, <strong>Placement</strong>, and <strong>Address</strong> for each unit</li>
-          <li>Click <strong>Update &amp; Clear</strong> — saves unit details, pushes to Flight Case Labels if ticked, and resets the panel</li>
+          <li>Click <strong>Update &amp; Clear</strong> — saves unit details and resets the panel</li>
         </ol>
         <p><strong>Editing:</strong> Click any populated output to reload it into the panel. Make changes and click Update &amp; Clear to save.</p>
-        <p><strong>Assigning to multiple outputs at once:</strong> After clicking <strong>+</strong> on any output, an <strong>Additional outputs</strong> section appears below the target showing every way in the sheet. Click any to also assign the same equipment there — selected outputs turn navy. The write button updates to show the total count (e.g. <em>Add to 4 outputs</em>). Click the section header to collapse it when not needed.</p>
-        <p><strong>Fixed outlets</strong> (on 48-Way, 72-Way, PDR, and Lasearray) appear in their own section below the bank grid. Click <strong>+ Assign</strong> on any 1-phase fixed outlet to assign equipment to it. 3-phase outlets link to another distro sheet via the dropdown — their full rated amps are reserved on all 3 phases once linked.</p>
+        <p><strong>Assigning to multiple outputs at once:</strong> After clicking <strong>+</strong> on any output, an <strong>Additional outputs</strong> section appears showing all ways. Click any to also assign the same equipment there — selected outputs turn navy. The button shows the total count (e.g. <em>Add to 4 outputs</em>). Click the section header to collapse it.</p>
+        <p><strong>Fixed outlets</strong> (48-Way, 72-Way, PDR, Lasearray) appear below the bank grid. 1-phase fixed outlets accept equipment. 3-phase outlets link to another distro sheet — their full rated amps are reserved across all 3 phases once linked.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128196; Import from PDF or Spreadsheet</h3>
-        <p>Click <strong>Import ▾</strong> to choose a source:</p>
-        <p><strong>PDF</strong> — extract equipment from any PDF (stage plots, riders, CAD drawings, equipment lists). Matched lines appear in a popup:</p>
+        <p>Click <strong>Import &#9660;</strong> to choose a source:</p>
+        <p><strong>PDF</strong> — extracts equipment lines from any PDF (stage plots, riders, CAD exports, equipment lists). Each extracted line is fuzzy-matched against the inventory:</p>
         <ul>
-          <li><span class="help-badge ok">&#10003;</span> <strong>Green border</strong> — confident inventory match. The dropdown shows the matched item; change it if needed.</li>
-          <li><span class="help-badge warn">?</span> <strong>Amber border</strong> — possible match. Open the dropdown to pick from <em>Best matches</em> or <em>All inventory</em>.</li>
-          <li>Click <strong>&#10005;</strong> on any row to remove unwanted lines.</li>
+          <li><span class="help-badge ok">&#10003;</span> <strong>Green</strong> — confident match. Change via dropdown if needed.</li>
+          <li><span class="help-badge warn">?</span> <strong>Amber</strong> — possible match. Pick from the dropdown.</li>
+          <li>Click <strong>&#10005;</strong> to remove unwanted lines. Enter quantities in the amber box.</li>
         </ul>
-        <p><strong>Quantities must be entered manually</strong> — each row shows an amber <em>qty</em> box. Type the correct number; it turns green once set.</p>
-        <p>Once matches and quantities look right: tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, set quantity, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
-        <p><strong>Spreadsheet (.xlsx or .csv)</strong> — imports a structured equipment list. Columns are detected automatically by header name — it looks for: <em>Name / Equipment / Fixture</em>, <em>Qty / Quantity</em>, <em>Unit ID / Unit No / Serial</em>, <em>Address / Patch / DMX / Channel</em>, <em>Placement / Location / Position</em>. If Unit ID, Placement, or Address columns are found they show as coloured badges on each row and are written automatically when assigned — no re-entry needed. Quantities from the spreadsheet are pre-filled. The same assign panel is used as for PDF import.</p>
+        <p>Tick items, choose Distro Sheet / Bank / Way / Sub-slot on the right, and click <strong>+ Assign Selected</strong>. The slot advances automatically. Repeat until each item shows <strong>&#10003; done</strong>, then click <strong>Done</strong>.</p>
+        <p><strong>Spreadsheet (.xlsx or .csv)</strong> — imports a structured equipment list. Headers detected automatically: <em>Name / Equipment / Fixture</em>, <em>Qty / Quantity</em>, <em>Unit ID / Unit No / Serial</em>, <em>Address / Patch / DMX</em>, <em>Placement / Location / Position</em>. Pre-detected Unit IDs, addresses, and placements are written automatically on assign — no re-entry needed.</p>
       </div>
 
       <div class="help-section">
         <h3>&#9889; Distro Designer</h3>
-        <p>Click <strong>&#9889; Distro Designer</strong> to open the interactive power chain map. Use it to plan and visualise how multiple distros feed each other, and to see what equipment is assigned to each one.</p>
+        <p>Click <strong>&#9889; Designer</strong> to open the interactive power chain map — white canvas with a clean grid, Araneo-inspired node layout.</p>
 
-        <p><strong>Distro types available:</strong></p>
+        <p><strong>Distro types:</strong></p>
         <ul>
-          <li><strong>72-Way (400A)</strong> — 12 banks, 6 ways, 400A limit. Fixed outlets: 6&times;32A 1&#966;, 1&times;32A 3&#966;, 1&times;63A 3&#966;, 1&times;125A 3&#966;</li>
-          <li><strong>48-Way (63A)</strong> — 8 banks, 6 ways, 63A/125A switchable. Fixed outlets: 3&times;16A 1&#966;, 1&times;32A 3&#966;</li>
-          <li><strong>18-Way (32A)</strong> — 3 banks, 6 ways, 32A limit</li>
-          <li><strong>SocaSwitch ER</strong> — 6-outlet Socapex-fed unit. Links to a bank on a parent distro; that bank's equipment shows as its children in the flowchart</li>
-          <li><strong>PDR</strong> — No bank grid. Fixed outlets: 3&times;32A 1&#966;, 3&times;32A 3&#966;, 10&times;16A 1&#966;. Select 32A or 63A input in Properties</li>
-          <li><strong>1Ph Lasearray</strong> — 1 bank, 8 ways (Powercon), 32A single-phase limit</li>
-          <li><strong>Distribution Box</strong> — Custom distro with 3 banks, 6 ways</li>
-          <li><strong>Generator / Mains</strong> — Power source node, no calculator sheet</li>
-          <li><strong>Custom Unit</strong> — Freely labelled node</li>
+          <li><strong>72-Way (400A)</strong> — 12 banks A–L, 6 ways, 400A. Fixed outlets: 6×32A 1&#966;, 1×32A 3&#966;, 1×63A 3&#966;, 1×125A 3&#966;</li>
+          <li><strong>48-Way (63A)</strong> — 8 banks A–H, 6 ways, 63A/125A switchable. Fixed outlets: 3×16A 1&#966;, 1×32A 3&#966;</li>
+          <li><strong>18-Way (32A)</strong> — 3 banks A–C, 6 ways, 32A</li>
+          <li><strong>SocaSwitch ER</strong> — 6-outlet Socapex breakout. Set parent distro and bank in Properties. Equipment from that bank shows as its children in the flowchart.</li>
+          <li><strong>PDR</strong> — Fixed outlets only: 3×32A 1&#966;, 3×32A 3&#966;, 10×16A 1&#966;. Set input rating in Properties.</li>
+          <li><strong>1Ph Lasearray</strong> — 1 bank, 8 ways, 32A</li>
+          <li><strong>Distribution Box</strong>, <strong>Generator / Mains</strong>, <strong>Custom Unit</strong></li>
         </ul>
 
-        <p><strong>Flowchart view:</strong> Assigned equipment appears as cards beneath each distro node, colour-coded by phase. Fixed outlets appear as coloured badges between the node and the equipment cards. Click any equipment card to jump to that sheet in the calculator.</p>
+        <p><strong>Equipment cards:</strong> Each output gets a card beneath the node showing each assigned unit as its own row — equipment name, Unit ID, placement, and address. Cards are colour-coded by bank colour (matching the calculator's bank colour picker). Cards are independently draggable. Click any card to jump to that sheet.</p>
 
-        <p><strong>Connecting distros:</strong> Click &#128279; Connect, click the source then the destination. Choose the connector type before connecting — CAM Lock (gold), 125A (red), 63A CEE (green), 32A CEE (blue), Socapex (white). Click a connection to edit or delete it.</p>
+        <p><strong>Zones:</strong> Click <strong>⊟ Zone</strong> to add a named coloured region. Drag to move, drag the bottom-right corner to resize. Select a zone to rename it, change colour, or delete it.</p>
 
-        <p><strong>Controls:</strong> Drag nodes to reposition. <strong>Auto Layout</strong> arranges everything into a clean top-down tree accounting for actual node heights. <strong>+/&#8722;</strong> and scroll wheel to zoom. <strong>&#9974; Fit All</strong> fits everything to screen. <strong>Export SVG</strong> saves the diagram for documentation.</p>
+        <p><strong>Background image:</strong> Click <strong>&#128444; BG</strong> to load a stage plot or floor plan behind the diagram. Use the <strong>BG Opacity</strong> slider in the left panel to control transparency. Remove with <strong>✕ BG</strong>.</p>
 
-        <p><strong>Properties panel</strong> (right side when a node is selected) — rename the distro, change colour, add a location note, set SocaSwitch parent bank, set PDR input rating, or jump to the calculator sheet. <strong>&#128465; Delete Distro</strong> removes the node and its sheet.</p>
+        <p><strong>Connections:</strong> Click &#128279; Connect, then click source then destination. A bank-picker prompt appears if the source has multiple banks — select which bank feeds this connection. Click any connection line to select it and edit in Properties:</p>
+        <ul>
+          <li><strong>Connector type</strong> — CAM Lock, 125A, 63A CEE, 32A CEE, Socapex, Tru, Tru/DMX, Tru/Ether, PowerCon, PowerCon/DMX, PowerCon/Ether, and others</li>
+          <li><strong>Cable length</strong> — 1, 2, 3, 5, 10, 20, 30, 50, 100m</li>
+          <li><strong>Custom label</strong></li>
+          <li><strong>FROM</strong> — change which bank or fixed outlet this connection exits from</li>
+        </ul>
+        <p>All auto-generated connections (equipment card lines, Socapex lines, 3-phase FO lines) are also clickable and show the same Cable Type / Length selectors. Connection colours match the bank's colour from the calculator.</p>
+
+        <p><strong>Controls:</strong> Drag nodes to reposition freely. Drag equipment cards independently. <strong>⊞ Auto Layout</strong> arranges into a top-down tree. Scroll or use <strong>+/−</strong> to zoom. <strong>&#9974; Fit All</strong> to fit everything on screen. <strong>SVG</strong> exports the diagram. <strong>PDF</strong> prints an A3 landscape version with white background.</p>
+
+        <p><strong>Properties panel</strong> — rename, recolour, add a note, set SocaSwitch parent, set PDR input rating, jump to calculator sheet, or delete a node. <strong>↺ Reset Card Positions</strong> appears if cards have been moved.</p>
+
+        <p><strong>Save/Load:</strong> The designer canvas saves with <code>.erdistro</code> including all nodes, connections, zones, card positions, auto-connection cable data, and the background image is reloaded separately.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128202; Grand Summary</h3>
-        <p>The Grand Summary bar at the bottom of each distro sheet shows total load per phase in a compact single row:</p>
+        <p>The Grand Summary bar at the bottom of each distro sheet shows total load per phase:</p>
         <ul>
-          <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of the phase limit</li>
-          <li><span class="help-badge warn">&#9888; 84%</span> — 80–99% of limit — approaching capacity</li>
-          <li><span class="help-badge over">&#9888; OVER</span> — At or above the phase limit</li>
+          <li><span class="help-badge ok">&#10003; OK</span> — Under 80% of phase limit</li>
+          <li><span class="help-badge warn">&#9888; ~84%</span> — 80–99% — approaching capacity</li>
+          <li><span class="help-badge over">&#9888; OVER</span> — At or above limit</li>
         </ul>
-        <p>Where fixed outlets are present, the summary shows a breakdown: ways load + 1&#966; outlet load + 3&#966; reserved = total. Remaining headroom is shown in amps. For <strong>48-Way</strong> and <strong>PDR</strong>, click the phase limit toggle to switch between 63A and 125A (or 32A and 63A for PDR).</p>
+        <p>Where fixed outlets are present, the summary breaks down ways load + 1&#966; outlet load + 3&#966; reserved. For <strong>48-Way</strong> and <strong>PDR</strong>, click the phase limit toggle to switch between 63A and 125A (or 32A and 63A for PDR).</p>
       </div>
 
       <div class="help-section">
         <h3>&#9888; Voltage Warnings</h3>
-        <p>Items in the inventory can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to set this up.</p>
+        <p>Items can be flagged as voltage-restricted in the Google Sheet (columns F and G). Run <strong>&#9889; ER Calculator → Add Voltage Columns</strong> once to enable.</p>
         <ul>
-          <li><strong>120V Only</strong> — always flagged with a <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> badge regardless of region.</li>
-          <li><strong>240V Only</strong> — flagged with <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span> when region is set to US (208V).</li>
+          <li><strong>120V Only</strong> — always flagged with a <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">120V ONLY</span> badge.</li>
+          <li><strong>240V Only</strong> — flagged <span style="background:#FFD700;color:#000;padding:0 4px;border-radius:2px;font-size:10px;font-weight:700">240V ONLY</span> when region is set to US 208V.</li>
         </ul>
-        <p>Warnings appear on the distro sheet, on all label types, and in the Equipment Report.</p>
+        <p>Warnings appear on the distro sheet, all label types, the Equipment Report, and equipment cards in the Designer.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128424; Printing Labels</h3>
-        <p>Click <strong>Labels &#9660;</strong> to choose a label format:</p>
+        <p>Click <strong>Labels &#9660;</strong> in the PRINT group:</p>
         <ul>
-          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet (2&times;5), 4&quot;&times;2&quot;</li>
-          <li><strong>Avery L7173</strong> — Same layout, A4, 99.1&times;57mm</li>
-          <li><strong>P-touch 24mm</strong> — Equipment labels for Brother PT-P710BT (or other P-touch with 24mm tape). One label per unit, max 50mm long. Shows equipment name, ID, placement, and address with voltage warning badge. Set tape width to 24mm, length to 50mm in the printer driver before printing.</li>
+          <li><strong>Avery 5163</strong> — Distro bank labels, US Letter, 10 per sheet</li>
+          <li><strong>Avery L7173</strong> — Same layout, A4</li>
+          <li><strong>Equipment Labels (P-touch 24mm)</strong> — Brother PT-P710BT, one label per unit, 50mm long. 3 lines: name (bold), Unit ID · Placement, Address. Set tape width 24mm, length 50mm, margins None, background graphics on.</li>
+          <li><strong>Port Labels</strong> — Standalone page for 12mm P-touch tape. Gigacore 16XT (300mm), Luminode 12 (324mm), Luminode 4 (108mm), DMX8 (200mm), LumiSplit 10 (350mm), Cable Plug (12mm × 2 per plug). Each strip shows the label length to set in the printer driver.</li>
+          <li><strong>Case Labels</strong> — Opens the Flight Case Labels page (Avery 5126, 177×127mm)</li>
         </ul>
-        <p>Distro labels include a <strong>Fixed Outlets</strong> card after the bank labels, showing all assigned 1-phase equipment and linked 3-phase sheets. Voltage warning badges appear on all label types. Upload a logo via <strong>&#128444; Logo</strong> — it appears on all labels. Print with margins <strong>None</strong> and background graphics <strong>on</strong>.</p>
-        <p><strong>&#127760; Port Labels</strong> — Opens a standalone page for printing port identification strips on any <strong>Brother P-touch</strong> printer (12mm tape recommended). Designed for Luminex network gear and patch cables.</p>
-        <p><strong>Device types:</strong></p>
-        <ul>
-          <li><strong>Gigacore 16XT</strong> — 30mm box · 300mm label (10 ports)</li>
-          <li><strong>Luminode 12</strong> — 27mm box · 324mm label (12 ports)</li>
-          <li><strong>Luminode 4</strong> — 27mm box · 108mm label (4 ports)</li>
-          <li><strong>DMX8</strong> — 25mm box · 200mm label (8 ports)</li>
-          <li><strong>LumiSplit 10</strong> — 35mm box · 350mm label (10 ports)</li>
-          <li><strong>Cable Plug</strong> — 12mm box (50% of EtherCon barrel), prints 2 identical labels per plug (one per end). Set quantity to number of plugs.</li>
-          <li><strong>Custom</strong> — enter any pitch and port count</li>
-        </ul>
-        <p>Each port has two text lines (main label + secondary e.g. IP/note). Multiple strips per session — all save automatically. Each strip shows a yellow badge with the exact label length to enter in the printer driver under <strong>Set Length</strong>.</p>
-        <p><strong>Print setup:</strong> In P-touch Printing Preferences set tape width to match your tape, length = <strong>Set Length</strong>, enter the mm shown on the badge. Set Margins to None and enable Background Graphics when printing.</p>
+        <p><strong>&#128424; Print Sheet</strong> — generates a clean A4 print of the active distro sheet with all banks, equipment, fixed outlets, and grand summary. Use browser print → Save as PDF.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128230; Flight Case Labels</h3>
-        <p>Click <strong>Case Labels</strong> to open the Flight Case Labels page — Avery 5126 format (177&times;127mm, 2 per A4 sheet).</p>
-        <p><strong>Layout:</strong> Top third = coloured tour name band with logo. Middle = description. Bottom = location (left) and box number with total (right).</p>
-        <p><strong>Header styles:</strong> Solid, Left/Right Split, Diagonal Stripes, or Top/Bottom Split — each supports a two-colour picker.</p>
-        <p><strong>Auto-populate:</strong> Tick <strong>Add to Flight Case Labels</strong> when assigning equipment, fill in unit details, then click Update &amp; Clear — rows are created automatically. Box numbers auto-increment.</p>
+        <p>Click <strong>Case Labels</strong> in the Labels dropdown. Layout: tour name band (top), description (middle), location + box number (bottom). Supports Solid, Split, Diagonal, and H-Split colour styles. Tick <strong>Add to Flight Case Labels</strong> when assigning equipment to auto-populate rows.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128438; Equipment Report</h3>
-        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets — distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. Fixed outlet assignments are included. A summary banner highlights any voltage mismatches at the top.</p>
+        <p>Click <strong>Report</strong> for a printable A4 table of every assigned item across all distro sheets — distro, output, equipment, amps, voltage warnings, unit ID, placement, and address. Fixed outlet assignments included. A summary banner highlights voltage mismatches.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128190; Saving &amp; Loading</h3>
-        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, region, limits, fixed outlet data, and logo.</p>
-        <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was.</p>
-        <p>Note: the Distro Designer canvas is not currently saved with the <code>.erdistro</code> file — export it as SVG for documentation before closing.</p>
+        <p><strong>&#128190; Save</strong> — Downloads your show as a <code>.erdistro</code> file capturing all assignments, unit details, bank colours, limits, fixed outlet data, logo, and the complete Distro Designer canvas (nodes, connections, zones, card positions, cable data).</p>
+        <p><strong>&#128194; Load</strong> — Restores any previously saved <code>.erdistro</code> file exactly as it was, including the Designer canvas.</p>
       </div>
 
       <div class="help-section">
         <h3>&#128269; Inventory</h3>
-        <p>The left panel lists all equipment with watts and amps per unit for the active region. Items flagged as <strong>120V Only</strong> or <strong>240V Only</strong> show a coloured badge. Search to filter. Click any item to pre-select it in the Add Equipment dropdown.</p>
-        <p>To add or edit equipment: open the Google Sheet and use <strong>&#9889; ER Calculator → &#43; Add New Equipment</strong>. Step 4 of the form asks for voltage restriction. Run <strong>Add Voltage Columns</strong> once to enable the checkbox columns if not already present.</p>
+        <p>The left panel lists all equipment with watts and amps. Voltage-restricted items show a badge. Search to filter. Click any item to pre-select it in the Add Equipment dropdown. To add or edit inventory, use the Google Sheet: <strong>&#9889; ER Calculator → + Add New Equipment</strong>.</p>
       </div>
 
     <div class="help-ftr">
