@@ -3590,13 +3590,15 @@ function ddRenderProps() {
       acLabel = 'Equipment line: '+(eqNode2?eqNode2.label:'?');
     }
     var safeId = JSON.stringify(acId);
+    // Store selected key on dd for use in callbacks
+    dd._editingAcKey = acId;
     panel.innerHTML =
       '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:8px">CONNECTION</div>' +
       '<div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:10px;line-height:1.4">'+ddEsc(acLabel)+'</div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">CABLE TYPE</div>' +
-      '<select class="dd-prop-select" onchange="if(!dd.autoConns['+safeId+'])dd.autoConns['+safeId+']={}; dd.autoConns['+safeId+'].cableType=this.value||null; ddRender();">'+typeOpts2+'</select></div>' +
+      '<select class="dd-prop-select" onchange="ddSetAutoConn(\'cableType\',this.value)">'+typeOpts2+'</select></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">CABLE LENGTH</div>' +
-      '<select class="dd-prop-select" onchange="if(!dd.autoConns['+safeId+'])dd.autoConns['+safeId+']={}; dd.autoConns['+safeId+'].cableLength=this.value||null; ddRender();">'+lenOpts2+'</select></div>';
+      '<select class="dd-prop-select" onchange="ddSetAutoConn(\'cableLength\',this.value)">'+lenOpts2+'</select></div>';
     return;
   }
 
@@ -3928,6 +3930,14 @@ function ddResetCards(nodeId) {
   delete dd.cardOffsets[nodeId]; ddRender();
 }
 
+
+function ddSetAutoConn(field, value) {
+  var key = dd._editingAcKey;
+  if (!key) return;
+  if (!dd.autoConns[key]) dd.autoConns[key] = {};
+  dd.autoConns[key][field] = value || null;
+  ddRender();
+}
 
 function ddBankStroke(sheetKey, bank) {
   // Returns the primary colour for a bank, falling back to phase colour
