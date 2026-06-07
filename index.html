@@ -4310,7 +4310,7 @@ function ddRender() {
             rowOff += prevRowMax + CARD_GAP_Y;
           }
         }
-        var cardH2 = CARD_HDR_H + grp.items.length * CARD_LINE_H + CARD_PAD;
+        var cardH2 = CARD_HDR_H + grp.items.reduce(function(s,it){return s+(it.qty||1);},0) * CARD_LINE_H + CARD_PAD;
         var baseX2 = gridX2 + col2*(CARD_W2+CARD_GAP_X);
         var baseY2 = gridY2 + rowOff;
         var off2 = ddGetCardOff(node.id, gIdx);
@@ -4399,43 +4399,60 @@ function ddRender() {
         hdiv.setAttribute('stroke','#e2e8f0'); hdiv.setAttribute('stroke-width','0.8');
         cg2.appendChild(hdiv);
 
-        // Item rows
-        grp.items.forEach(function(item2, ii) {
-          var rowY = cy2 + CARD_HDR_H + ii * CARD_LINE_H;
-          if (ii > 0) {
+        // Expand items into individual unit lines (one per unit regardless of qty)
+        var unitLines = [];
+        grp.items.forEach(function(item2) {
+          var units2 = item2.units || [];
+          var qty2 = item2.qty || 1;
+          for (var ui = 0; ui < qty2; ui++) {
+            var u = units2[ui] || {};
+            unitLines.push({eq: item2.eq, id: u.id||'', placement: u.placement||'', address: u.address||''});
+          }
+        });
+
+        var hasDetail = unitLines.some(function(l){ return l.id||l.placement||l.address; });
+        var LINE_H2 = hasDetail ? CARD_LINE_H : 18; // tighter if no detail
+        var cardH2 = CARD_HDR_H + unitLines.length * LINE_H2 + CARD_PAD;
+
+        // Resize bg/shadow to match actual height
+        bg2.setAttribute('height', cardH2);
+        sh2.setAttribute('height', cardH2);
+        bar2.setAttribute('height', cardH2);
+        bar2b.setAttribute('height', cardH2);
+
+        unitLines.forEach(function(line, li) {
+          var rowY = cy2 + CARD_HDR_H + li * LINE_H2;
+          if (li > 0) {
             var rdiv=document.createElementNS(ns,'line');
             rdiv.setAttribute('x1',cx2+6); rdiv.setAttribute('y1',rowY);
             rdiv.setAttribute('x2',cx2+CARD_W2-2); rdiv.setAttribute('y2',rowY);
             rdiv.setAttribute('stroke','#f1f5f9'); rdiv.setAttribute('stroke-width','0.8');
             cg2.appendChild(rdiv);
           }
-          // Equipment name
-          var eqName2 = (item2.qty>1?item2.qty+'× ':'')+item2.eq;
-          if (eqName2.length>22) eqName2=eqName2.substring(0,21)+'…';
+          var nameY = hasDetail ? rowY+12 : rowY+13;
           var eqT=document.createElementNS(ns,'text');
-          eqT.setAttribute('x',cx2+10); eqT.setAttribute('y',rowY+13);
+          eqT.setAttribute('x',cx2+10); eqT.setAttribute('y',nameY);
           eqT.setAttribute('font-size','10'); eqT.setAttribute('font-weight','600');
           eqT.setAttribute('fill','#0f172a'); eqT.setAttribute('font-family','sans-serif');
-          eqT.textContent = eqName2;
+          var eqStr = line.eq.length>22 ? line.eq.substring(0,21)+'…' : line.eq;
+          eqT.textContent = eqStr;
           cg2.appendChild(eqT);
 
-          // Unit details (id, placement, address) from units[]
-          var units2 = item2.units || [];
-          var details2 = [];
-          units2.forEach(function(u){ if(u.id) details2.push(u.id); });
-          // Show first unit's placement and address if set
-          var u0 = units2[0] || {};
-          if (u0.placement) details2.push(u0.placement);
-          if (u0.address) details2.push(u0.address);
-          if (details2.length) {
-            var detStr = details2.join(' · ');
-            if (detStr.length>26) detStr=detStr.substring(0,25)+'…';
-            var detT=document.createElementNS(ns,'text');
-            detT.setAttribute('x',cx2+10); detT.setAttribute('y',rowY+24);
-            detT.setAttribute('font-size','7.5'); detT.setAttribute('fill','#64748b');
-            detT.setAttribute('font-family','sans-serif');
-            detT.textContent = detStr;
-            cg2.appendChild(detT);
+          if (hasDetail) {
+            var details2 = [];
+            if (line.id) details2.push(line.id);
+            if (line.placement) details2.push(line.placement);
+            if (line.address) details2.push(line.address);
+            if (details2.length) {
+              var detStr = details2.join(' · ');
+              if (detStr.length>28) detStr=detStr.substring(0,27)+'…';
+              var detT=document.createElementNS(ns,'text');
+              detT.setAttribute('x',cx2+10); detT.setAttribute('y',rowY+23);
+              detT.setAttribute('font-size','7.5'); detT.setAttribute('fill','#64748b');
+              detT.setAttribute('font-family','sans-serif');
+              detT.textContent = detStr;
+              cg2.appendChild(detT);
+            }
           }
         });
 
