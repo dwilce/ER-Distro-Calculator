@@ -3685,9 +3685,15 @@ function ddRenderProps() {
     var lengthOpts = ['','1','2','3','5','10','20','30','50','100'].map(function(l){
       return '<option value="' + l + '"' + (conn.cableLength===l?' selected':'') + '>' + (l ? l+'m' : '— Not set') + '</option>';
     }).join('');
+    var CABLE_TYPES_LIST = ['Tru','Tru/DMX','Tru/Ether','PowerCon','PowerCon/DMX','PowerCon/Ether'];
+    var cableTypeOpts = ['<option value="">— Not set</option>'].concat(CABLE_TYPES_LIST.map(function(t){
+      return '<option value="' + t + '"' + (conn.cableType===t?' selected':'') + '>' + t + '</option>';
+    })).join('');
     panel.innerHTML =
       '<div class="dd-prop-row"><div class="dd-prop-label">CONNECTOR TYPE</div>' +
       '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'type\',this.value)">' + typeOpts + '</select></div>' +
+      '<div class="dd-prop-row"><div class="dd-prop-label">CABLE TYPE</div>' +
+      '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'cableType\',this.value)">' + cableTypeOpts + '</select></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">CABLE LENGTH</div>' +
       '<select class="dd-prop-select" onchange="ddUpdateConn(' + conn.id + ',\'cableLength\',this.value)">' + lengthOpts + '</select></div>' +
       '<div class="dd-prop-row"><div class="dd-prop-label">CUSTOM LABEL</div>' +
@@ -4755,7 +4761,7 @@ function ddRender() {
     connLayer.appendChild(path);
 
     // Conn label (custom label + cable length)
-    var connDisplayLabel = [conn.cableLength ? conn.cableLength+'m' : '', conn.label || ''].filter(Boolean).join(' · ');
+    var connDisplayLabel = [conn.cableType || '', conn.cableLength ? conn.cableLength+'m' : '', conn.label || ''].filter(Boolean).join(' · ');
     if (connDisplayLabel) {
       var midX2=(x1c+x2c)/2, midY2=(y1c+y2c)/2;
       var lw2=connDisplayLabel.length*5+10;
