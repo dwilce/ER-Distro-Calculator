@@ -4580,8 +4580,8 @@ function ddRender() {
     var x2=node.x+NW/2, y2=node.y;
     var cp=(y2-y1)/2;
     var socaStroke = ddBankStroke(pNode.sheetKey, node.parentBank);
-    var ac = dd.autoConns[acKeySoca] || {};
     var acKeySoca = 'sc:'+node.id;
+    var ac = dd.autoConns[acKeySoca] || {};
     var isSocaSel = dd.selected && dd.selected.type==='autoconn' && dd.selected.id===acKeySoca;
 
     var sp = document.createElementNS(ns,'path');
@@ -4646,7 +4646,8 @@ function ddRender() {
     var foGroups3 = [];
     foList3.forEach(function(fo){ for(var fi=1;fi<=fo.count;fi++) foGroups3.push({key:fo.label.replace(/\s/g,'_')+'_'+fi,color:fo.color,label:fo.label}); });
     foGroups3.forEach(function(fo3,fi3){
-      if (!fo3.key.match(/3φ|3ph|63A|125A|32A_3/i) && foList3.find(function(f){return fo3.key.indexOf(f.label.replace(/\s/g,'_'))===0;}).ph!==3) return;
+      var foParent = foList3.find(function(f){return fo3.key.indexOf(f.label.replace(/\s/g,'_'))===0;});
+      if (!foParent || foParent.ph !== 3) return;
       var conn3=tpp3[fo3.key]; if(!conn3||!conn3.connected) return;
       var toNode3=dd.nodes.find(function(n){return n.sheetKey===conn3.connected||n.label===conn3.connected;});
       if(!toNode3) return;
@@ -4683,12 +4684,16 @@ function ddRender() {
       foLbg.setAttribute('x',foMx-foLw/2);foLbg.setAttribute('y',foMy-8);foLbg.setAttribute('width',foLw);foLbg.setAttribute('height',14);
       foLbg.setAttribute('rx',4);foLbg.setAttribute('fill', isFoSel?'#fffbeb':'#fff');
       foLbg.setAttribute('stroke', isFoSel?'#f59e0b':fo3.color);foLbg.setAttribute('stroke-width', isFoSel?'2':'1');
+      foLbg.style.cursor='pointer';
+      foLbg.addEventListener('click',(function(k){return function(e){e.stopPropagation();dd.selected={type:'autoconn',id:k};ddRenderProps();ddRender();};})(foAcKey));
       connLayer.appendChild(foLbg);
       var foLt2=document.createElementNS(ns,'text');
       foLt2.setAttribute('x',foMx);foLt2.setAttribute('y',foMy+4);foLt2.setAttribute('text-anchor','middle');
       foLt2.setAttribute('font-size','8');foLt2.setAttribute('font-weight','700');
       foLt2.setAttribute('fill', isFoSel?'#b45309':fo3.color);foLt2.setAttribute('font-family','sans-serif');
       foLt2.textContent=foLt;
+      foLt2.style.cursor='pointer';
+      foLt2.addEventListener('click',(function(k){return function(e){e.stopPropagation();dd.selected={type:'autoconn',id:k};ddRenderProps();ddRender();};})(foAcKey));
       connLayer.appendChild(foLt2);
     });
   });
