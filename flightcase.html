@@ -446,8 +446,8 @@ function printLabels() {
     var borderBg = hdrBg;
     var borderBgPos = '';
     if (hdrStyle === 'chevron') {
-      // Offset so the border's chevron pattern continues seamlessly into the tour-name chevron
-      borderBgPos = 'background-position:-5.53mm -5.53mm;';
+      // Offset = padding (5mm) + lbl-trim border (1.5px ≈ 0.397mm) = 5.397mm
+      borderBgPos = 'background-position:-5.397mm -5.397mm;';
     }
     // Always read latest watermark from localStorage in case it was set by index.html
     var currentLogo = logoDataURL || localStorage.getItem('er_fc_logo');
@@ -522,7 +522,7 @@ function printLabels() {
     '.page { width:210mm; height:297mm; box-sizing:border-box; page-break-after:always; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0mm; }' +
     '.page:last-child { page-break-after:auto; }' +
     '.label { width:177mm; height:127mm; display:flex; align-items:center; justify-content:center; flex-shrink:0; }' +
-    '.lbl-border { width:167mm; height:117mm; padding:5mm; box-sizing:border-box; border-radius:5mm; overflow:hidden; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    '.lbl-border { width:167mm; height:117mm; padding:5mm; box-sizing:border-box; border-radius:5mm; overflow:hidden; background-origin:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
     '.lbl-trim { width:100%; height:100%; border:1.5px solid #000; border-radius:3mm; overflow:hidden; position:relative; display:flex; flex-direction:column; background:white; }' +
     '.lbl-body { width:100%; height:100%; display:flex; flex-direction:column; position:relative; overflow:hidden; }' +
 
