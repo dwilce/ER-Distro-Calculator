@@ -443,12 +443,6 @@ function printLabels() {
     else if (hdrStyle === 'chevron') hdrBg = 'repeating-linear-gradient(105deg,' + hdrColor + ' 0,' + hdrColor + ' 30pt,' + hdrColor2 + ' 30pt,' + hdrColor2 + ' 60pt)';
     else if (hdrStyle === 'hsplit') hdrBg = 'linear-gradient(to bottom,' + hdrColor + ' 0,' + hdrColor + ' 50%,' + hdrColor2 + ' 50%,' + hdrColor2 + ' 100%)';
     else hdrBg = hdrColor;
-    var borderBg = hdrBg;
-    var borderBgPos = '';
-    if (hdrStyle === 'chevron') {
-      // Offset = padding (5mm) + lbl-trim border (1.5px ≈ 0.397mm) = 5.397mm
-      borderBgPos = 'background-position:-5.397mm -5.397mm;';
-    }
     // Always read latest watermark from localStorage in case it was set by index.html
     var currentLogo = logoDataURL || localStorage.getItem('er_fc_logo');
     var wmHtml = currentLogo ? '<img src="' + currentLogo + '" class="watermark">' : '';
@@ -460,11 +454,11 @@ function printLabels() {
 
     var labelHtml =
       '<div class="label">' +
-        '<div class="lbl-border" style="background:' + borderBg + ';' + borderBgPos + '">' +
+        '<div class="lbl-border" style="background:' + hdrBg + '">' +
         '<div class="lbl-trim">' +
         '<div class="lbl-body">' +
-          // TOP THIRD: company logo left 1/3, tour name right 2/3
-          '<div class="top-zone" style="background:' + hdrBg + '">' +
+          // TOP THIRD: company logo left 1/3, tour name right 2/3 (transparent - shows lbl-border bg)
+          '<div class="top-zone">' +
             companyHtml +
             '<div class="tour-name"><span id="tn' + i + '">' + tourName + '</span></div>' +
           '</div>' +
@@ -522,12 +516,12 @@ function printLabels() {
     '.page { width:210mm; height:297mm; box-sizing:border-box; page-break-after:always; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0mm; }' +
     '.page:last-child { page-break-after:auto; }' +
     '.label { width:177mm; height:127mm; display:flex; align-items:center; justify-content:center; flex-shrink:0; }' +
-    '.lbl-border { width:167mm; height:117mm; padding:5mm; box-sizing:border-box; border-radius:5mm; overflow:hidden; background-origin:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
-    '.lbl-trim { width:100%; height:100%; border:1.5px solid #000; border-radius:3mm; overflow:hidden; position:relative; display:flex; flex-direction:column; background:white; }' +
+    '.lbl-border { width:167mm; height:117mm; padding:5mm; box-sizing:border-box; border-radius:5mm; overflow:hidden; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    '.lbl-trim { width:100%; height:100%; border:1.5px solid #000; border-radius:3mm; overflow:hidden; position:relative; display:flex; flex-direction:column; }' +
     '.lbl-body { width:100%; height:100%; display:flex; flex-direction:column; position:relative; overflow:hidden; }' +
 
     // Watermark
-    '.lower-wrap { position:relative; flex:1; display:flex; flex-direction:column; overflow:hidden; }' +
+    '.lower-wrap { position:relative; flex:1; display:flex; flex-direction:column; overflow:hidden; background:white; }' +
     '.watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:70%; max-height:80%; object-fit:contain; opacity:0.25; pointer-events:none; z-index:0; }' +
 
     // Top zone
