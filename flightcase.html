@@ -441,14 +441,14 @@ function printLabels() {
     var hdrBg;
     if (hdrStyle === 'split') hdrBg = 'linear-gradient(to right,' + hdrColor + ' 0,' + hdrColor + ' 66.5%,' + hdrColor2 + ' 66.5%,' + hdrColor2 + ' 100%)';
     else if (hdrStyle === 'chevron') hdrBg = 'repeating-linear-gradient(105deg,' + hdrColor + ' 0,' + hdrColor + ' 30pt,' + hdrColor2 + ' 30pt,' + hdrColor2 + ' 60pt)';
+    else if (hdrStyle === 'hsplit') hdrBg = 'linear-gradient(to bottom,' + hdrColor + ' 0,' + hdrColor + ' 50%,' + hdrColor2 + ' 50%,' + hdrColor2 + ' 100%)';
+    else hdrBg = hdrColor;
     var borderBg = hdrBg;
     var borderBgPos = '';
     if (hdrStyle === 'chevron') {
       // Offset so the border's chevron pattern continues seamlessly into the tour-name chevron
       borderBgPos = 'background-position:-5.53mm -5.53mm;';
     }
-    else if (hdrStyle === 'hsplit') hdrBg = 'linear-gradient(to bottom,' + hdrColor + ' 0,' + hdrColor + ' 50%,' + hdrColor2 + ' 50%,' + hdrColor2 + ' 100%)';
-    else hdrBg = hdrColor;
     // Always read latest watermark from localStorage in case it was set by index.html
     var currentLogo = logoDataURL || localStorage.getItem('er_fc_logo');
     var wmHtml = currentLogo ? '<img src="' + currentLogo + '" class="watermark">' : '';
