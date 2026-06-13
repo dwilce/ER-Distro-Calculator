@@ -112,6 +112,14 @@ tbody td.num-cell{text-align:center;font-weight:700;color:var(--muted);font-size
       <label>Total Boxes:</label>
       <input type="number" class="tour-input" id="totalBoxes" placeholder="Auto" min="1" style="width:70px" oninput="saveToStorage()">
     </div>
+    <div class="tour-wrap">
+      <label>Box Number:</label>
+      <select class="tour-input" id="boxNumberMode" onchange="saveToStorage()" style="width:140px">
+        <option value="full">Show Number + Total</option>
+        <option value="number">Show Number Only</option>
+        <option value="off">Hide Completely</option>
+      </select>
+    </div>
     <div class="logo-upload-wrap">
       <span class="logo-status loaded" id="companyLogoStatus">&#10004; ER Productions</span>
       <span class="logo-status" id="wmStatus"></span>
@@ -387,6 +395,7 @@ function saveToStorage() {
     localStorage.setItem('er_fc_tour', document.getElementById('tourName').value);
     localStorage.setItem('er_fc_job', document.getElementById('jobNumber').value);
     localStorage.setItem('er_fc_total', document.getElementById('totalBoxes').value);
+    localStorage.setItem('er_fc_boxmode', document.getElementById('boxNumberMode').value);
     if (logoDataURL) localStorage.setItem('er_fc_logo', logoDataURL);
     if (companyLogoURL) localStorage.setItem('er_fc_company', companyLogoURL);
   } catch(e) {}
@@ -402,6 +411,8 @@ function loadFromStorage() {
     if (j) document.getElementById('jobNumber').value = j;
     var tb = localStorage.getItem('er_fc_total');
     if (tb) document.getElementById('totalBoxes').value = tb;
+    var bm = localStorage.getItem('er_fc_boxmode');
+    if (bm) document.getElementById('boxNumberMode').value = bm;
     var l = localStorage.getItem('er_fc_logo');
     if (l) {
       logoDataURL = l;
@@ -422,7 +433,9 @@ function saveTour() { saveToStorage(); }
 // ── PRINT ─────────────────────────────────────────────────────
 function printLabels() {
   var tourName = document.getElementById('tourName').value.trim() || 'ER Productions';
-  var totalBoxes = document.getElementById('totalBoxes').value.trim();
+  var boxNumberMode = document.getElementById('boxNumberMode').value;
+  var showBoxNumber = boxNumberMode !== 'off';
+  var totalBoxes = boxNumberMode === 'full' ? document.getElementById('totalBoxes').value.trim() : '';
   var jobNumber = document.getElementById('jobNumber').value.trim();
   var validRows = rows.filter(function(r) { return r.box || r.location || r.description; });
 
@@ -473,17 +486,19 @@ function printLabels() {
             '<div class="zone-value desc-value"><span id="desc' + i + '">' + (r.description || '&mdash;') + '</span></div>' +
           '</div>' +
 
-          // BOTTOM THIRD: Location | Box Number
+          // BOTTOM THIRD: Location | Box Number | ER Job Number
           '<div class="bot-zone">' +
             '<div class="bot-cell" style="border-right:3px solid #111">' +
               '<div class="zone-label">LOCATION</div>' +
               '<div class="zone-value">' + (r.location || '&mdash;') + '</div>' +
             '</div>' +
+            (showBoxNumber ?
             '<div class="bot-cell bot-cell-half" style="border-right:3px solid #111">' +
               '<div class="zone-label">BOX NUMBER</div>' +
               '<div class="zone-value box-value">' + (r.box || '&mdash;') + '</div>' +
               (totalBoxes ? '<div class="of-total">of ' + totalBoxes + '</div>' : '') +
-            '</div>' +
+            '</div>'
+            : '') +
             '<div class="bot-cell bot-cell-half">' +
               '<div class="zone-label">ER JOB NUMBER</div>' +
               '<div class="zone-value job-value">' + (jobNumber || '&mdash;') + '</div>' +
